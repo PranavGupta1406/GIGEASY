@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { FontFamily } from '../../constants';
-import api from '../../services/api';
+import { api } from '../../services/api';
 
 const BRAND = {
   navy: '#1A68D5',
@@ -20,7 +20,7 @@ export function ActiveOrderTrackingScreen({ route, navigation }: any) {
 
   // Poll for live updates every 5 seconds
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     
     async function loadOrder() {
       try {
@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
   workerInfo: { flex: 1 },
   workerName: { fontFamily: FontFamily.semiBold, fontSize: 15, color: BRAND.text },
   workerStatus: { fontFamily: FontFamily.regular, fontSize: 13, color: BRAND.navy, marginTop: 4 },
-  searchingText: { fontFamily: FontFamily.italic, color: BRAND.subText, fontSize: 14, marginLeft: 8 },
+  searchingText: { fontFamily: FontFamily.regular, fontStyle: 'italic', color: BRAND.subText, fontSize: 14, marginLeft: 8 },
 });

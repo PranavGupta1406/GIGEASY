@@ -43,6 +43,7 @@ import { CategoryServicesScreen } from '../screens/employer/CategoryServicesScre
 import { ServiceConfigScreen } from '../screens/employer/ServiceConfigScreen';
 import { EmployerCartScreen } from '../screens/employer/EmployerCartScreen';
 import { ActiveOrderTrackingScreen } from '../screens/employer/ActiveOrderTrackingScreen';
+import { JobApplicantsScreen } from '../screens/employer/JobApplicantsScreen';
 
 // Shell components
 import { ModeSwitcher } from '../components/ModeSwitcher';
@@ -62,6 +63,8 @@ export type RootStackParamList = {
   MainApp: { initialMode?: 'worker' | 'employer' };
   JobDetail: { jobId: string };
   JobApply: { jobId: string };
+  JobApplicants: { jobId: string };
+  PostJob: undefined;
   WorkerDetail: { workerId: string };
   CategoryServices: { categoryId: string };
   ServiceConfig: { serviceId: string };
@@ -196,6 +199,7 @@ export function RootNavigator() {
 
         <Stack.Screen name="JobDetail" component={JobDetailScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="JobApply" component={JobApplyScreen} />
+        <Stack.Screen name="JobApplicants" component={JobApplicantsScreen} />
         <Stack.Screen name="WorkerDetail" component={WorkerDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>

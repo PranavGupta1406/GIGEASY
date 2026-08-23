@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FontFamily } from '../../constants';
-import api from '../../services/api';
+import { api } from '../../services/api';
 import { InteractiveMapVisual, MapJobMarker } from '../../components/InteractiveMapVisual';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 

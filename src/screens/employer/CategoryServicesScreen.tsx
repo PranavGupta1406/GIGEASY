@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { FontFamily } from '../../constants';
-import api from '../../services/api';
+import { api } from '../../services/api';
 
 const BRAND = {
   navy: '#1A68D5',
