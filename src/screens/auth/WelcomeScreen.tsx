@@ -28,18 +28,20 @@ import { FontFamily, FontSize } from '../../constants';
 import { HeroCanvas, HeroPhase } from '../../components/hero/HeroCanvas';
 import { useAuthStore, useLanguageStore } from '../../store';
 
+import { Theme } from '../../theme';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  sheetBg: 'rgba(248, 250, 252, 0.98)',
+  bg: Theme.bg,
+  primary: Theme.brand,
+  accent: Theme.accent,
+  accentLight: Theme.accentLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  border: Theme.border,
+  white: Theme.surface,
+  sheetBg: 'rgba(250, 250, 249, 0.98)',
 };
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
@@ -297,14 +299,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: T.primary,
+    backgroundColor: T.accent,
     borderRadius: 16,
     paddingVertical: 13,
     paddingHorizontal: 16,
     minHeight: 58,
-    shadowColor: T.primary,
+    shadowColor: T.accent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.20,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -318,7 +320,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -334,14 +336,14 @@ const styles = StyleSheet.create({
   roleSub: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 1,
   },
   arrowCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -368,7 +370,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 11,
-    backgroundColor: T.primaryMuted,
+    backgroundColor: T.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -388,7 +390,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: T.primaryMuted,
+    backgroundColor: T.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },

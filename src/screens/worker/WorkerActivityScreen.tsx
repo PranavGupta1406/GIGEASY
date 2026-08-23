@@ -61,7 +61,14 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
   const workerProfile = useWorkerStore((s) => s.profile);
   const workerId = workerProfile?.id ?? CURRENT_WORKER.id;
 
-  const { getWorkerApplications, checkIn, markComplete, confirmPaymentReceived } = useSharedApplicationsStore();
+  const {
+    getWorkerApplications,
+    checkIn,
+    markComplete,
+    confirmPaymentReceived,
+    workerAcceptCounter,
+    workerDeclineCounter,
+  } = useSharedApplicationsStore();
   const myApplications = getWorkerApplications(workerId);
 
   // Sort by priority (active first)
@@ -77,7 +84,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
   );
   const totalEarned = myApplications
     .filter(a => a.status === 'PAID')
-    .reduce((sum, a) => sum + a.proposedWage, 0);
+    .reduce((sum, a) => sum + (a.agreedWage ?? a.proposedWage), 0);
 
   const worker = workerProfile ?? CURRENT_WORKER;
 
@@ -114,7 +121,10 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
     const isCompleted = app.status === 'COMPLETED' || app.status === 'IN_PROGRESS';
     const isAccepted = app.status === 'ACCEPTED';
     const isCheckedIn = app.status === 'CHECKED_IN';
+    const isNegotiating = app.status === 'NEGOTIATING';
     const isRejected = app.status === 'REJECTED';
+
+    const displayWage = app.currentCounterWage ?? app.agreedWage ?? app.proposedWage;
 
     return (
       <TouchableOpacity
@@ -148,14 +158,57 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
 
         {/* Wage */}
         <View style={styles.appWageRow}>
-          <Text style={styles.appWage}>{formatWage(app.proposedWage)}</Text>
+          <Text style={styles.appWage}>{formatWage(displayWage)}</Text>
           <Text style={styles.appWageUnit}>/ day</Text>
+          {isNegotiating && (
+            <Text style={{ fontSize: 11, color: T.warning, fontFamily: FontFamily.bold, marginLeft: 6 }}>
+              ({app.counterBy === 'employer' ? 'Employer Offer' : 'Your Counter'})
+            </Text>
+          )}
         </View>
 
         {/* Employer */}
         <Text style={styles.appEmployer} numberOfLines={1}>
           {app.job.employer.businessName}
         </Text>
+
+        {/* Counter offer actions for worker */}
+        {isNegotiating && (
+          app.counterBy === 'employer' ? (
+            <View style={{ marginTop: 10 }}>
+              <View style={[styles.paymentPendingBanner, { backgroundColor: T.warningBg, borderColor: '#FDE68A', marginBottom: 8 }]}>
+                <Feather name="alert-circle" size={13} color={T.warning} />
+                <Text style={[styles.paymentPendingText, { color: T.warning }]}>
+                  Employer offered {formatWage(app.currentCounterWage ?? app.proposedWage)}/day
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { flex: 1, backgroundColor: T.errorBg, borderWidth: 1, borderColor: '#FECACA' }]}
+                  onPress={() => workerDeclineCounter(app.id)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.actionBtnText, { color: T.error }]}>Decline</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { flex: 1.5, backgroundColor: T.success }]}
+                  onPress={() => workerAcceptCounter(app.id)}
+                  activeOpacity={0.85}
+                >
+                  <Feather name="check" size={14} color={T.white} />
+                  <Text style={styles.actionBtnText}>Accept {formatWage(app.currentCounterWage ?? app.proposedWage)}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.paymentPendingBanner, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', marginTop: 8 }]}>
+              <Feather name="clock" size={13} color={T.primary} />
+              <Text style={[styles.paymentPendingText, { color: T.primary }]}>
+                Counter offer sent · Waiting for employer response
+              </Text>
+            </View>
+          )
+        )}
 
         {/* Action buttons based on status */}
         {isAccepted && (
@@ -196,7 +249,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
         {isPaid && (
           <View style={styles.paidBanner}>
             <Feather name="check-circle" size={14} color={T.success} />
-            <Text style={styles.paidText}>{formatWage(app.proposedWage)} Received ✓</Text>
+            <Text style={styles.paidText}>{formatWage(displayWage)} Received ✓</Text>
           </View>
         )}
       </TouchableOpacity>

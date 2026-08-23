@@ -16,6 +16,8 @@ import { UserRole } from '../types';
 // Worker onboarding
 import { WorkerNameScreen } from '../screens/worker/onboarding/WorkerNameScreen';
 import { WorkerSkillsScreen } from '../screens/worker/onboarding/WorkerSkillsScreen';
+import { WorkerCategoryScreen } from '../screens/worker/onboarding/WorkerCategoryScreen';
+import { WorkerCategoryJobsScreen } from '../screens/worker/onboarding/WorkerCategoryJobsScreen';
 
 // Worker main
 import { WorkerHomeScreen } from '../screens/worker/WorkerHomeScreen';
@@ -53,6 +55,8 @@ export type RootStackParamList = {
   OTP: { phoneNumber: string };
   WorkerName: undefined;
   WorkerSkills: undefined;
+  WorkerCategory: undefined;
+  WorkerCategoryJobs: { categoryId: string; categoryName: string };
   // Employer onboarding
   EmployerName: undefined;
   MainApp: { initialMode?: 'worker' | 'employer' };
@@ -174,13 +178,10 @@ export function RootNavigator() {
         
         <Stack.Screen name="WorkerName" component={WorkerNameScreen} />
         <Stack.Screen name="WorkerSkills" component={WorkerSkillsScreen} />
-<<<<<<< HEAD
-        <Stack.Screen name="WorkerWage" component={WorkerWageScreen} />
-        
-=======
+        <Stack.Screen name="WorkerCategory" component={WorkerCategoryScreen} />
+        <Stack.Screen name="WorkerCategoryJobs" component={WorkerCategoryJobsScreen} />
 
         {/* Employer Onboarding */}
->>>>>>> 45ccade (feat: complete product-wide polish and connected marketplace lifecycle)
         <Stack.Screen name="EmployerName" component={EmployerNameScreen} />
         
         <Stack.Screen name="MainApp" component={MainAppScreen} options={{ animation: 'fade' }} />

@@ -1,4 +1,4 @@
-// Job Detail Screen — Complete Apply Flow
+// Job Detail Screen — Complete Apply + Counter-Offer Flow
 // Applied state guard · Duplicate prevention · Live status from shared store
 
 import React, { useState } from 'react';
@@ -11,6 +11,10 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
+  Modal,
+  TextInput,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -21,21 +25,23 @@ import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
 import { getCategoryVisual, GigEasyVerifiedBadge } from '../../components/GigEasyPrimitives';
 import { useLanguageStore, useWorkerStore, useSharedApplicationsStore } from '../../store';
 import { googleMapsService } from '../../services/maps/googleMapsService';
+import { Theme, statusColor, statusLabel } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
+// Use Theme tokens instead of local T
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  money: '#0F6FDE',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#16A34A',
-  successLight: '#DCFCE7',
+  bg: Theme.bg,
+  primary: Theme.accent,
+  primaryMuted: Theme.accentLight,
+  money: Theme.accent,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
 };
 
 export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
@@ -46,13 +52,23 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const { t } = useLanguageStore();
   const workerProfile = useWorkerStore((s) => s.profile);
-  const { applyForJob, hasApplied } = useSharedApplicationsStore();
+  const { applyForJob, hasApplied, getWorkerApplications, workerCounterOffer } = useSharedApplicationsStore();
 
   const workerId = workerProfile?.id ?? 'w1';
   const alreadyApplied = hasApplied(jobId, workerId);
 
   const [justApplied, setJustApplied] = useState(false);
   const [pulseAnim] = useState(new Animated.Value(1));
+
+  // Counter offer modal state
+  const [showCounterModal, setShowCounterModal] = useState(false);
+  const [counterWageText, setCounterWageText] = useState(String(job.minWage));
+  const [counterSent, setCounterSent] = useState(false);
+
+  // Get active application for status display
+  const existingApp = alreadyApplied
+    ? getWorkerApplications(workerId).find((a) => a.jobId === jobId)
+    : null;
 
   const catVisual = getCategoryVisual(job.skillRequired.category);
   const isFull = job.workersHired >= job.workersRequired;
@@ -75,7 +91,31 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     ]).start();
   };
 
+  const handleSendCounter = () => {
+    if (alreadyApplied || justApplied || isFull) return;
+
+    const wage = parseInt(counterWageText.replace(/\D/g, ''), 10);
+    if (!wage || wage < 100) return;
+
+    const worker = workerProfile ?? { id: 'w1', name: 'Ravi Kumar' } as any;
+
+    // Apply first (with counter wage), then immediately transition to NEGOTIATING
+    applyForJob(jobId, wage, worker, job);
+    setJustApplied(true);
+
+    // Get the newly created application and counter it
+    setTimeout(() => {
+      const apps = useSharedApplicationsStore.getState().getWorkerApplications(workerId);
+      const newApp = apps.find((a) => a.jobId === jobId);
+      if (newApp) workerCounterOffer(newApp.id, wage);
+    }, 50);
+
+    setShowCounterModal(false);
+    setCounterSent(true);
+  };
+
   const isApplied = alreadyApplied || justApplied;
+  const appStatus = existingApp?.status;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -215,50 +255,130 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Applied Success Banner */}
-        {isApplied && (
-          <View style={styles.appliedBanner}>
-            <Feather name="check-circle" size={18} color={T.success} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.appliedBannerTitle}>Application Sent!</Text>
-              <Text style={styles.appliedBannerSub}>
-                Check your Activity tab to track the status.
-              </Text>
+          {/* Applied Success Banner */}
+          {isApplied && (
+            <View style={styles.appliedBanner}>
+              <Feather name="check-circle" size={18} color={counterSent ? Theme.warning : T.success} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.appliedBannerTitle}>
+                  {counterSent ? 'Counter Offer Sent!' : 'Application Sent!'}
+                </Text>
+                {existingApp && (
+                  <View style={[styles.statusPill, { backgroundColor: statusColor(existingApp.status) + '18' }]}>
+                    <View style={[styles.statusDot, { backgroundColor: statusColor(existingApp.status) }]} />
+                    <Text style={[styles.statusPillText, { color: statusColor(existingApp.status) }]}>
+                      {statusLabel(existingApp.status)}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.appliedBannerSub}>
+                  Check your Activity tab to track the status.
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+
+        {/* Counter Offer Modal */}
+        <Modal
+          visible={showCounterModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCounterModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>Propose Your Wage</Text>
+              <Text style={styles.modalSub}>
+                Employer range: {formatWage(job.minWage)} – {formatWage(job.maxWage)}/day
+              </Text>
+
+              <View style={styles.wageInputRow}>
+                <Text style={styles.rupeeSign}>₹</Text>
+                <TextInput
+                  style={styles.wageInput}
+                  value={counterWageText}
+                  onChangeText={(v) => setCounterWageText(v.replace(/\D/g, ''))}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  placeholder={String(job.minWage)}
+                  placeholderTextColor={Theme.textMuted}
+                  autoFocus
+                />
+                <Text style={styles.perDay}>/day</Text>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancel}
+                  onPress={() => setShowCounterModal(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalSend}
+                  onPress={handleSendCounter}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.modalSendText}>Send Offer</Text>
+                  <Feather name="send" size={14} color={Theme.surface} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
 
       {/* Sticky Bottom Action */}
       <View style={styles.bottomBar}>
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <TouchableOpacity
-            style={[
-              styles.applyCTA,
-              isFull && styles.applyCTAFull,
-              isApplied && styles.applyCTAApplied,
-            ]}
-            onPress={handleApply}
-            disabled={isFull || isApplied}
-            activeOpacity={0.88}
-          >
-            {isApplied ? (
-              <>
-                <Feather name="check-circle" size={18} color={T.success} />
-                <Text style={[styles.applyCTAText, styles.appliedText]}>Applied ✓</Text>
-              </>
-            ) : isFull ? (
-              <Text style={styles.applyCTAText}>All Positions Filled</Text>
-            ) : (
-              <>
-                <Text style={styles.applyCTAText}>
-                  {t('applyNow')} · {formatWage(job.maxWage)}/day
-                </Text>
-                <Feather name="arrow-right" size={18} color={T.white} />
-              </>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
+        {isApplied ? (
+          // Already applied — show status
+          <View style={[styles.appliedStatusBar, { backgroundColor: statusColor(appStatus ?? 'APPLIED') + '18', borderColor: statusColor(appStatus ?? 'APPLIED') + '40' }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor(appStatus ?? 'APPLIED') }]} />
+            <Text style={[styles.appliedStatusText, { color: statusColor(appStatus ?? 'APPLIED') }]}>
+              {statusLabel(appStatus ?? 'APPLIED')}
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('MainApp', { initialMode: 'worker' })}
+              activeOpacity={0.75}
+              style={styles.viewActivityBtn}
+            >
+              <Text style={styles.viewActivityText}>View Activity →</Text>
+            </TouchableOpacity>
+          </View>
+        ) : isFull ? (
+          <View style={styles.fullBar}>
+            <Feather name="users" size={16} color={Theme.textMuted} />
+            <Text style={styles.fullBarText}>All Positions Filled</Text>
+          </View>
+        ) : (
+          // Not applied yet — two buttons: Apply + Counter Offer
+          <Animated.View style={[styles.actionRow, { transform: [{ scale: pulseAnim }] }]}>
+            {/* Apply — primary CTA */}
+            <TouchableOpacity
+              style={styles.applyBtn}
+              onPress={handleApply}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.applyBtnText}>Apply · {formatWage(job.maxWage)}/day</Text>
+              <Feather name="arrow-right" size={17} color={Theme.surface} />
+            </TouchableOpacity>
+
+            {/* Counter Offer — secondary */}
+            <TouchableOpacity
+              style={styles.counterBtn}
+              onPress={() => { setCounterWageText(String(job.minWage)); setShowCounterModal(true); }}
+              activeOpacity={0.8}
+            >
+              <Feather name="edit-2" size={15} color={Theme.brand} />
+              <Text style={styles.counterBtnText}>Counter</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -437,6 +557,120 @@ const styles = StyleSheet.create({
   },
   appliedBannerTitle: { fontFamily: FontFamily.bold, fontSize: 13.5, color: '#15803D', marginBottom: 2 },
   appliedBannerSub: { fontFamily: FontFamily.regular, fontSize: 11.5, color: '#166534' },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusPillText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: T.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.border,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 20,
+    color: T.ink,
+    marginBottom: 4,
+  },
+  modalSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: T.textMuted,
+    marginBottom: 20,
+  },
+  wageInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: T.bg,
+    borderWidth: 1.5,
+    borderColor: T.border,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    marginBottom: 24,
+  },
+  rupeeSign: {
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: T.ink,
+    marginRight: 6,
+  },
+  wageInput: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: T.ink,
+  },
+  perDay: {
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
+    color: T.textMuted,
+    marginLeft: 6,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancel: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: T.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: T.textMuted,
+  },
+  modalSend: {
+    flex: 2,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: T.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modalSendText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: T.white,
+  },
 
   // Bottom bar
   bottomBar: {
@@ -456,38 +690,85 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  applyCTA: {
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  applyBtn: {
+    flex: 2.2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: T.primary,
     borderRadius: 16,
-    height: 56,
-    paddingHorizontal: 24,
+    height: 54,
+    paddingHorizontal: 16,
     shadowColor: T.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 3,
   },
-  applyCTAFull: {
-    backgroundColor: '#94A3B8',
-    shadowOpacity: 0,
-  },
-  applyCTAApplied: {
-    backgroundColor: T.successLight,
-    borderWidth: 1.5,
-    borderColor: '#86EFAC',
-    shadowOpacity: 0,
-  },
-  applyCTAText: {
+  applyBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
+    fontSize: 15,
     color: T.white,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
-  appliedText: {
-    color: T.success,
+  counterBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Theme.accentLight,
+    borderWidth: 1.5,
+    borderColor: Theme.accentMuted,
+    borderRadius: 16,
+    height: 54,
+  },
+  counterBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: Theme.brand,
+  },
+  appliedStatusBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  appliedStatusText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    flex: 1,
+    marginLeft: 8,
+  },
+  viewActivityBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  viewActivityText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: T.primary,
+  },
+  fullBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 54,
+    backgroundColor: T.bg,
+    borderRadius: 16,
+  },
+  fullBarText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: T.textMuted,
   },
 });

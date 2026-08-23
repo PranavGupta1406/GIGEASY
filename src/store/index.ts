@@ -93,14 +93,20 @@ interface SharedApplicationsState {
   checkIn: (appId: string) => void;
   markComplete: (appId: string) => void;
   confirmPaymentReceived: (appId: string) => void;
+  workerCounterOffer: (appId: string, counterWage: number) => void;
+  workerAcceptCounter: (appId: string) => void;
+  workerDeclineCounter: (appId: string) => void;
   // Employer actions
   acceptApplication: (appId: string) => void;
   rejectApplication: (appId: string) => void;
   payWorker: (appId: string) => void;
+  employerCounterOffer: (appId: string, counterWage: number) => void;
+  employerAcceptCounter: (appId: string) => void;
   // Selectors
   getWorkerApplications: (workerId: string) => JobApplication[];
   getJobApplications: (jobId: string) => JobApplication[];
   hasApplied: (jobId: string, workerId: string) => boolean;
+  getApplication: (appId: string) => JobApplication | undefined;
 }
 
 export const useSharedApplicationsStore = create<SharedApplicationsState>((set, get) => ({
@@ -142,7 +148,7 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
     set((state) => ({
       applications: state.applications.map((a) =>
         a.id === appId
-          ? { ...a, status: 'IN_PROGRESS' as ApplicationStatus, updatedAt: new Date().toISOString() }
+          ? { ...a, status: 'COMPLETED' as ApplicationStatus, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
           : a
       ),
     })),
@@ -156,11 +162,51 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
       ),
     })),
 
+  // Worker initiates counter offer
+  workerCounterOffer: (appId, counterWage) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? {
+              ...a,
+              status: 'NEGOTIATING' as ApplicationStatus,
+              currentCounterWage: counterWage,
+              counterBy: 'worker',
+              negotiations: [
+                ...a.negotiations,
+                { id: `neg_${Date.now()}`, initiatedBy: 'worker', proposedWage: counterWage, timestamp: new Date().toISOString() },
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : a
+      ),
+    })),
+
+  // Worker accepts employer's counter
+  workerAcceptCounter: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, agreedWage: a.currentCounterWage ?? a.proposedWage, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  // Worker declines employer's counter (back to applied)
+  workerDeclineCounter: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'REJECTED' as ApplicationStatus, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
   acceptApplication: (appId) =>
     set((state) => ({
       applications: state.applications.map((a) =>
         a.id === appId
-          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, updatedAt: new Date().toISOString() }
+          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, agreedWage: a.currentCounterWage ?? a.proposedWage, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
           : a
       ),
     })),
@@ -178,7 +224,37 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
     set((state) => ({
       applications: state.applications.map((a) =>
         a.id === appId
-          ? { ...a, status: 'COMPLETED' as ApplicationStatus, paymentStatus: 'PAID' as const, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+          ? { ...a, status: 'PAID' as ApplicationStatus, paymentStatus: 'PAID' as const, paidAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  // Employer initiates counter offer
+  employerCounterOffer: (appId, counterWage) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? {
+              ...a,
+              status: 'NEGOTIATING' as ApplicationStatus,
+              currentCounterWage: counterWage,
+              counterBy: 'employer',
+              negotiations: [
+                ...a.negotiations,
+                { id: `neg_${Date.now()}`, initiatedBy: 'employer', proposedWage: counterWage, timestamp: new Date().toISOString() },
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : a
+      ),
+    })),
+
+  // Employer accepts worker's counter
+  employerAcceptCounter: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, agreedWage: a.currentCounterWage ?? a.proposedWage, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
           : a
       ),
     })),
@@ -191,6 +267,9 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
 
   hasApplied: (jobId, workerId) =>
     get().applications.some((a) => a.jobId === jobId && a.workerId === workerId),
+
+  getApplication: (appId) =>
+    get().applications.find((a) => a.id === appId),
 }));
 
 // ─── Worker Store ─────────────────────────────────────────────────────────────

@@ -183,10 +183,16 @@ export interface JobApplication {
   workerId: string;
   worker: WorkerProfile;
   proposedWage: number;
+  /** Current agreed/pending wage (may differ from initial proposedWage after counter offers) */
+  agreedWage?: number;
   status: ApplicationStatus;
   paymentStatus?: PaymentStatus;
   note?: string;
   negotiations: NegotiationStep[];
+  /** Active counter offer amount — set when status = NEGOTIATING */
+  currentCounterWage?: number;
+  /** Who initiated the current counter offer */
+  counterBy?: 'worker' | 'employer';
   appliedAt: string;
   checkedInAt?: string;
   completedAt?: string;

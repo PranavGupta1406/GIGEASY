@@ -1,6 +1,3 @@
-// Job Applicants Screen — Real Accept / Reject / Pay flow
-// Reads from shared store — changes instantly visible to workers
-
 import React, { useState } from 'react';
 import {
   View,
@@ -11,32 +8,37 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../constants';
-import { MOCK_JOBS, formatWage, getStatusLabel, getStatusColor } from '../../data/mockData';
+import { MOCK_JOBS, formatWage } from '../../data/mockData';
 import { useSharedApplicationsStore, useEmployerStore } from '../../store';
 import { JobApplication } from '../../types';
+import { Theme, statusColor as getThemeStatusColor, statusLabel as getThemeStatusLabel } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApplicants'>;
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#16A34A',
-  successLight: '#DCFCE7',
-  error: '#DC2626',
-  errorLight: '#FEE2E2',
-  warning: '#D97706',
-  warningBg: '#FEF3C7',
+  bg: Theme.bg,
+  primary: Theme.accent,
+  primaryMuted: Theme.accentLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
+  error: Theme.error,
+  errorLight: Theme.errorLight,
+  warning: Theme.warning,
+  warningBg: Theme.warningLight,
 };
 
 export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
@@ -45,24 +47,38 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
   const employerJobs = useEmployerStore((s) => s.jobs);
   const job = employerJobs.find((j) => j.id === jobId) ?? MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
 
-  const { getJobApplications, acceptApplication, rejectApplication, payWorker } = useSharedApplicationsStore();
+  const {
+    getJobApplications,
+    acceptApplication,
+    rejectApplication,
+    payWorker,
+    employerCounterOffer,
+    employerAcceptCounter,
+  } = useSharedApplicationsStore();
   const applicants = getJobApplications(jobId);
-
-  // Active (not yet paid/rejected)
   const activeApplicants = applicants.filter(a => !['REJECTED', 'WITHDRAWN', 'EXPIRED'].includes(a.status));
   const rejectedApplicants = applicants.filter(a => a.status === 'REJECTED');
 
+  // Counter offer modal state
+  const [counterApp, setCounterApp] = useState<JobApplication | null>(null);
+  const [counterWageText, setCounterWageText] = useState('');
+
   const handleAccept = (app: JobApplication) => {
+    const wage = app.currentCounterWage ?? app.proposedWage;
     Alert.alert(
       'Accept Worker',
-      `Hire ${app.worker.name} for ${formatWage(app.proposedWage)}/day?`,
+      `Hire ${app.worker.name} for ${formatWage(wage)}/day?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Accept & Hire',
           style: 'default',
           onPress: () => {
-            acceptApplication(app.id);
+            if (app.status === 'NEGOTIATING' && app.counterBy === 'worker') {
+              employerAcceptCounter(app.id);
+            } else {
+              acceptApplication(app.id);
+            }
           },
         },
       ]
@@ -85,32 +101,45 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handlePay = (app: JobApplication) => {
+    const wage = app.agreedWage ?? app.proposedWage;
     Alert.alert(
       `Pay ${app.worker.name}`,
-      `Transfer ${formatWage(app.proposedWage)} via UPI?\n\nAmount will be sent to their registered UPI ID.`,
+      `Transfer ${formatWage(wage)} via UPI?\n\nAmount will be sent to their registered UPI ID.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: `Pay ${formatWage(app.proposedWage)}`,
+          text: `Pay ${formatWage(wage)}`,
           style: 'default',
           onPress: () => {
             payWorker(app.id);
-            Alert.alert('Payment Sent ✓', `${formatWage(app.proposedWage)} has been transferred to ${app.worker.name}.`);
+            Alert.alert('Payment Sent ✓', `${formatWage(wage)} has been transferred to ${app.worker.name}.`);
           },
         },
       ]
     );
   };
 
+  const handleSendEmployerCounter = () => {
+    if (!counterApp) return;
+    const wage = parseInt(counterWageText.replace(/\D/g, ''), 10);
+    if (!wage || wage < 100) return;
+    employerCounterOffer(counterApp.id, wage);
+    setCounterApp(null);
+    Alert.alert('Counter Offer Sent', `Your offer of ${formatWage(wage)}/day was sent to ${counterApp.worker.name}.`);
+  };
+
   const renderApplicantCard = (app: JobApplication) => {
-    const statusColor = getStatusColor(app.status);
-    const statusLabel = getStatusLabel(app.status);
+    const statusColor = getThemeStatusColor(app.status);
+    const statusLabel = getThemeStatusLabel(app.status);
     const isAccepted = app.status === 'ACCEPTED';
     const isCheckedIn = app.status === 'CHECKED_IN';
     const isCompleted = app.status === 'COMPLETED' || app.status === 'IN_PROGRESS';
     const isPaid = app.status === 'PAID';
     const isApplied = app.status === 'APPLIED' || app.status === 'UNDER_REVIEW';
+    const isNegotiating = app.status === 'NEGOTIATING';
     const isRejected = app.status === 'REJECTED';
+
+    const displayWage = app.currentCounterWage ?? app.agreedWage ?? app.proposedWage;
 
     return (
       <View
@@ -157,10 +186,12 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Proposed wage */}
+        {/* Proposed / Counter wage display */}
         <View style={styles.wageRow}>
-          <Text style={styles.wageLabel}>Agreed Wage</Text>
-          <Text style={styles.wageValue}>{formatWage(app.proposedWage)}/day</Text>
+          <Text style={styles.wageLabel}>
+            {isNegotiating ? 'Counter Offer Wage' : isAccepted || isPaid ? 'Agreed Wage' : 'Requested Wage'}
+          </Text>
+          <Text style={styles.wageValue}>{formatWage(displayWage)}/day</Text>
         </View>
 
         {/* Action buttons based on status */}
@@ -174,6 +205,19 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
               <Feather name="x" size={14} color={T.error} />
               <Text style={[styles.actionBtnText, { color: T.error }]}>Decline</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.counterActionBtn]}
+              onPress={() => {
+                setCounterApp(app);
+                setCounterWageText(String(app.proposedWage));
+              }}
+              activeOpacity={0.85}
+            >
+              <Feather name="edit-2" size={14} color={Theme.brand} />
+              <Text style={[styles.actionBtnText, { color: Theme.brand }]}>Counter</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.actionBtn, styles.acceptBtn]}
               onPress={() => handleAccept(app)}
@@ -183,6 +227,58 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[styles.actionBtnText, { color: T.white }]}>Accept</Text>
             </TouchableOpacity>
           </View>
+        )}
+
+        {/* Negotiation state */}
+        {isNegotiating && (
+          app.counterBy === 'worker' ? (
+            <View>
+              <View style={[styles.statusBanner, { backgroundColor: Theme.warningLight, borderColor: Theme.warningBorder, marginBottom: 8 }]}>
+                <Feather name="alert-circle" size={14} color={Theme.warning} />
+                <Text style={[styles.statusBannerText, { color: Theme.warning }]}>
+                  Worker proposed {formatWage(app.currentCounterWage ?? app.proposedWage)}/day
+                </Text>
+              </View>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.rejectBtn]}
+                  onPress={() => handleReject(app)}
+                  activeOpacity={0.85}
+                >
+                  <Feather name="x" size={14} color={T.error} />
+                  <Text style={[styles.actionBtnText, { color: T.error }]}>Decline</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.counterActionBtn]}
+                  onPress={() => {
+                    setCounterApp(app);
+                    setCounterWageText(String(app.currentCounterWage ?? app.proposedWage));
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Feather name="edit-2" size={14} color={Theme.brand} />
+                  <Text style={[styles.actionBtnText, { color: Theme.brand }]}>Counter</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.acceptBtn]}
+                  onPress={() => handleAccept(app)}
+                  activeOpacity={0.85}
+                >
+                  <Feather name="check" size={14} color={T.white} />
+                  <Text style={[styles.actionBtnText, { color: T.white }]}>Accept {formatWage(app.currentCounterWage ?? app.proposedWage)}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.statusBanner, { backgroundColor: Theme.infoLight, borderColor: '#A5F3FC' }]}>
+              <Feather name="clock" size={14} color={Theme.info} />
+              <Text style={[styles.statusBannerText, { color: Theme.info }]}>
+                Counter offer of {formatWage(app.currentCounterWage ?? app.proposedWage)}/day sent · Waiting for worker
+              </Text>
+            </View>
+          )
         )}
 
         {isAccepted && (
@@ -195,7 +291,7 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
         {isCheckedIn && (
           <View style={[styles.statusBanner, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
             <View style={styles.liveDot} />
-            <Text style={[styles.statusBannerText, { color: T.primary }]}>Worker is checked in — shift in progress</Text>
+            <Text style={[styles.statusBannerText, { color: Theme.info }]}>Worker is checked in — shift in progress</Text>
           </View>
         )}
 
@@ -206,7 +302,7 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.85}
           >
             <Feather name="credit-card" size={15} color={T.white} />
-            <Text style={styles.payBtnText}>Pay {formatWage(app.proposedWage)}</Text>
+            <Text style={styles.payBtnText}>Pay {formatWage(displayWage)}</Text>
           </TouchableOpacity>
         )}
 
@@ -214,7 +310,7 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={[styles.statusBanner, { backgroundColor: T.successLight, borderColor: '#86EFAC' }]}>
             <Feather name="check-circle" size={14} color={T.success} />
             <Text style={[styles.statusBannerText, { color: T.success }]}>
-              {formatWage(app.proposedWage)} Paid ✓
+              {formatWage(displayWage)} Paid ✓
             </Text>
           </View>
         )}
@@ -268,6 +364,60 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
           </>
         )}
       </ScrollView>
+
+      {/* Employer Counter Offer Modal */}
+      <Modal
+        visible={!!counterApp}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCounterApp(null)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Counter Offer to {counterApp?.worker.name}</Text>
+            <Text style={styles.modalSub}>
+              Proposed wage was {formatWage(counterApp?.proposedWage ?? 0)}/day
+            </Text>
+
+            <View style={styles.wageInputRow}>
+              <Text style={styles.rupeeSign}>₹</Text>
+              <TextInput
+                style={styles.wageInput}
+                value={counterWageText}
+                onChangeText={(v) => setCounterWageText(v.replace(/\D/g, ''))}
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="Enter wage"
+                placeholderTextColor={Theme.textMuted}
+                autoFocus
+              />
+              <Text style={styles.perDay}>/day</Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setCounterApp(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSend}
+                onPress={handleSendEmployerCounter}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalSendText}>Send Counter</Text>
+                <Feather name="send" size={14} color={Theme.surface} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -379,6 +529,7 @@ const styles = StyleSheet.create({
   },
   rejectBtn: { borderColor: '#FECACA', backgroundColor: T.errorLight },
   acceptBtn: { borderColor: T.primary, backgroundColor: T.primary },
+  counterActionBtn: { borderColor: Theme.border, backgroundColor: Theme.chipBg },
   actionBtnText: { fontFamily: FontFamily.bold, fontSize: 13 },
   statusBanner: {
     flexDirection: 'row',
@@ -410,4 +561,99 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 60 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: T.ink, marginTop: 14 },
   emptySub: { fontFamily: FontFamily.regular, fontSize: 13, color: T.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: 20 },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: T.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.border,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 20,
+    color: T.ink,
+    marginBottom: 4,
+  },
+  modalSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: T.textMuted,
+    marginBottom: 20,
+  },
+  wageInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: T.bg,
+    borderWidth: 1.5,
+    borderColor: T.border,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    marginBottom: 24,
+  },
+  rupeeSign: {
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: T.ink,
+    marginRight: 6,
+  },
+  wageInput: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: T.ink,
+  },
+  perDay: {
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
+    color: T.textMuted,
+    marginLeft: 6,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancel: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: T.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: T.textMuted,
+  },
+  modalSend: {
+    flex: 2,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: T.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modalSendText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: T.white,
+  },
 });

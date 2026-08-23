@@ -38,7 +38,7 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Name Required', 'Please enter your full name to proceed.');
       return;
     }
-    navigation.navigate('WorkerSkills');
+    navigation.navigate('WorkerCategory');
   };
 
   return (
