@@ -1,257 +1,191 @@
 -- ==============================================================================
--- GIGEASY PRODUCTION POSTGRESQL + POSTGIS DATABASE SCHEMA
+-- GIGEASY POSTGRESQL DATABASE SCHEMA
+-- Database Name: gigeasy
 -- ==============================================================================
 
--- Enable Extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "postgis";
+-- Create Database (Run separately if needed: CREATE DATABASE gigeasy;)
+
+-- Drop existing tables if re-initializing
+DROP TABLE IF EXISTS kyc_verification CASCADE;
+DROP TABLE IF EXISTS ratings CASCADE;
+DROP TABLE IF EXISTS earnings CASCADE;
+DROP TABLE IF EXISTS bookings CASCADE;
+DROP TABLE IF EXISTS job_applications CASCADE;
+DROP TABLE IF EXISTS jobs CASCADE;
+DROP TABLE IF EXISTS worker_skills CASCADE;
+DROP TABLE IF EXISTS skills CASCADE;
+DROP TABLE IF EXISTS employers CASCADE;
+DROP TABLE IF EXISTS workers CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 -- ------------------------------------------------------------------------------
--- 1. USERS & AUTHENTICATION
+-- Table 1: users
 -- ------------------------------------------------------------------------------
-CREATE TYPE user_role AS ENUM ('WORKER', 'EMPLOYER', 'ADMIN');
-CREATE TYPE verification_status AS ENUM ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED');
-
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    phone_number VARCHAR(15) UNIQUE NOT NULL,
-    role user_role NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_users_phone ON users(phone_number);
-
--- ------------------------------------------------------------------------------
--- 2. SKILLS MASTER DATA
--- ------------------------------------------------------------------------------
-CREATE TABLE skills (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) UNIQUE NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    icon VARCHAR(50),
-    is_active BOOLEAN DEFAULT TRUE,
+    user_id SERIAL PRIMARY KEY,
+    firebase_uid VARCHAR(128) UNIQUE NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('worker', 'employer', 'admin')),
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    email VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_skills_category ON skills(category);
+CREATE INDEX idx_users_phone ON users(phone);
+CREATE INDEX idx_users_firebase_uid ON users(firebase_uid);
 
 -- ------------------------------------------------------------------------------
--- 3. WORKER PROFILES & WORKER SKILLS
+-- Table 2: workers
 -- ------------------------------------------------------------------------------
-CREATE TYPE availability_status AS ENUM ('AVAILABLE', 'BUSY', 'UNAVAILABLE');
-
-CREATE TABLE worker_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(150) NOT NULL,
-    profile_photo_url TEXT,
-    location GEOMETRY(Point, 4326), -- PostGIS coordinates (lat/lng)
-    address_text TEXT,
-    city VARCHAR(100) NOT NULL,
-    state VARCHAR(100) NOT NULL,
-    pincode VARCHAR(10),
+CREATE TABLE workers (
+    worker_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+    full_name VARCHAR(150) NOT NULL,
+    aadhaar_number VARCHAR(20),
+    location VARCHAR(255) NOT NULL,
+    latitude NUMERIC(10, 7) NOT NULL,
+    longitude NUMERIC(10, 7) NOT NULL,
     experience_years NUMERIC(4, 1) DEFAULT 0,
-    expected_daily_wage INT NOT NULL,
-    preferred_radius_km INT DEFAULT 15,
-    availability_status availability_status DEFAULT 'AVAILABLE',
-    languages VARCHAR(50)[] DEFAULT ARRAY['Hindi'],
-    bio TEXT,
-    trust_score INT DEFAULT 70 CHECK (trust_score BETWEEN 0 AND 100),
-    verification_status verification_status DEFAULT 'PENDING',
-    rating NUMERIC(3, 2) DEFAULT 5.0,
-    completed_jobs_count INT DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    availability VARCHAR(50) DEFAULT 'AVAILABLE',
+    profile_photo TEXT,
+    verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Spatial GIST Index on Worker Location
-CREATE INDEX idx_worker_profiles_location ON worker_profiles USING GIST(location);
-CREATE INDEX idx_worker_profiles_availability ON worker_profiles(availability_status);
-CREATE INDEX idx_worker_profiles_trust ON worker_profiles(trust_score DESC);
+CREATE INDEX idx_workers_user_id ON workers(user_id);
+CREATE INDEX idx_workers_location ON workers(latitude, longitude);
 
+-- ------------------------------------------------------------------------------
+-- Table 3: employers
+-- ------------------------------------------------------------------------------
+CREATE TABLE employers (
+    employer_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+    company_name VARCHAR(200) NOT NULL,
+    company_type VARCHAR(100) NOT NULL,
+    address TEXT NOT NULL,
+    verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_employers_user_id ON employers(user_id);
+
+-- ------------------------------------------------------------------------------
+-- Table 4: skills
+-- ------------------------------------------------------------------------------
+CREATE TABLE skills (
+    skill_id SERIAL PRIMARY KEY,
+    skill_name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE INDEX idx_skills_name ON skills(skill_name);
+
+-- ------------------------------------------------------------------------------
+-- Table 5: worker_skills
+-- ------------------------------------------------------------------------------
 CREATE TABLE worker_skills (
-    worker_id UUID REFERENCES worker_profiles(id) ON DELETE CASCADE,
-    skill_id UUID REFERENCES skills(id) ON DELETE RESTRICT,
-    years_experience INT DEFAULT 1,
+    worker_id INT REFERENCES workers(worker_id) ON DELETE CASCADE,
+    skill_id INT REFERENCES skills(skill_id) ON DELETE CASCADE,
     PRIMARY KEY (worker_id, skill_id)
 );
 
 -- ------------------------------------------------------------------------------
--- 4. EMPLOYER PROFILES
+-- Table 6: jobs
 -- ------------------------------------------------------------------------------
-CREATE TABLE employer_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    business_name VARCHAR(200) NOT NULL,
-    business_type VARCHAR(100) NOT NULL,
-    contact_name VARCHAR(150) NOT NULL,
-    logo_url TEXT,
-    location GEOMETRY(Point, 4326),
-    address_text TEXT,
-    city VARCHAR(100) NOT NULL,
-    state VARCHAR(100) NOT NULL,
-    pincode VARCHAR(10),
-    gstin VARCHAR(20),
-    verification_status verification_status DEFAULT 'VERIFIED',
-    rating NUMERIC(3, 2) DEFAULT 5.0,
-    total_jobs_posted INT DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_employer_profiles_location ON employer_profiles USING GIST(location);
-
--- ------------------------------------------------------------------------------
--- 5. GIGS / JOBS
--- ------------------------------------------------------------------------------
-CREATE TYPE job_status AS ENUM (
-    'DRAFT', 'PUBLISHED', 'HIRING', 'FULL', 'ACTIVE', 'COMPLETED', 'CLOSED', 'CANCELLED', 'DISPUTED'
-);
-
 CREATE TABLE jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    employer_id UUID REFERENCES employer_profiles(id) ON DELETE RESTRICT,
+    job_id SERIAL PRIMARY KEY,
+    employer_id INT NOT NULL REFERENCES employers(employer_id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    skill_id UUID REFERENCES skills(id) ON DELETE RESTRICT,
-    location GEOMETRY(Point, 4326) NOT NULL,
-    address_text TEXT NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    start_date DATE NOT NULL,
+    skill_required VARCHAR(100) NOT NULL,
+    wage NUMERIC(10, 2) NOT NULL CHECK (wage > 0),
+    job_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
-    workers_required INT NOT NULL CHECK (workers_required > 0),
-    workers_hired INT DEFAULT 0 CHECK (workers_hired <= workers_required),
-    min_wage INT NOT NULL,
-    max_wage INT NOT NULL,
-    requirements TEXT[] DEFAULT ARRAY[]::TEXT[],
-    status job_status DEFAULT 'HIRING',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    location VARCHAR(255) NOT NULL,
+    latitude NUMERIC(10, 7) NOT NULL,
+    longitude NUMERIC(10, 7) NOT NULL,
+    workers_required INT NOT NULL DEFAULT 1 CHECK (workers_required > 0),
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED', 'CANCELLED')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Spatial GIST Index for PostGIS ST_DWithin radius queries
-CREATE INDEX idx_jobs_location ON jobs USING GIST(location);
-CREATE INDEX idx_jobs_status_date ON jobs(status, start_date);
+CREATE INDEX idx_jobs_employer_id ON jobs(employer_id);
+CREATE INDEX idx_jobs_status ON jobs(status);
+CREATE INDEX idx_jobs_skill ON jobs(skill_required);
+CREATE INDEX idx_jobs_location ON jobs(latitude, longitude);
 
 -- ------------------------------------------------------------------------------
--- 6. APPLICATIONS & WAGE NEGOTIATIONS
+-- Table 7: job_applications
 -- ------------------------------------------------------------------------------
-CREATE TYPE application_status AS ENUM (
-    'APPLIED', 'UNDER_REVIEW', 'NEGOTIATING', 'ACCEPTED', 'CONFIRMED', 'COMPLETED', 'REJECTED', 'WITHDRAWN', 'EXPIRED'
-);
-
 CREATE TABLE job_applications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    job_id UUID REFERENCES jobs(id) ON DELETE CASCADE,
-    worker_id UUID REFERENCES worker_profiles(id) ON DELETE CASCADE,
-    proposed_wage INT NOT NULL,
-    final_agreed_wage INT,
-    status application_status DEFAULT 'APPLIED',
-    note TEXT,
+    application_id SERIAL PRIMARY KEY,
+    job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+    worker_id INT NOT NULL REFERENCES workers(worker_id) ON DELETE CASCADE,
+    application_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (application_status IN ('PENDING', 'ACCEPTED', 'REJECTED')),
     applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_job_worker_application UNIQUE (job_id, worker_id)
+    CONSTRAINT unique_job_worker UNIQUE (job_id, worker_id)
 );
 
-CREATE INDEX idx_applications_job ON job_applications(job_id, status);
-CREATE INDEX idx_applications_worker ON job_applications(worker_id, status);
+CREATE INDEX idx_applications_job ON job_applications(job_id);
+CREATE INDEX idx_applications_worker ON job_applications(worker_id);
 
-CREATE TABLE negotiations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    application_id UUID REFERENCES job_applications(id) ON DELETE CASCADE,
-    round_number INT NOT NULL,
-    sender_role user_role NOT NULL,
-    proposed_wage INT NOT NULL,
-    message TEXT,
+-- ------------------------------------------------------------------------------
+-- Table 8: bookings
+-- ------------------------------------------------------------------------------
+CREATE TABLE bookings (
+    booking_id SERIAL PRIMARY KEY,
+    job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+    worker_id INT NOT NULL REFERENCES workers(worker_id) ON DELETE CASCADE,
+    employer_id INT NOT NULL REFERENCES employers(employer_id) ON DELETE CASCADE,
+    booking_status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED' CHECK (booking_status IN ('CONFIRMED', 'COMPLETED', 'CANCELLED')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_negotiations_app ON negotiations(application_id, round_number);
+CREATE INDEX idx_bookings_job ON bookings(job_id);
+CREATE INDEX idx_bookings_worker ON bookings(worker_id);
+CREATE INDEX idx_bookings_employer ON bookings(employer_id);
 
 -- ------------------------------------------------------------------------------
--- 7. ATTENDANCE & WORK EXECUTION
+-- Table 9: earnings
 -- ------------------------------------------------------------------------------
-CREATE TYPE shift_status AS ENUM ('SCHEDULED', 'CHECKED_IN', 'COMPLETED', 'NO_SHOW', 'DISPUTED');
-
-CREATE TABLE shift_attendance (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    job_id UUID REFERENCES jobs(id) ON DELETE RESTRICT,
-    worker_id UUID REFERENCES worker_profiles(id) ON DELETE RESTRICT,
-    status shift_status DEFAULT 'SCHEDULED',
-    check_in_time TIMESTAMP WITH TIME ZONE,
-    check_out_time TIMESTAMP WITH TIME ZONE,
-    worker_check_in_location GEOMETRY(Point, 4326),
-    distance_from_site_meters INT,
-    is_geofence_verified BOOLEAN DEFAULT FALSE,
-    hours_worked NUMERIC(4, 2),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE earnings (
+    earning_id SERIAL PRIMARY KEY,
+    worker_id INT NOT NULL REFERENCES workers(worker_id) ON DELETE CASCADE,
+    job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+    amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0),
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (payment_status IN ('PENDING', 'PAID')),
+    payment_date TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_shift_attendance_job ON shift_attendance(job_id);
-CREATE INDEX idx_shift_attendance_worker ON shift_attendance(worker_id);
+CREATE INDEX idx_earnings_worker ON earnings(worker_id);
+CREATE INDEX idx_earnings_status ON earnings(payment_status);
 
 -- ------------------------------------------------------------------------------
--- 8. PAYMENTS & ESCROW
--- ------------------------------------------------------------------------------
-CREATE TYPE payment_status AS ENUM (
-    'PENDING', 'HELD_IN_ESCROW', 'RELEASED_TO_WORKER', 'REFUNDED', 'DISPUTED'
-);
-
-CREATE TABLE escrow_payments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    job_id UUID REFERENCES jobs(id) ON DELETE RESTRICT,
-    employer_id UUID REFERENCES employer_profiles(id) ON DELETE RESTRICT,
-    worker_id UUID REFERENCES worker_profiles(id) ON DELETE RESTRICT,
-    agreed_daily_wage INT NOT NULL,
-    platform_fee INT NOT NULL,
-    tds_deduction INT NOT NULL,
-    net_worker_payout INT NOT NULL,
-    status payment_status DEFAULT 'HELD_IN_ESCROW',
-    payment_gateway_ref VARCHAR(100),
-    funded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    released_at TIMESTAMP WITH TIME ZONE
-);
-
-CREATE INDEX idx_escrow_job ON escrow_payments(job_id);
-CREATE INDEX idx_escrow_worker ON escrow_payments(worker_id);
-
--- ------------------------------------------------------------------------------
--- 9. RATINGS, REVIEWS & DISPUTES
+-- Table 10: ratings
 -- ------------------------------------------------------------------------------
 CREATE TABLE ratings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    job_id UUID REFERENCES jobs(id) ON DELETE RESTRICT,
-    rated_by_user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
-    rated_user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
-    score NUMERIC(3, 2) NOT NULL CHECK (score BETWEEN 1.0 AND 5.0),
-    punctuality_score INT CHECK (punctuality_score BETWEEN 1 AND 5),
-    work_quality_score INT CHECK (work_quality_score BETWEEN 1 AND 5),
-    behaviour_score INT CHECK (behaviour_score BETWEEN 1 AND 5),
-    feedback TEXT,
+    rating_id SERIAL PRIMARY KEY,
+    job_id INT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+    worker_id INT NOT NULL REFERENCES workers(worker_id) ON DELETE CASCADE,
+    employer_id INT NOT NULL REFERENCES employers(employer_id) ON DELETE CASCADE,
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    review TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE disputes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    job_id UUID REFERENCES jobs(id) ON DELETE RESTRICT,
-    raised_by_user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
-    against_user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
-    reason TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'OPEN',
-    resolution_notes TEXT,
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+CREATE INDEX idx_ratings_worker ON ratings(worker_id);
+CREATE INDEX idx_ratings_job ON ratings(job_id);
 
 -- ------------------------------------------------------------------------------
--- 10. SAMPLE POSTGIS RADIUS QUERY TEMPLATE (Jobs within 10km of worker)
+-- Table 11: kyc_verification
 -- ------------------------------------------------------------------------------
--- SELECT j.*, 
---        ST_Distance(j.location::geography, ST_SetSRID(ST_MakePoint(77.2090, 28.6139), 4326)::geography) / 1000 AS distance_km
--- FROM jobs j
--- WHERE j.status = 'HIRING'
---   AND ST_DWithin(j.location::geography, ST_SetSRID(ST_MakePoint(77.2090, 28.6139), 4326)::geography, 10000)
--- ORDER BY distance_km ASC;
+CREATE TABLE kyc_verification (
+    kyc_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
+    aadhaar_verified BOOLEAN DEFAULT FALSE,
+    face_verified BOOLEAN DEFAULT FALSE,
+    digilocker_verified BOOLEAN DEFAULT FALSE,
+    verified_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_kyc_user ON kyc_verification(user_id);
