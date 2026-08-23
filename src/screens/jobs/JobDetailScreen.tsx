@@ -20,6 +20,7 @@ import { MOCK_JOBS, formatWage, formatDate, formatDistance } from '../../data/mo
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
 import { getCategoryVisual, GigEasyVerifiedBadge } from '../../components/GigEasyPrimitives';
 import { useLanguageStore, useWorkerStore } from '../../store';
+import { googleMapsService } from '../../services/maps/googleMapsService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -118,16 +119,34 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* 2. Map Location */}
         <View style={styles.mapSection}>
-          <Text style={styles.sectionHeading}>Work Location</Text>
-          <Text style={styles.locationAddress}>{job.location.address}, {job.location.city}</Text>
+          <View style={styles.locationHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionHeading}>Work Location</Text>
+              <Text style={styles.locationAddress}>{job.location.address}, {job.location.city}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.directionsBtn}
+              onPress={() => googleMapsService.openDirections({
+                destLat: job.location.lat,
+                destLng: job.location.lng,
+                destLabel: job.title,
+              })}
+              activeOpacity={0.8}
+            >
+              <Feather name="navigation" size={13} color={T.white} />
+              <Text style={styles.directionsBtnText}>Directions</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.mapWrap}>
             <InteractiveMapVisual
               markers={[
-                { id: job.id, wage: formatWage(job.maxWage), top: '45%', left: '50%' }
+                { id: job.id, wage: formatWage(job.maxWage), top: '45%', left: '50%', lat: job.location.lat, lng: job.location.lng }
               ]}
-              height={150}
+              height={170}
               locationCity={job.location.city}
               radiusKm={5}
+              centerLat={job.location.lat}
+              centerLng={job.location.lng}
             />
           </View>
         </View>
@@ -274,9 +293,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: T.border,
   },
+  locationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  directionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: T.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  directionsBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: T.white,
+  },
   sectionHeading: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: T.ink, marginBottom: 4 },
   locationAddress: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary, marginBottom: 12 },
-  mapWrap: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: T.border },
+  mapWrap: { borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: T.border },
   infoSection: {
     backgroundColor: T.white,
     marginTop: 12,

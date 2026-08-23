@@ -11,6 +11,7 @@ import { RoleScreen } from '../screens/auth/RoleScreen';
 import { PhoneScreen } from '../screens/auth/PhoneScreen';
 import { OTPScreen } from '../screens/auth/OTPScreen';
 import { SplashScreen } from '../screens/auth/SplashScreen';
+import { UserRole } from '../types';
 
 // Worker onboarding
 import { WorkerNameScreen } from '../screens/worker/onboarding/WorkerNameScreen';

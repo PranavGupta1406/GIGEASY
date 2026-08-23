@@ -126,6 +126,8 @@ export interface EmployerProfile {
   logo?: string;
   location: Location;
   contactName: string;
+  contactPhone?: string;
+  contactEmail?: string;
   description?: string;
   verificationStatus: VerificationStatus;
   rating: number;
