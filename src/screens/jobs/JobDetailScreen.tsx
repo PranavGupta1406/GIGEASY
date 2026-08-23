@@ -255,29 +255,58 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
 
-          {/* Applied Success Banner */}
-          {isApplied && (
-            <View style={styles.appliedBanner}>
-              <Feather name="check-circle" size={18} color={counterSent ? Theme.warning : T.success} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.appliedBannerTitle}>
-                  {counterSent ? 'Counter Offer Sent!' : 'Application Sent!'}
-                </Text>
-                {existingApp && (
-                  <View style={[styles.statusPill, { backgroundColor: statusColor(existingApp.status) + '18' }]}>
-                    <View style={[styles.statusDot, { backgroundColor: statusColor(existingApp.status) }]} />
-                    <Text style={[styles.statusPillText, { color: statusColor(existingApp.status) }]}>
-                      {statusLabel(existingApp.status)}
-                    </Text>
-                  </View>
-                )}
-                <Text style={styles.appliedBannerSub}>
-                  Check your Activity tab to track the status.
-                </Text>
-              </View>
+        {/* 6. Payment & Escrow Guarantee */}
+        <View style={styles.infoSection}>
+          <View style={styles.paymentHeaderRow}>
+            <View style={styles.paymentIconCircle}>
+              <Feather name="shield" size={16} color={Theme.primary} />
             </View>
-          )}
-        </ScrollView>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionHeading}>Payment & Escrow Protection</Text>
+              <Text style={styles.paymentSub}>Guaranteed direct payout upon shift completion</Text>
+            </View>
+          </View>
+          <View style={styles.paymentDetailBox}>
+            <View style={styles.paymentDetailRow}>
+              <Text style={styles.paymentDetailLabel}>Daily Wage</Text>
+              <Text style={styles.paymentDetailVal}>{formatWage(job.maxWage)}/day</Text>
+            </View>
+            <View style={styles.paymentDetailRow}>
+              <Text style={styles.paymentDetailLabel}>Payout Mode</Text>
+              <Text style={styles.paymentDetailVal}>Direct UPI / QR / Bank</Text>
+            </View>
+            <View style={styles.paymentDetailRow}>
+              <Text style={styles.paymentDetailLabel}>Escrow Status</Text>
+              <Text style={[styles.paymentDetailVal, { color: existingApp?.paymentStatus === 'PAID' ? Theme.success : Theme.primary }]}>
+                {existingApp?.paymentStatus === 'PAID' ? 'Paid ✓' : existingApp ? 'In Escrow (Work in Progress)' : '100% Pre-Funded'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Applied Success Banner */}
+        {isApplied && (
+          <View style={styles.appliedBanner}>
+            <Feather name="check-circle" size={18} color={counterSent ? Theme.warning : T.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.appliedBannerTitle}>
+                {counterSent ? 'Counter Offer Sent!' : 'Application Sent!'}
+              </Text>
+              {existingApp && (
+                <View style={[styles.statusPill, { backgroundColor: statusColor(existingApp.status) + '18' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusColor(existingApp.status) }]} />
+                  <Text style={[styles.statusPillText, { color: statusColor(existingApp.status) }]}>
+                    {statusLabel(existingApp.status)}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.appliedBannerSub}>
+                Check your Activity tab to track the status.
+              </Text>
+            </View>
+          </View>
+        )}
+      </ScrollView>
 
         {/* Counter Offer Modal */}
         <Modal
@@ -541,6 +570,13 @@ const styles = StyleSheet.create({
   staffingCount: { fontFamily: FontFamily.bold, fontSize: 12, color: T.primary },
   progressBar: { height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: T.primary, borderRadius: 3 },
+  paymentHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  paymentIconCircle: { width: 34, height: 34, borderRadius: 10, backgroundColor: T.primaryMuted, alignItems: 'center', justifyContent: 'center' },
+  paymentSub: { fontFamily: FontFamily.regular, fontSize: 11.5, color: T.textSecondary, marginTop: 1 },
+  paymentDetailBox: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: T.border, gap: 8 },
+  paymentDetailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  paymentDetailLabel: { fontFamily: FontFamily.medium, fontSize: 12, color: T.textSecondary },
+  paymentDetailVal: { fontFamily: FontFamily.bold, fontSize: 12.5, color: T.ink },
 
   // Applied banner
   appliedBanner: {

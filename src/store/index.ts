@@ -330,6 +330,7 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
   },
 
   acceptApplication: (appId) => {
+    const targetApp = get().applications.find((a) => a.id === appId);
     const updated = get().applications.map((a) =>
       a.id === appId
         ? {
@@ -344,6 +345,9 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
     );
     set({ applications: updated });
     safeSetStorage('gigeasy_applications', updated);
+    if (targetApp) {
+      useEmployerStore.getState().incrementHiredCount?.(targetApp.jobId);
+    }
   },
 
   rejectApplication: (appId) => {
@@ -451,6 +455,7 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
 
   // Employer accepts worker's counter
   employerAcceptCounter: (appId) => {
+    const targetApp = get().applications.find((a) => a.id === appId);
     const updated = get().applications.map((a) =>
       a.id === appId
         ? {
@@ -465,6 +470,9 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
     );
     set({ applications: updated });
     safeSetStorage('gigeasy_applications', updated);
+    if (targetApp) {
+      useEmployerStore.getState().incrementHiredCount?.(targetApp.jobId);
+    }
   },
 
   getWorkerApplications: (workerId) =>
@@ -515,6 +523,7 @@ interface EmployerState {
   jobs: Job[];
   setProfile: (profile: EmployerProfile) => void;
   updateProfile: (updates: Partial<EmployerProfile>) => void;
+  incrementHiredCount: (jobId: string) => void;
   postJob: (jobData: Partial<Job>) => Job;
   getJobById: (jobId: string) => Job | undefined;
 }
@@ -530,6 +539,19 @@ export const useEmployerStore = create<EmployerState>((set, get) => ({
       const updated = state.profile ? { ...state.profile, ...updates } : null;
       return { profile: updated };
     }),
+  incrementHiredCount: (jobId: string) => {
+    const updatedJobs = get().jobs.map((j) =>
+      j.id === jobId
+        ? {
+            ...j,
+            workersHired: Math.min((j.workersHired || 0) + 1, j.workersRequired || 1),
+            status: ((j.workersHired || 0) + 1 >= (j.workersRequired || 1) ? 'FULL' : j.status) as any,
+          }
+        : j
+    );
+    set({ jobs: updatedJobs });
+    safeSetStorage('gigeasy_jobs', updatedJobs);
+  },
   postJob: (jobData) => {
     const activeProfile = get().profile ?? CURRENT_EMPLOYER;
     const newJob: Job = {

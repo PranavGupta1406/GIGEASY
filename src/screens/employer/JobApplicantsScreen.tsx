@@ -64,40 +64,15 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
   const [counterWageText, setCounterWageText] = useState('');
 
   const handleAccept = (app: JobApplication) => {
-    const wage = app.currentCounterWage ?? app.proposedWage;
-    Alert.alert(
-      'Accept Worker',
-      `Hire ${app.worker.name} for ${formatWage(wage)}/day?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Accept & Hire',
-          style: 'default',
-          onPress: () => {
-            if (app.status === 'NEGOTIATING' && app.counterBy === 'worker') {
-              employerAcceptCounter(app.id);
-            } else {
-              acceptApplication(app.id);
-            }
-          },
-        },
-      ]
-    );
+    if (app.status === 'NEGOTIATING' && app.counterBy === 'worker') {
+      employerAcceptCounter(app.id);
+    } else {
+      acceptApplication(app.id);
+    }
   };
 
   const handleReject = (app: JobApplication) => {
-    Alert.alert(
-      'Decline Applicant',
-      `Decline ${app.worker.name}'s application?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: () => rejectApplication(app.id),
-        },
-      ]
-    );
+    rejectApplication(app.id);
   };
 
   const handlePay = (app: JobApplication) => {
@@ -110,7 +85,6 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!wage || wage < 100) return;
     employerCounterOffer(counterApp.id, wage);
     setCounterApp(null);
-    Alert.alert('Counter Offer Sent', `Your offer of ${formatWage(wage)}/day was sent to ${counterApp.worker.name}.`);
   };
 
   const renderApplicantCard = (app: JobApplication) => {
@@ -267,36 +241,72 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
         {isAccepted && (
-          <View style={styles.statusBanner}>
-            <Feather name="check-circle" size={14} color={T.success} />
-            <Text style={styles.statusBannerText}>Hired — waiting for worker to check in</Text>
+          <View style={{ gap: 8 }}>
+            <View style={styles.statusBanner}>
+              <Feather name="check-circle" size={14} color={T.success} />
+              <Text style={styles.statusBannerText}>Worker Hired ✓ — Waiting for shift start</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.payBtn}
+              onPress={() => handlePay(app)}
+              activeOpacity={0.85}
+            >
+              <Feather name="credit-card" size={15} color={T.white} />
+              <Text style={styles.payBtnText}>Pay Worker {formatWage(displayWage)} (Escrow)</Text>
+            </TouchableOpacity>
           </View>
         )}
 
         {isCheckedIn && (
-          <View style={[styles.statusBanner, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-            <View style={styles.liveDot} />
-            <Text style={[styles.statusBannerText, { color: Theme.info }]}>Worker is checked in — shift in progress</Text>
+          <View style={{ gap: 8 }}>
+            <View style={[styles.statusBanner, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <View style={styles.liveDot} />
+              <Text style={[styles.statusBannerText, { color: Theme.info }]}>Worker is on shift — Checked in</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.payBtn}
+              onPress={() => handlePay(app)}
+              activeOpacity={0.85}
+            >
+              <Feather name="credit-card" size={15} color={T.white} />
+              <Text style={styles.payBtnText}>Release Payment {formatWage(displayWage)}</Text>
+            </TouchableOpacity>
           </View>
         )}
 
         {isCompleted && (
-          <TouchableOpacity
-            style={styles.payBtn}
-            onPress={() => handlePay(app)}
-            activeOpacity={0.85}
-          >
-            <Feather name="credit-card" size={15} color={T.white} />
-            <Text style={styles.payBtnText}>Pay {formatWage(displayWage)}</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 8 }}>
+            <View style={[styles.statusBanner, { backgroundColor: Theme.warningLight, borderColor: Theme.warningBorder }]}>
+              <Feather name="clock" size={14} color={Theme.warning} />
+              <Text style={[styles.statusBannerText, { color: Theme.warning }]}>Work Completed — Payment Pending</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.payBtn}
+              onPress={() => handlePay(app)}
+              activeOpacity={0.85}
+            >
+              <Feather name="credit-card" size={15} color={T.white} />
+              <Text style={styles.payBtnText}>Complete Payout {formatWage(displayWage)}</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {isPaid && (
-          <View style={[styles.statusBanner, { backgroundColor: T.successLight, borderColor: '#86EFAC' }]}>
-            <Feather name="check-circle" size={14} color={T.success} />
-            <Text style={[styles.statusBannerText, { color: T.success }]}>
-              {formatWage(displayWage)} Paid ✓
-            </Text>
+          <View style={{ gap: 8 }}>
+            <View style={[styles.statusBanner, { backgroundColor: T.successLight, borderColor: '#86EFAC' }]}>
+              <Feather name="check-circle" size={14} color={T.success} />
+              <Text style={[styles.statusBannerText, { color: T.success }]}>
+                {formatWage(displayWage)} Paid ✓ via Escrow
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.payBtn, { backgroundColor: Theme.surfaceSubtle, borderWidth: 1, borderColor: Theme.border }]}
+              onPress={() => handlePay(app)}
+              activeOpacity={0.85}
+            >
+              <Feather name="file-text" size={14} color={Theme.ink} />
+              <Text style={[styles.payBtnText, { color: Theme.ink }]}>View Payment Receipt</Text>
+            </TouchableOpacity>
           </View>
         )}
 

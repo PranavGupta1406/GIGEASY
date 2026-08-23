@@ -90,25 +90,19 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
   const worker = workerProfile ?? CURRENT_WORKER;
 
   const handleCheckIn = (app: JobApplication) => {
-    Alert.alert(
-      'GPS Check-In',
-      `Check in for ${app.job.title} at ${app.job.location.city}?\n\nYour location will be recorded.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Check In Now', onPress: () => checkIn(app.id) },
-      ]
-    );
+    checkIn(app.id);
   };
 
   const handleMarkComplete = (app: JobApplication) => {
-    Alert.alert(
-      'Mark Work as Complete',
-      `Have you finished your shift at ${app.job.title}?`,
-      [
-        { text: 'Not Yet', style: 'cancel' },
-        { text: 'Yes, Work Done', onPress: () => markComplete(app.id) },
-      ]
-    );
+    markComplete(app.id);
+  };
+
+  const handleAcceptCounter = (app: JobApplication) => {
+    workerAcceptCounter(app.id);
+  };
+
+  const handleDeclineCounter = (app: JobApplication) => {
+    workerDeclineCounter(app.id);
   };
 
   const handleViewJob = (jobId: string) => {

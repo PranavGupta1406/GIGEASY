@@ -60,11 +60,11 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
 
     setTimeout(() => {
       setProcessingStep(2);
-    }, 900);
+    }, 300);
 
     setTimeout(() => {
       setProcessingStep(3);
-    }, 1800);
+    }, 600);
 
     setTimeout(() => {
       const generatedTxId = `PAY_GIG_${Math.floor(10000000 + Math.random() * 90000000)}`;
@@ -86,7 +86,7 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
       setTxReceipt(receipt);
       setIsProcessing(false);
       setPaymentSuccess(true);
-    }, 2600);
+    }, 900);
   };
 
   const handleFinish = () => {
