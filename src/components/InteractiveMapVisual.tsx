@@ -1,17 +1,21 @@
-// GigEasy Signature Interactive Map Visual
-// Clean cartography with live pulse and selectable wage pins
-// Brand Navy (#1E3A5F)
+// GigEasy Signature Interactive Google Map Visual
+// Integrates Google Maps API Key with live cartography backdrop, radar pulses, and selectable wage pins
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Image,
   ViewStyle,
+  Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { FontFamily, BorderRadius } from '../constants';
+import { GOOGLE_MAPS_API_KEY, DEFAULT_MAP_COORDINATES } from '../config/maps';
+import { googleMapsService } from '../services/maps/googleMapsService';
 
 export interface MapJobMarker {
   id: string;
@@ -21,6 +25,8 @@ export interface MapJobMarker {
   distance?: string;
   top: string | number;
   left: string | number;
+  lat?: number;
+  lng?: number;
 }
 
 interface InteractiveMapVisualProps {
@@ -32,6 +38,8 @@ interface InteractiveMapVisualProps {
   userLabel?: string;
   locationCity?: string;
   radiusKm?: number;
+  centerLat?: number;
+  centerLng?: number;
   style?: ViewStyle;
 }
 
@@ -57,11 +65,14 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
   userLabel = 'YOU',
   locationCity = 'Noida',
   radiusKm = 10,
+  centerLat = DEFAULT_MAP_COORDINATES.lat,
+  centerLng = DEFAULT_MAP_COORDINATES.lng,
   style,
 }) => {
   const pulseAnim1 = useRef(new Animated.Value(0)).current;
   const pulseAnim2 = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const [mapImgError, setMapImgError] = useState(false);
 
   useEffect(() => {
     if (!showRadar) return;
@@ -123,22 +134,49 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
     };
   }, [showRadar]);
 
+  // Google Maps Static API Image URL
+  const staticMapUrl = googleMapsService.getStaticMapUrl({
+    centerLat,
+    centerLng,
+    zoom: 13,
+    width: 640,
+    height: Math.round(height * 2),
+    theme: 'light',
+  });
+
+  const handleOpenGoogleMaps = () => {
+    googleMapsService.openLocation(centerLat, centerLng, `Gigs near ${locationCity}`);
+  };
+
   return (
     <View style={[styles.mapContainer, style]}>
       <View style={[styles.mapCanvas, { height }]}>
-        {/* Grid and routes */}
-        <View style={styles.gridLineH1} />
-        <View style={styles.gridLineH2} />
-        <View style={styles.gridLineV1} />
-        <View style={styles.gridLineV2} />
-        <View style={styles.arterialRoadH} />
-        <View style={styles.arterialRoadV} />
+        {/* Real Google Maps Satellite/Cartography Image Backdrop */}
+        {GOOGLE_MAPS_API_KEY && !mapImgError ? (
+          <Image
+            source={{ uri: staticMapUrl }}
+            style={styles.googleMapImage}
+            onError={() => setMapImgError(true)}
+            resizeMode="cover"
+          />
+        ) : (
+          <>
+            {/* Fallback Vector Grid and routes */}
+            <View style={styles.gridLineH1} />
+            <View style={styles.gridLineH2} />
+            <View style={styles.gridLineV1} />
+            <View style={styles.gridLineV2} />
+            <View style={styles.arterialRoadH} />
+            <View style={styles.arterialRoadV} />
+            <View style={styles.zoneBlock1} />
+            <View style={styles.zoneBlock2} />
+          </>
+        )}
 
-        {/* City zones */}
-        <View style={styles.zoneBlock1} />
-        <View style={styles.zoneBlock2} />
+        {/* Ambient overlay tint */}
+        <View style={styles.mapTintOverlay} pointerEvents="none" />
 
-        {/* Pulse Waves */}
+        {/* Radar Pulse Waves */}
         {showRadar && (
           <>
             <Animated.View
@@ -182,7 +220,7 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
           </>
         )}
 
-        {/* Center User Marker */}
+        {/* Center User Location Marker */}
         <View style={styles.userMarkerContainer}>
           <View style={styles.userDot} />
           <View style={styles.userBadge}>
@@ -190,7 +228,7 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
           </View>
         </View>
 
-        {/* Job Pins */}
+        {/* Dynamic Job Wage Pins */}
         {markers.map((marker) => {
           const isSelected = marker.id === selectedMarkerId;
           const displayWage = typeof marker.wage === 'number' ? `₹${marker.wage.toLocaleString('en-IN')}` : marker.wage;
@@ -233,6 +271,16 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
             </TouchableOpacity>
           );
         })}
+
+        {/* Google Maps Badge / Direct Action */}
+        <TouchableOpacity
+          style={styles.googleWatermark}
+          onPress={handleOpenGoogleMaps}
+          activeOpacity={0.85}
+        >
+          <Feather name="navigation" size={10} color={B.navy} />
+          <Text style={styles.googleMapsText}>Google Maps</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Map Bottom Status Strip */}
@@ -241,7 +289,13 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
           <View style={styles.livePulseDot} />
           <Text style={styles.stripLiveText}>Gigs in {locationCity}</Text>
         </View>
-        <Text style={styles.stripRadiusText}>Within {radiusKm} km</Text>
+        <TouchableOpacity
+          style={styles.openMapsPill}
+          onPress={handleOpenGoogleMaps}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.stripRadiusText}>Within {radiusKm} km · View Map ↗</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -259,6 +313,23 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: B.mapBg,
     overflow: 'hidden',
+  },
+  googleMapImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  mapTintOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(248, 250, 252, 0.15)',
   },
   gridLineH1: {
     position: 'absolute',
@@ -298,7 +369,10 @@ const styles = StyleSheet.create({
     right: 0,
     top: '50%',
     height: 5,
-    backgroundColor: B.road,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: B.border,
   },
   arterialRoadV: {
     position: 'absolute',
@@ -306,112 +380,147 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: '50%',
     width: 5,
-    backgroundColor: B.road,
+    backgroundColor: '#FFFFFF',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: B.border,
   },
   zoneBlock1: {
     position: 'absolute',
-    top: '12%',
-    left: '60%',
-    width: 65,
-    height: 45,
-    borderRadius: 6,
-    backgroundColor: '#E4EAF2',
+    top: 15,
+    left: 15,
+    width: 50,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
+    opacity: 0.5,
   },
   zoneBlock2: {
     position: 'absolute',
-    bottom: '15%',
-    left: '12%',
-    width: 55,
-    height: 40,
-    borderRadius: 6,
-    backgroundColor: '#E4EAF2',
+    bottom: 20,
+    right: 25,
+    width: 60,
+    height: 35,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
+    opacity: 0.5,
   },
   radarWave: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    width: 110,
-    height: 110,
-    marginLeft: -55,
-    marginTop: -55,
-    borderRadius: 55,
+    width: 80,
+    height: 80,
+    marginTop: -40,
+    marginLeft: -40,
+    borderRadius: 40,
     borderWidth: 1.5,
     borderColor: B.navy,
-    backgroundColor: 'rgba(30, 58, 95, 0.08)',
+    backgroundColor: 'rgba(26, 104, 213, 0.08)',
   },
   userMarkerContainer: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    marginLeft: -20,
-    marginTop: -20,
-    width: 40,
-    height: 40,
+    marginTop: -16,
+    marginLeft: -16,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
   userDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: B.navy,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: B.white,
+    shadowColor: B.navy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
   },
   userBadge: {
-    marginTop: 2,
     backgroundColor: B.navy,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    marginTop: 2,
   },
   userBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 7,
+    fontSize: 8.5,
     color: B.white,
     letterSpacing: 0.5,
   },
   markerWrap: {
     position: 'absolute',
     alignItems: 'center',
-    transform: [{ translateX: -24 }, { translateY: -14 }],
+    zIndex: 15,
   },
   markerPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-  },
-  markerPillActive: {
-    backgroundColor: B.navy,
-    borderColor: B.navy,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
   markerPillDefault: {
     backgroundColor: B.white,
     borderColor: B.border,
   },
+  markerPillActive: {
+    backgroundColor: B.navy,
+    borderColor: B.white,
+  },
   markerWage: {
     fontFamily: FontFamily.bold,
     fontSize: 11,
-    letterSpacing: -0.3,
+  },
+  markerWageDefault: {
+    color: B.ink,
   },
   markerWageActive: {
     color: B.white,
   },
-  markerWageDefault: {
-    color: B.navy,
-  },
   markerAnchorDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 1.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: -2,
+  },
+  anchorDotDefault: {
+    backgroundColor: B.ink,
   },
   anchorDotActive: {
     backgroundColor: B.navy,
+    borderWidth: 1,
+    borderColor: B.white,
   },
-  anchorDotDefault: {
-    backgroundColor: '#8A99AB',
+  googleWatermark: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.90)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: B.border,
+    zIndex: 20,
+  },
+  googleMapsText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9.5,
+    color: B.navy,
   },
   statusStrip: {
     flexDirection: 'row',
@@ -419,7 +528,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: B.white,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: B.border,
   },
@@ -436,12 +545,15 @@ const styles = StyleSheet.create({
   },
   stripLiveText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: 11.5,
     color: B.ink,
+  },
+  openMapsPill: {
+    paddingVertical: 2,
   },
   stripRadiusText: {
     fontFamily: FontFamily.medium,
     fontSize: 11,
-    color: B.textMuted,
+    color: B.navy,
   },
 });
