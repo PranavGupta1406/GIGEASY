@@ -15,7 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
 import { CURRENT_WORKER, formatWage } from '../../data/mockData';
-import { useAuthStore } from '../../store';
+import { useAuthStore, useWorkerStore } from '../../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props {
@@ -24,7 +24,8 @@ interface Props {
 }
 
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
-  const worker = CURRENT_WORKER;
+  const profile = useWorkerStore((s) => s.profile);
+  const worker = profile ?? CURRENT_WORKER;
   const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = () => {

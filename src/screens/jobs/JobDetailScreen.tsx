@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from '../../store';
 import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
+import { googleMapsService } from '../../services/maps/googleMapsService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -94,9 +95,20 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.mapSection}>
           <InteractiveMapVisual
             markers={[
-              { id: job.id, wage: formatWage(job.maxWage), top: '45%', left: '50%' }
+              {
+                id: job.id,
+                wage: formatWage(job.maxWage),
+                lat: job.location.lat,
+                lng: job.location.lng,
+                title: job.title,
+                top: '45%',
+                left: '50%',
+              },
             ]}
             selectedMarkerId={job.id}
+            centerLat={job.location.lat}
+            centerLng={job.location.lng}
+            zoom={14}
             height={160}
             locationCity={job.location.city}
             radiusKm={job.distanceKm ?? 3}
@@ -107,6 +119,22 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.locationAddress}>{job.location.address}</Text>
               <Text style={styles.locationCity}>{job.location.city}, {job.location.state}</Text>
             </View>
+            <TouchableOpacity
+              onPress={() =>
+                googleMapsService.openDirections({
+                  destLat: job.location.lat,
+                  destLng: job.location.lng,
+                  destLabel: job.title,
+                  originLat: CURRENT_WORKER.location.lat,
+                  originLng: CURRENT_WORKER.location.lng,
+                })
+              }
+              activeOpacity={0.8}
+              style={styles.directionsBtn}
+            >
+              <Feather name="navigation" size={12} color="#0D3B3F" />
+              <Text style={styles.directionsBtnText}>Directions</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -345,6 +373,22 @@ const styles = StyleSheet.create({
   },
   locationAddress: { fontFamily: FontFamily.bold, fontSize: 12, color: '#090D14' },
   locationCity: { fontFamily: FontFamily.regular, fontSize: 10, color: '#8E99A8', marginTop: 1 },
+  directionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3F2EE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: '#E8E6E0',
+  },
+  directionsBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: '#0D3B3F',
+  },
 
   // Staffing
   staffingCard: {

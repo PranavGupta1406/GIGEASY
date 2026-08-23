@@ -18,11 +18,23 @@ import { MOCK_JOBS, CURRENT_WORKER, formatWage, formatDate } from '../../data/mo
 import { rankJobsForWorker } from '../../services/matching/matchingEngine';
 import { GigEasyEmptyState } from '../../components';
 import { Job } from '../../types';
+import { useWorkerStore } from '../../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
-const CATEGORIES = ['All', 'Warehouse', 'Construction', 'Events', 'Electrical', 'Delivery', 'Plumbing'];
+const CATEGORIES = [
+  'All',
+  'Warehouse',
+  'Construction',
+  'Events',
+  'Electrical',
+  'Delivery',
+  'Plumbing',
+  'Hospitality',
+  'Cleaning',
+  'Security',
+];
 
 function MarketplaceJobTile({
   job,
@@ -263,11 +275,29 @@ const cardStyles = StyleSheet.create({
 });
 
 export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
+  const profile = useWorkerStore((s) => s.profile);
+  const worker = profile ?? CURRENT_WORKER;
+
   const [search, setSearch] = useState('');
-  const [selectedCat, setSelectedCat] = useState('All');
+  const [selectedCat, setSelectedCat] = useState('My Skills');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  const rankedJobs = useMemo(() => rankJobsForWorker(MOCK_JOBS, CURRENT_WORKER), []);
+  const workerSkillCategories = useMemo(() => {
+    return Array.from(new Set(worker.skills.map((s) => s.category.toLowerCase())));
+  }, [worker.skills]);
+
+  const categories = useMemo(() => {
+    const workerCaps = worker.skills.map(
+      (s) => s.category.charAt(0).toUpperCase() + s.category.slice(1).toLowerCase()
+    );
+    const uniqueWorkerCats = Array.from(new Set(workerCaps));
+    const otherCats = CATEGORIES.filter(
+      (c) => c !== 'All' && !uniqueWorkerCats.some((wc) => wc.toLowerCase() === c.toLowerCase())
+    );
+    return ['My Skills', ...uniqueWorkerCats, 'All Marketplace', ...otherCats];
+  }, [worker.skills]);
+
+  const rankedJobs = useMemo(() => rankJobsForWorker(MOCK_JOBS, worker), [worker]);
 
   const filtered = useMemo(() => {
     return rankedJobs.filter(({ job }) => {
@@ -276,13 +306,24 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
         job.title.toLowerCase().includes(search.toLowerCase()) ||
         job.location.city.toLowerCase().includes(search.toLowerCase()) ||
         job.employer.businessName.toLowerCase().includes(search.toLowerCase());
-      const matchCat =
-        selectedCat === 'All' ||
-        job.skillRequired.category.toLowerCase() === selectedCat.toLowerCase();
+
+      const matchCat = (() => {
+        if (selectedCat === 'My Skills') {
+          return (
+            workerSkillCategories.includes(job.skillRequired.category.toLowerCase()) ||
+            worker.skills.some((s) => s.id === job.skillRequired.id)
+          );
+        }
+        if (selectedCat === 'All Marketplace' || selectedCat === 'All') {
+          return true;
+        }
+        return job.skillRequired.category.toLowerCase() === selectedCat.toLowerCase();
+      })();
+
       const matchVerified = !verifiedOnly || job.employer.verificationStatus === 'verified';
       return matchSearch && matchCat && matchVerified;
     });
-  }, [rankedJobs, search, selectedCat, verifiedOnly]);
+  }, [rankedJobs, search, selectedCat, verifiedOnly, workerSkillCategories, worker.skills]);
 
   return (
     <View style={styles.container}>
@@ -320,6 +361,20 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
               Verified Only
             </Text>
           </TouchableOpacity>
+
+          {(selectedCat !== 'My Skills' || verifiedOnly || search.length > 0) && (
+            <TouchableOpacity
+              style={styles.clearAllPill}
+              onPress={() => {
+                setSelectedCat('My Skills');
+                setVerifiedOnly(false);
+                setSearch('');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.clearAllText}>Reset to My Skills ✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Category Scroll */}
@@ -328,8 +383,20 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.catsScroll}
         >
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = selectedCat === cat;
+            const count =
+              cat === 'My Skills'
+                ? rankedJobs.filter((item) =>
+                    workerSkillCategories.includes(item.job.skillRequired.category.toLowerCase()) ||
+                    worker.skills.some((s) => s.id === item.job.skillRequired.id)
+                  ).length
+                : cat === 'All Marketplace' || cat === 'All'
+                ? rankedJobs.length
+                : rankedJobs.filter(
+                    (j) => j.job.skillRequired.category.toLowerCase() === cat.toLowerCase()
+                  ).length;
+
             return (
               <TouchableOpacity
                 key={cat}
@@ -340,6 +407,23 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
                 <Text style={[styles.catText, isSelected && styles.catTextActive]}>
                   {cat}
                 </Text>
+                {count > 0 && (
+                  <View
+                    style={[
+                      styles.catCountBadge,
+                      isSelected && styles.catCountBadgeActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.catCountText,
+                        isSelected && styles.catCountTextActive,
+                      ]}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -437,12 +521,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: FontFamily.bold,
   },
+  clearAllPill: {
+    backgroundColor: '#F8F7F4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: '#E8E6E0',
+  },
+  clearAllText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: '#0D3B3F',
+  },
   catsScroll: {
     paddingHorizontal: 16,
     marginTop: 10,
     gap: 8,
   },
   catPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
@@ -462,6 +562,23 @@ const styles = StyleSheet.create({
   catTextActive: {
     color: '#FFFFFF',
     fontFamily: FontFamily.bold,
+  },
+  catCountBadge: {
+    backgroundColor: '#E8E6E0',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  catCountBadgeActive: {
+    backgroundColor: 'rgba(200, 241, 53, 0.25)',
+  },
+  catCountText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#090D14',
+  },
+  catCountTextActive: {
+    color: '#C8F135',
   },
   jobListContent: {
     paddingHorizontal: 16,

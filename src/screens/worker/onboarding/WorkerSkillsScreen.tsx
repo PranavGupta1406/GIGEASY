@@ -24,8 +24,8 @@ import {
   Shadow,
 } from '../../../constants';
 import { GigEasyButton } from '../../../components';
-import { MOCK_SKILLS } from '../../../data/mockData';
-import { useOnboardingStore } from '../../../store';
+import { MOCK_SKILLS, CURRENT_WORKER } from '../../../data/mockData';
+import { useOnboardingStore, useWorkerStore, useAuthStore } from '../../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerSkills'>;
 
@@ -63,14 +63,23 @@ const getSkillIcon = (category: string): keyof typeof Feather.glyphMap => {
 };
 
 export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
-  const { selectedSkillIds, toggleSkill } = useOnboardingStore();
+  const { selectedSkillIds, toggleSkill, workerName } = useOnboardingStore();
+  const setProfile = useWorkerStore((s) => s.setProfile);
+  const setOnboarded = useAuthStore((s) => s.setOnboarded);
 
   const handleNext = () => {
     if (selectedSkillIds.length === 0) {
       Alert.alert('Skill Required', 'Please select at least one skill you can perform.');
       return;
     }
-    navigation.navigate('WorkerWage');
+    const selectedSkills = MOCK_SKILLS.filter((s) => selectedSkillIds.includes(s.id));
+    setProfile({
+      ...CURRENT_WORKER,
+      name: workerName.trim() || CURRENT_WORKER.name,
+      skills: selectedSkills.length > 0 ? selectedSkills : CURRENT_WORKER.skills,
+    });
+    setOnboarded();
+    navigation.replace('MainApp', { initialMode: 'worker' });
   };
 
   return (
@@ -80,9 +89,9 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
       {/* Progress Header */}
       <View style={styles.headerWrap}>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '66%' }]} />
+          <View style={[styles.progressFill, { width: '100%' }]} />
         </View>
-        <Text style={styles.stepIndicator}>Step 2 of 3 · Skills & Capabilities</Text>
+        <Text style={styles.stepIndicator}>Step 2 of 2 · Skills & Capabilities</Text>
 
         <Text style={styles.title}>What work do{'\n'}you do?</Text>
         <Text style={styles.subtitle}>
@@ -152,7 +161,7 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
       {/* Bottom Action */}
       <View style={styles.bottomBar}>
         <GigEasyButton
-          label="Continue to Wage Benchmark"
+          label="Complete Profile & Launch Gigs"
           onPress={handleNext}
           variant="primary"
           size="lg"

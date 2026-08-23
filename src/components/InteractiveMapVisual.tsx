@@ -1,7 +1,7 @@
-// GigEasy Signature Interactive Map Visual
-// Clean urban cartography with live radar sweep and selectable job pins
+// GigEasy Signature Interactive Map Visual with Google Maps Integration
+// Clean urban cartography + Live Google Maps Imagery + Radar sweep + Selectable job pins
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,13 @@ import {
   TouchableOpacity,
   Animated,
   ViewStyle,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Colors, FontFamily, FontSize, BorderRadius, Spacing, Shadow } from '../constants';
+import { googleMapsService } from '../services/maps/googleMapsService';
+import { DEFAULT_MAP_COORDINATES } from '../config/maps';
 
 export interface MapJobMarker {
   id: string;
@@ -19,9 +23,13 @@ export interface MapJobMarker {
   title?: string;
   category?: string;
   distance?: string;
-  top: string | number; // percentage or px
-  left: string | number; // percentage or px
+  top?: string | number; // percentage or px
+  left?: string | number; // percentage or px
+  lat?: number;
+  lng?: number;
 }
+
+export type MapViewMode = 'schematic' | 'roadmap' | 'satellite';
 
 interface InteractiveMapVisualProps {
   markers?: MapJobMarker[];
@@ -32,6 +40,12 @@ interface InteractiveMapVisualProps {
   userLabel?: string;
   locationCity?: string;
   radiusKm?: number;
+  centerLat?: number;
+  centerLng?: number;
+  zoom?: number;
+  initialMode?: MapViewMode;
+  showModeToggle?: boolean;
+  showGoogleMapsButton?: boolean;
   style?: ViewStyle;
 }
 
@@ -44,11 +58,48 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
   userLabel = 'YOU',
   locationCity = 'Noida',
   radiusKm = 10,
+  centerLat = DEFAULT_MAP_COORDINATES.lat,
+  centerLng = DEFAULT_MAP_COORDINATES.lng,
+  zoom = 13,
+  initialMode = 'roadmap',
+  showModeToggle = true,
+  showGoogleMapsButton = true,
   style,
 }) => {
+  const [viewMode, setViewMode] = useState<MapViewMode>(initialMode);
+  const [imageLoading, setImageLoading] = useState<boolean>(true);
+  const [imageError, setImageError] = useState<boolean>(false);
+
   const pulseAnim1 = useRef(new Animated.Value(0)).current;
   const pulseAnim2 = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
+
+  // Generate Google Maps Static URL with markers
+  const googleMapMarkers = markers
+    .filter((m) => m.lat && m.lng)
+    .map((m) => ({
+      lat: m.lat!,
+      lng: m.lng!,
+      color: m.id === selectedMarkerId ? '0xC8F135' : '0x0D3B3F',
+      size: 'mid' as const,
+    }));
+
+  const googleMapUrl = googleMapsService.getStaticMapUrl({
+    centerLat,
+    centerLng,
+    zoom,
+    width: 600,
+    height: Math.round(height * 1.5),
+    scale: 2,
+    mapType: viewMode === 'satellite' ? 'satellite' : 'roadmap',
+    theme: viewMode === 'satellite' ? undefined : 'silver',
+    markers: googleMapMarkers.length > 0 ? googleMapMarkers : undefined,
+  });
+
+  useEffect(() => {
+    setImageLoading(true);
+    setImageError(false);
+  }, [viewMode, centerLat, centerLng, zoom]);
 
   useEffect(() => {
     if (!showRadar) return;
@@ -110,24 +161,68 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
     };
   }, [showRadar]);
 
+  const handleOpenGoogleMaps = () => {
+    const selected = markers.find((m) => m.id === selectedMarkerId);
+    const destLat = selected?.lat ?? centerLat;
+    const destLng = selected?.lng ?? centerLng;
+    const label = selected?.title ?? `${locationCity} Work Site`;
+    googleMapsService.openLocation(destLat, destLng, label);
+  };
+
+  const isGoogleMode = (viewMode === 'roadmap' || viewMode === 'satellite') && !imageError;
+
   return (
     <View style={[styles.mapContainer, style]}>
       <View style={[styles.mapCanvas, { height }]}>
-        {/* Urban grid and arterial routes */}
-        <View style={styles.gridLineH1} />
-        <View style={styles.gridLineH2} />
-        <View style={styles.gridLineV1} />
-        <View style={styles.gridLineV2} />
-        <View style={styles.arterialRoadH} />
-        <View style={styles.arterialRoadV} />
-        <View style={styles.diagonalRoad} />
+        {/* Layer 1: Google Maps Static Imagery */}
+        {isGoogleMode && (
+          <Image
+            source={{ uri: googleMapUrl }}
+            style={styles.googleMapImage}
+            resizeMode="cover"
+            onLoadEnd={() => setImageLoading(false)}
+            onError={() => {
+              setImageLoading(false);
+              setImageError(true);
+            }}
+          />
+        )}
 
-        {/* Subtle city zone polygons */}
-        <View style={styles.zoneBlock1} />
-        <View style={styles.zoneBlock2} />
-        <View style={styles.zoneBlock3} />
+        {/* Layer 2: Vector Cartography (Active in schematic mode or while image loading/fallback) */}
+        {(!isGoogleMode || imageLoading) && (
+          <View style={StyleSheet.absoluteFill}>
+            {/* Urban grid and arterial routes */}
+            <View style={styles.gridLineH1} />
+            <View style={styles.gridLineH2} />
+            <View style={styles.gridLineV1} />
+            <View style={styles.gridLineV2} />
+            <View style={styles.arterialRoadH} />
+            <View style={styles.arterialRoadV} />
+            <View style={styles.diagonalRoad} />
 
-        {/* Radar Waves */}
+            {/* Subtle city zone polygons */}
+            <View style={styles.zoneBlock1} />
+            <View style={styles.zoneBlock2} />
+            <View style={styles.zoneBlock3} />
+          </View>
+        )}
+
+        {/* Subtle Dark/Light Overlay for contrast over Google Maps */}
+        {isGoogleMode && viewMode === 'satellite' && (
+          <View style={styles.satelliteTintOverlay} />
+        )}
+        {isGoogleMode && viewMode === 'roadmap' && (
+          <View style={styles.roadmapTintOverlay} />
+        )}
+
+        {/* Loading Spinner */}
+        {isGoogleMode && imageLoading && (
+          <View style={styles.loaderOverlay}>
+            <ActivityIndicator size="small" color="#0D3B3F" />
+          </View>
+        )}
+
+        {/* Layer 3: Live Radar Waves */}
         {showRadar && (
           <>
             <Animated.View
@@ -144,7 +239,7 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
                   ],
                   opacity: pulseAnim1.interpolate({
                     inputRange: [0, 0.6, 1],
-                    outputRange: [0.6, 0.25, 0],
+                    outputRange: [0.5, 0.2, 0],
                   }),
                 },
               ]}
@@ -163,7 +258,7 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
                   ],
                   opacity: pulseAnim2.interpolate({
                     inputRange: [0, 0.6, 1],
-                    outputRange: [0.6, 0.25, 0],
+                    outputRange: [0.5, 0.2, 0],
                   }),
                 },
               ]}
@@ -181,9 +276,16 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
         </View>
 
         {/* Job Pins */}
-        {markers.map((marker) => {
+        {markers.map((marker, index) => {
           const isSelected = marker.id === selectedMarkerId;
-          const displayWage = typeof marker.wage === 'number' ? `₹${marker.wage.toLocaleString('en-IN')}` : marker.wage;
+          const displayWage =
+            typeof marker.wage === 'number' ? `₹${marker.wage.toLocaleString('en-IN')}` : marker.wage;
+
+          // Default fallback positioning if top/left not supplied
+          const defaultTops = ['30%', '58%', '24%', '68%', '42%'];
+          const defaultLefts = ['62%', '20%', '28%', '74%', '48%'];
+          const topPos = marker.top ?? defaultTops[index % defaultTops.length];
+          const leftPos = marker.left ?? defaultLefts[index % defaultLefts.length];
 
           return (
             <TouchableOpacity
@@ -193,8 +295,8 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
               style={[
                 styles.markerWrap,
                 {
-                  top: marker.top as any,
-                  left: marker.left as any,
+                  top: topPos as any,
+                  left: leftPos as any,
                 },
               ]}
             >
@@ -223,15 +325,96 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
             </TouchableOpacity>
           );
         })}
+
+        {/* Top Control Bar: Mode Toggle + Google Maps Badge */}
+        <View style={styles.topControlBar}>
+          {showModeToggle && (
+            <View style={styles.modeToggleGroup}>
+              <TouchableOpacity
+                onPress={() => setViewMode('roadmap')}
+                activeOpacity={0.8}
+                style={[
+                  styles.modeBtn,
+                  viewMode === 'roadmap' && styles.modeBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeBtnText,
+                    viewMode === 'roadmap' && styles.modeBtnTextActive,
+                  ]}
+                >
+                  Map
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setViewMode('satellite')}
+                activeOpacity={0.8}
+                style={[
+                  styles.modeBtn,
+                  viewMode === 'satellite' && styles.modeBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeBtnText,
+                    viewMode === 'satellite' && styles.modeBtnTextActive,
+                  ]}
+                >
+                  Satellite
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setViewMode('schematic')}
+                activeOpacity={0.8}
+                style={[
+                  styles.modeBtn,
+                  viewMode === 'schematic' && styles.modeBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeBtnText,
+                    viewMode === 'schematic' && styles.modeBtnTextActive,
+                  ]}
+                >
+                  Radar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showGoogleMapsButton && (
+            <TouchableOpacity
+              onPress={handleOpenGoogleMaps}
+              activeOpacity={0.8}
+              style={styles.googleMapsBadgeBtn}
+            >
+              <Feather name="external-link" size={10} color="#0D3B3F" />
+              <Text style={styles.googleMapsBadgeText}>Google Maps</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Map Bottom Status Strip */}
       <View style={styles.statusStrip}>
         <View style={styles.stripLeft}>
           <View style={styles.livePulseDot} />
-          <Text style={styles.stripLiveText}>Live Radar · {locationCity}</Text>
+          <Text style={styles.stripLiveText}>
+            {viewMode === 'satellite' ? 'Satellite View' : 'Live Radar'} · {locationCity}
+          </Text>
         </View>
-        <Text style={styles.stripRadiusText}>Within {radiusKm} km radius</Text>
+        <TouchableOpacity
+          onPress={handleOpenGoogleMaps}
+          activeOpacity={0.7}
+          style={styles.stripRightBtn}
+        >
+          <Feather name="navigation" size={11} color="#0D3B3F" />
+          <Text style={styles.stripRadiusText}>Radius {radiusKm} km · Navigate</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -250,6 +433,93 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: '#ECEAE4',
     overflow: 'hidden',
+  },
+  googleMapImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  satelliteTintOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(9, 13, 20, 0.25)',
+  },
+  roadmapTintOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  loaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(236, 234, 228, 0.6)',
+  },
+  topControlBar: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  modeToggleGroup: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: BorderRadius.full,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    ...Shadow.xs,
+  },
+  modeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  modeBtnActive: {
+    backgroundColor: '#090D14',
+  },
+  modeBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 9,
+    color: '#5A6578',
+  },
+  modeBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  googleMapsBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    ...Shadow.xs,
+  },
+  googleMapsBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#0D3B3F',
   },
   gridLineH1: {
     position: 'absolute',
@@ -358,13 +628,14 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 5,
   },
   userDotPulse: {
     position: 'absolute',
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(200, 241, 53, 0.4)',
+    backgroundColor: 'rgba(200, 241, 53, 0.45)',
   },
   userDot: {
     width: 14,
@@ -391,6 +662,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     transform: [{ translateX: -24 }, { translateY: -14 }],
+    zIndex: 6,
   },
   markerPill: {
     paddingHorizontal: 7,
@@ -458,9 +730,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#090D14',
   },
+  stripRightBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   stripRadiusText: {
     fontFamily: FontFamily.medium,
     fontSize: 11,
-    color: '#8E99A8',
+    color: '#0D3B3F',
   },
 });
