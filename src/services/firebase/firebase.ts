@@ -1,14 +1,8 @@
 // Firebase Configuration & Initialization for GigEasy
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  initializeAuth,
-  getAuth,
-  getReactNativePersistence,
-  Auth,
-} from 'firebase/auth';
+import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 const firebaseConfig = {
@@ -24,21 +18,8 @@ const firebaseConfig = {
 // Initialize Firebase App Singleton
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Platform-aware Auth Persistence
-let authInstance: Auth;
-if (Platform.OS === 'web') {
-  authInstance = getAuth(app);
-} else {
-  try {
-    authInstance = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
-  } catch {
-    authInstance = getAuth(app);
-  }
-}
-
-export const auth = authInstance;
+// Firebase Auth Singleton
+export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 
 // Safe Analytics Initialization
