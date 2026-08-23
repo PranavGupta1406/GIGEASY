@@ -16,7 +16,6 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { CURRENT_EMPLOYER, MOCK_JOBS } from '../../data/mockData';
 import { useEmployerStore, useAuthStore } from '../../store';
-import { signOutUser } from '../../services/firebase';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props {
@@ -64,10 +63,9 @@ export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwit
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: async () => {
-          await signOutUser().catch(() => {});
+        onPress: () => {
           logout();
-          shellNavigation.replace('Welcome');
+          shellNavigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
         },
       },
     ]);

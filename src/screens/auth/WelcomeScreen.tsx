@@ -84,12 +84,12 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
-  // Direct Role Selection -> Proceed straight to Firebase Auth
+  // Direct Role Selection -> Proceed straight to Phone verification
   const handleSelectMode = (mode: 'worker' | 'employer') => {
     setActiveTransition(mode);
     switchRole(mode);
     Animated.timing(fadeOutAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start(() => {
-      navigation.navigate('FirebaseAuth', { role: mode, mode: 'signin' });
+      navigation.navigate('Phone');
     });
   };
 

@@ -2,12 +2,6 @@ import { create } from 'zustand';
 import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication, VerificationStatus } from '../types';
 import { MOCK_JOBS, MOCK_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
 import { TRANSLATIONS, LanguageCode, TranslationKey } from '../i18n/translations';
-import {
-  syncWorkerProfileToPostgres,
-  syncEmployerProfileToPostgres,
-  syncJobToPostgres,
-  syncApplicationToPostgres,
-} from '../services/db/postgresClient';
 
 // ─── Language Store ───────────────────────────────────────────────────────────
 
@@ -104,15 +98,11 @@ export const useWorkerStore = create<WorkerState>((set) => ({
   profile: null,
   isAvailable: true,
   applications: [],
-  setProfile: (profile) => {
-    syncWorkerProfileToPostgres(profile).catch(() => {});
-    set({ profile });
-  },
+  setProfile: (profile) => set({ profile }),
   setAvailability: (available) => set({ isAvailable: available }),
   updateProfile: (updates) =>
     set((state) => {
       const updated = state.profile ? { ...state.profile, ...updates } : null;
-      if (updated) syncWorkerProfileToPostgres(updated).catch(() => {});
       return { profile: updated };
     }),
   applyForJob: (jobId, proposedWage, note) =>
@@ -131,7 +121,6 @@ export const useWorkerStore = create<WorkerState>((set) => ({
         appliedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      syncApplicationToPostgres(newApp).catch(() => {});
       return { applications: [newApp, ...state.applications] };
     }),
 }));
@@ -153,14 +142,10 @@ export const useEmployerStore = create<EmployerState>((set) => ({
   profile: null,
   jobs: MOCK_JOBS,
   applications: MOCK_APPLICATIONS,
-  setProfile: (profile) => {
-    syncEmployerProfileToPostgres(profile).catch(() => {});
-    set({ profile });
-  },
+  setProfile: (profile) => set({ profile }),
   updateProfile: (updates) =>
     set((state) => {
       const updated = state.profile ? { ...state.profile, ...updates } : null;
-      if (updated) syncEmployerProfileToPostgres(updated).catch(() => {});
       return { profile: updated };
     }),
   postJob: (jobData) =>
@@ -185,7 +170,6 @@ export const useEmployerStore = create<EmployerState>((set) => ({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      syncJobToPostgres(newJob).catch(() => {});
       return { jobs: [newJob, ...state.jobs] };
     }),
   acceptApplicant: (appId) =>
