@@ -1,9 +1,13 @@
-// GigEasy Zustand Stores — Global State Management
-
 import { create } from 'zustand';
-import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication } from '../types';
+import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication, VerificationStatus } from '../types';
 import { MOCK_JOBS, MOCK_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
 import { TRANSLATIONS, LanguageCode, TranslationKey } from '../i18n/translations';
+import {
+  syncWorkerProfileToPostgres,
+  syncEmployerProfileToPostgres,
+  syncJobToPostgres,
+  syncApplicationToPostgres,
+} from '../services/db/postgresClient';
 
 // ─── Language Store ───────────────────────────────────────────────────────────
 
@@ -28,12 +32,22 @@ export const useLanguageStore = create<LanguageState>((set, get) => ({
 
 interface AuthState {
   isAuthenticated: boolean;
+  email: string;
+  name: string;
   phoneNumber: string;
   role: UserRole | null;
   userId: string | null;
+  kycStatus: VerificationStatus;
   isOnboarded: boolean;
   setPhoneNumber: (phone: string) => void;
-  setAuthenticated: (userId: string, role: UserRole) => void;
+  setAuthenticated: (
+    userId: string,
+    role: UserRole,
+    name?: string,
+    email?: string,
+    phoneNumber?: string,
+    kycStatus?: VerificationStatus
+  ) => void;
   setOnboarded: () => void;
   switchRole: (role: UserRole) => void;
   logout: () => void;
@@ -41,21 +55,35 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
+  email: '',
+  name: '',
   phoneNumber: '',
   role: null,
   userId: null,
+  kycStatus: 'unverified',
   isOnboarded: false,
   setPhoneNumber: (phone) => set({ phoneNumber: phone }),
-  setAuthenticated: (userId, role) =>
-    set({ isAuthenticated: true, userId, role }),
+  setAuthenticated: (userId, role, name = '', email = '', phoneNumber = '', kycStatus = 'unverified') =>
+    set({
+      isAuthenticated: true,
+      userId,
+      role,
+      name,
+      email,
+      phoneNumber,
+      kycStatus,
+    }),
   setOnboarded: () => set({ isOnboarded: true }),
   switchRole: (role) => set({ role }),
   logout: () =>
     set({
       isAuthenticated: false,
+      email: '',
+      name: '',
       phoneNumber: '',
       role: null,
       userId: null,
+      kycStatus: 'unverified',
       isOnboarded: false,
     }),
 }));
@@ -76,12 +104,17 @@ export const useWorkerStore = create<WorkerState>((set) => ({
   profile: null,
   isAvailable: true,
   applications: [],
-  setProfile: (profile) => set({ profile }),
+  setProfile: (profile) => {
+    syncWorkerProfileToPostgres(profile).catch(() => {});
+    set({ profile });
+  },
   setAvailability: (available) => set({ isAvailable: available }),
   updateProfile: (updates) =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    })),
+    set((state) => {
+      const updated = state.profile ? { ...state.profile, ...updates } : null;
+      if (updated) syncWorkerProfileToPostgres(updated).catch(() => {});
+      return { profile: updated };
+    }),
   applyForJob: (jobId, proposedWage, note) =>
     set((state) => {
       const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
@@ -98,6 +131,7 @@ export const useWorkerStore = create<WorkerState>((set) => ({
         appliedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      syncApplicationToPostgres(newApp).catch(() => {});
       return { applications: [newApp, ...state.applications] };
     }),
 }));
@@ -119,11 +153,16 @@ export const useEmployerStore = create<EmployerState>((set) => ({
   profile: null,
   jobs: MOCK_JOBS,
   applications: MOCK_APPLICATIONS,
-  setProfile: (profile) => set({ profile }),
+  setProfile: (profile) => {
+    syncEmployerProfileToPostgres(profile).catch(() => {});
+    set({ profile });
+  },
   updateProfile: (updates) =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    })),
+    set((state) => {
+      const updated = state.profile ? { ...state.profile, ...updates } : null;
+      if (updated) syncEmployerProfileToPostgres(updated).catch(() => {});
+      return { profile: updated };
+    }),
   postJob: (jobData) =>
     set((state) => {
       const newJob: Job = {
@@ -146,6 +185,7 @@ export const useEmployerStore = create<EmployerState>((set) => ({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      syncJobToPostgres(newJob).catch(() => {});
       return { jobs: [newJob, ...state.jobs] };
     }),
   acceptApplicant: (appId) =>

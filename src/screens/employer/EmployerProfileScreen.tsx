@@ -15,7 +15,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { CURRENT_EMPLOYER, MOCK_JOBS } from '../../data/mockData';
-import { useAuthStore } from '../../store';
+import { useEmployerStore, useAuthStore } from '../../store';
+import { signOutUser } from '../../services/firebase';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props {
@@ -38,8 +39,23 @@ const T = {
 };
 
 export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
-  const employer = CURRENT_EMPLOYER;
+  const storeProfile = useEmployerStore((s) => s.profile);
+  const authName = useAuthStore((s) => s.name);
+  const authEmail = useAuthStore((s) => s.email);
+  const authPhone = useAuthStore((s) => s.phoneNumber);
+  const authUserId = useAuthStore((s) => s.userId);
+  const authKyc = useAuthStore((s) => s.kycStatus);
   const logout = useAuthStore((s) => s.logout);
+
+  const employer = storeProfile ?? {
+    ...CURRENT_EMPLOYER,
+    businessName: authName || CURRENT_EMPLOYER.businessName,
+    contactName: authName || CURRENT_EMPLOYER.contactName,
+    contactEmail: authEmail || CURRENT_EMPLOYER.contactEmail,
+    contactPhone: authPhone || CURRENT_EMPLOYER.contactPhone,
+    verificationStatus: (authKyc as any) || CURRENT_EMPLOYER.verificationStatus,
+  };
+
   const totalJobs = MOCK_JOBS.filter(j => j.employerId === employer.id).length;
 
   const handleLogout = () => {
@@ -48,7 +64,8 @@ export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwit
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          await signOutUser().catch(() => {});
           logout();
           shellNavigation.replace('Welcome');
         },

@@ -11,10 +11,12 @@ import { FontFamily } from '../constants';
 
 // Auth screens
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
+import { FirebaseAuthScreen } from '../screens/auth/FirebaseAuthScreen';
 import { RoleScreen } from '../screens/auth/RoleScreen';
 import { PhoneScreen } from '../screens/auth/PhoneScreen';
 import { OTPScreen } from '../screens/auth/OTPScreen';
 import { SplashScreen } from '../screens/auth/SplashScreen';
+import { UserRole } from '../types';
 
 // Worker onboarding
 import { WorkerNameScreen } from '../screens/worker/onboarding/WorkerNameScreen';
@@ -49,6 +51,7 @@ import { BottomNav } from '../components/BottomNav';
 
 export type RootStackParamList = {
   Welcome: undefined;
+  FirebaseAuth: { role?: UserRole; mode?: 'signin' | 'signup' } | undefined;
   Role: undefined;
   Phone: undefined;
   OTP: { phoneNumber: string };
@@ -181,8 +184,9 @@ export function RootNavigator() {
           contentStyle: { backgroundColor: BRAND.background },
         }}
       >
-        {/* Auth — new order: Welcome → Role → Phone → OTP */}
+        {/* Auth Flow */}
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        <Stack.Screen name="FirebaseAuth" component={FirebaseAuthScreen} />
         <Stack.Screen name="Role" component={RoleScreen} />
         <Stack.Screen name="Phone" component={PhoneScreen} />
         <Stack.Screen name="OTP" component={OTPScreen} />

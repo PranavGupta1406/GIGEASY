@@ -15,7 +15,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { CURRENT_WORKER, formatWage } from '../../data/mockData';
-import { useAuthStore } from '../../store';
+import { useWorkerStore, useAuthStore } from '../../store';
+import { signOutUser } from '../../services/firebase';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props {
@@ -39,8 +40,20 @@ const T = {
 };
 
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
-  const worker = CURRENT_WORKER;
+  const storeProfile = useWorkerStore((s) => s.profile);
+  const authName = useAuthStore((s) => s.name);
+  const authEmail = useAuthStore((s) => s.email);
+  const authPhone = useAuthStore((s) => s.phoneNumber);
+  const authUserId = useAuthStore((s) => s.userId);
+  const authKyc = useAuthStore((s) => s.kycStatus);
   const logout = useAuthStore((s) => s.logout);
+
+  const worker = storeProfile ?? {
+    ...CURRENT_WORKER,
+    name: authName || CURRENT_WORKER.name,
+    phoneNumber: authPhone || CURRENT_WORKER.phoneNumber,
+    verificationStatus: (authKyc as any) || CURRENT_WORKER.verificationStatus,
+  };
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -48,7 +61,8 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          await signOutUser().catch(() => {});
           logout();
           shellNavigation.replace('Welcome');
         },
