@@ -26,7 +26,7 @@ export const db: Firestore = getFirestore(app);
 export let analytics: any = null;
 if (Platform.OS === 'web') {
   isSupported()
-    .then((supported) => {
+    .then((supported: boolean) => {
       if (supported) {
         analytics = getAnalytics(app);
       }
