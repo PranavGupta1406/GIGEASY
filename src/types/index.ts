@@ -23,12 +23,30 @@ export type ApplicationStatus =
   | 'CHECKED_IN'
   | 'IN_PROGRESS'
   | 'COMPLETED'
+  | 'PAYMENT_PENDING'
   | 'PAID'
   | 'REJECTED'
   | 'WITHDRAWN'
   | 'EXPIRED';
 
 export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
+
+export interface PaymentRecord {
+  id: string;
+  applicationId: string;
+  jobId: string;
+  jobTitle: string;
+  workerId: string;
+  workerName: string;
+  employerId: string;
+  employerName: string;
+  amount: number;
+  method: 'UPI' | 'QR_CODE' | 'RAZORPAY' | 'CARD' | 'NET_BANKING';
+  transactionId: string;
+  upiId?: string;
+  paidAt: string;
+  status: 'SUCCESS' | 'PROCESSING' | 'FAILED';
+}
 
 export type AvailabilityStatus = 'available' | 'unavailable' | 'busy';
 

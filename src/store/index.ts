@@ -1,7 +1,31 @@
 import { create } from 'zustand';
-import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication, VerificationStatus, ApplicationStatus } from '../types';
-import { MOCK_JOBS, SEED_EMPLOYER_APPLICATIONS, SEED_WORKER_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
+import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication, VerificationStatus, ApplicationStatus, PaymentRecord } from '../types';
+import { MOCK_JOBS, SEED_EMPLOYER_APPLICATIONS, SEED_WORKER_APPLICATIONS, CURRENT_WORKER, CURRENT_EMPLOYER } from '../data/mockData';
 import { TRANSLATIONS, LanguageCode, TranslationKey } from '../i18n/translations';
+
+// ─── LocalStorage Persistence Helpers for Presentation Demo ──────────────────
+
+const safeGetStorage = <T>(key: string, fallback: T): T => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem(key);
+      if (stored) return JSON.parse(stored);
+    }
+  } catch (e) {
+    // fallback gracefully
+  }
+  return fallback;
+};
+
+const safeSetStorage = (key: string, value: any) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    }
+  } catch (e) {
+    // fallback gracefully
+  }
+};
 
 // ─── Language Store ───────────────────────────────────────────────────────────
 
@@ -123,12 +147,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }),
 }));
 
-// ─── Shared Applications Store ────────────────────────────────────────────────
-// Single source of truth for ALL applications. Both worker and employer read here.
-// This ensures cross-sync: employer accept → worker sees status change immediately.
+// ─── Shared Applications & Payment Store ──────────────────────────────────────
+// Single source of truth for ALL applications and payments across both roles.
 
 interface SharedApplicationsState {
   applications: JobApplication[];
+  payments: PaymentRecord[];
   // Worker actions
   applyForJob: (jobId: string, wage: number, worker: WorkerProfile, job: Job) => void;
   checkIn: (appId: string) => void;
@@ -140,7 +164,9 @@ interface SharedApplicationsState {
   // Employer actions
   acceptApplication: (appId: string) => void;
   rejectApplication: (appId: string) => void;
+  confirmCompletion: (appId: string) => void;
   payWorker: (appId: string) => void;
+  recordPayment: (payment: Omit<PaymentRecord, 'id' | 'paidAt'>) => PaymentRecord;
   employerCounterOffer: (appId: string, counterWage: number) => void;
   employerAcceptCounter: (appId: string) => void;
   // Selectors
@@ -148,11 +174,20 @@ interface SharedApplicationsState {
   getJobApplications: (jobId: string) => JobApplication[];
   hasApplied: (jobId: string, workerId: string) => boolean;
   getApplication: (appId: string) => JobApplication | undefined;
+  getPaymentsByWorker: (workerId: string) => PaymentRecord[];
+  getPaymentsByEmployer: (employerId: string) => PaymentRecord[];
 }
 
+const initialApplications = safeGetStorage<JobApplication[]>(
+  'gigeasy_applications',
+  [...SEED_EMPLOYER_APPLICATIONS, ...SEED_WORKER_APPLICATIONS]
+);
+
+const initialPayments = safeGetStorage<PaymentRecord[]>('gigeasy_payments', []);
+
 export const useSharedApplicationsStore = create<SharedApplicationsState>((set, get) => ({
-  // Seed with demo data for both worker and employer views
-  applications: [...SEED_EMPLOYER_APPLICATIONS, ...SEED_WORKER_APPLICATIONS],
+  applications: initialApplications,
+  payments: initialPayments,
 
   applyForJob: (jobId, wage, worker, job) => {
     const already = get().applications.find(
@@ -173,132 +208,264 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
       appliedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    set((state) => ({ applications: [newApp, ...state.applications] }));
+    const updated = [newApp, ...get().applications];
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
   },
 
-  checkIn: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'CHECKED_IN' as ApplicationStatus, checkedInAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  checkIn: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'IN_PROGRESS' as ApplicationStatus,
+            checkedInAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
-  markComplete: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'COMPLETED' as ApplicationStatus, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  markComplete: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'COMPLETED' as ApplicationStatus,
+            completedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
-  confirmPaymentReceived: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'PAID' as ApplicationStatus, paymentStatus: 'PAID' as const, paidAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  confirmCompletion: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'PAYMENT_PENDING' as ApplicationStatus,
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
+
+  confirmPaymentReceived: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'PAID' as ApplicationStatus,
+            paymentStatus: 'PAID' as const,
+            paidAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
   // Worker initiates counter offer
-  workerCounterOffer: (appId, counterWage) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? {
-              ...a,
-              status: 'NEGOTIATING' as ApplicationStatus,
-              currentCounterWage: counterWage,
-              counterBy: 'worker',
-              negotiations: [
-                ...a.negotiations,
-                { id: `neg_${Date.now()}`, initiatedBy: 'worker', proposedWage: counterWage, timestamp: new Date().toISOString() },
-              ],
-              updatedAt: new Date().toISOString(),
-            }
-          : a
-      ),
-    })),
+  workerCounterOffer: (appId, counterWage) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'NEGOTIATING' as ApplicationStatus,
+            currentCounterWage: counterWage,
+            counterBy: 'worker' as const,
+            negotiations: [
+              ...a.negotiations,
+              { id: `neg_${Date.now()}`, initiatedBy: 'worker' as const, proposedWage: counterWage, timestamp: new Date().toISOString() },
+            ],
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
   // Worker accepts employer's counter
-  workerAcceptCounter: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, agreedWage: a.currentCounterWage ?? a.proposedWage, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  workerAcceptCounter: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'ACCEPTED' as ApplicationStatus,
+            agreedWage: a.currentCounterWage ?? a.proposedWage,
+            currentCounterWage: undefined,
+            counterBy: undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
-  // Worker declines employer's counter (back to applied)
-  workerDeclineCounter: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'REJECTED' as ApplicationStatus, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  // Worker declines employer's counter
+  workerDeclineCounter: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'REJECTED' as ApplicationStatus,
+            currentCounterWage: undefined,
+            counterBy: undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
-  acceptApplication: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, agreedWage: a.currentCounterWage ?? a.proposedWage, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  acceptApplication: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'ACCEPTED' as ApplicationStatus,
+            agreedWage: a.currentCounterWage ?? a.proposedWage,
+            currentCounterWage: undefined,
+            counterBy: undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
-  rejectApplication: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'REJECTED' as ApplicationStatus, updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  rejectApplication: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'REJECTED' as ApplicationStatus,
+            currentCounterWage: undefined,
+            counterBy: undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
-  payWorker: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'PAID' as ApplicationStatus, paymentStatus: 'PAID' as const, paidAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  payWorker: (appId) => {
+    const app = get().applications.find((a) => a.id === appId);
+    if (!app) return;
+    const amount = app.agreedWage ?? app.proposedWage;
+    const txId = `PAY_GIG_${Math.floor(10000000 + Math.random() * 90000000)}`;
+
+    const newPayment: PaymentRecord = {
+      id: `pay_${Date.now()}`,
+      applicationId: app.id,
+      jobId: app.jobId,
+      jobTitle: app.job.title,
+      workerId: app.workerId,
+      workerName: app.worker.name,
+      employerId: app.job.employerId,
+      employerName: app.job.employer.businessName,
+      amount,
+      method: 'UPI',
+      transactionId: txId,
+      upiId: 'gigeasy.escrow@icici',
+      paidAt: new Date().toISOString(),
+      status: 'SUCCESS',
+    };
+
+    const updatedApps = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'PAID' as ApplicationStatus,
+            paymentStatus: 'PAID' as const,
+            paidAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    const updatedPayments = [newPayment, ...get().payments];
+    set({ applications: updatedApps, payments: updatedPayments });
+    safeSetStorage('gigeasy_applications', updatedApps);
+    safeSetStorage('gigeasy_payments', updatedPayments);
+  },
+
+  recordPayment: (paymentData) => {
+    const newPayment: PaymentRecord = {
+      ...paymentData,
+      id: `pay_${Date.now()}`,
+      paidAt: new Date().toISOString(),
+    };
+
+    const updatedApps = get().applications.map((a) =>
+      a.id === paymentData.applicationId
+        ? {
+            ...a,
+            status: 'PAID' as ApplicationStatus,
+            paymentStatus: 'PAID' as const,
+            paidAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    const updatedPayments = [newPayment, ...get().payments];
+    set({ applications: updatedApps, payments: updatedPayments });
+    safeSetStorage('gigeasy_applications', updatedApps);
+    safeSetStorage('gigeasy_payments', updatedPayments);
+
+    return newPayment;
+  },
 
   // Employer initiates counter offer
-  employerCounterOffer: (appId, counterWage) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? {
-              ...a,
-              status: 'NEGOTIATING' as ApplicationStatus,
-              currentCounterWage: counterWage,
-              counterBy: 'employer',
-              negotiations: [
-                ...a.negotiations,
-                { id: `neg_${Date.now()}`, initiatedBy: 'employer', proposedWage: counterWage, timestamp: new Date().toISOString() },
-              ],
-              updatedAt: new Date().toISOString(),
-            }
-          : a
-      ),
-    })),
+  employerCounterOffer: (appId, counterWage) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'NEGOTIATING' as ApplicationStatus,
+            currentCounterWage: counterWage,
+            counterBy: 'employer' as const,
+            negotiations: [
+              ...a.negotiations,
+              { id: `neg_${Date.now()}`, initiatedBy: 'employer' as const, proposedWage: counterWage, timestamp: new Date().toISOString() },
+            ],
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
   // Employer accepts worker's counter
-  employerAcceptCounter: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, agreedWage: a.currentCounterWage ?? a.proposedWage, currentCounterWage: undefined, counterBy: undefined, updatedAt: new Date().toISOString() }
-          : a
-      ),
-    })),
+  employerAcceptCounter: (appId) => {
+    const updated = get().applications.map((a) =>
+      a.id === appId
+        ? {
+            ...a,
+            status: 'ACCEPTED' as ApplicationStatus,
+            agreedWage: a.currentCounterWage ?? a.proposedWage,
+            currentCounterWage: undefined,
+            counterBy: undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : a
+    );
+    set({ applications: updated });
+    safeSetStorage('gigeasy_applications', updated);
+  },
 
   getWorkerApplications: (workerId) =>
     get().applications.filter((a) => a.workerId === workerId),
@@ -311,6 +478,12 @@ export const useSharedApplicationsStore = create<SharedApplicationsState>((set, 
 
   getApplication: (appId) =>
     get().applications.find((a) => a.id === appId),
+
+  getPaymentsByWorker: (workerId) =>
+    get().payments.filter((p) => p.workerId === workerId),
+
+  getPaymentsByEmployer: (employerId) =>
+    get().payments.filter((p) => p.employerId === employerId),
 }));
 
 // ─── Worker Store ─────────────────────────────────────────────────────────────
@@ -324,7 +497,7 @@ interface WorkerState {
 }
 
 export const useWorkerStore = create<WorkerState>((set) => ({
-  profile: null,
+  profile: CURRENT_WORKER,
   isAvailable: true,
   setProfile: (profile) => set({ profile }),
   setAvailability: (available) => set({ isAvailable: available }),
@@ -335,49 +508,68 @@ export const useWorkerStore = create<WorkerState>((set) => ({
     }),
 }));
 
-// ─── Employer Store ───────────────────────────────────────────────────────────
+// ─── Employer & Unified Jobs Store ────────────────────────────────────────────
 
 interface EmployerState {
   profile: EmployerProfile | null;
   jobs: Job[];
   setProfile: (profile: EmployerProfile) => void;
   updateProfile: (updates: Partial<EmployerProfile>) => void;
-  postJob: (jobData: Partial<Job>) => void;
+  postJob: (jobData: Partial<Job>) => Job;
+  getJobById: (jobId: string) => Job | undefined;
 }
 
-export const useEmployerStore = create<EmployerState>((set) => ({
-  profile: null,
-  jobs: MOCK_JOBS,
+const initialJobs = safeGetStorage<Job[]>('gigeasy_jobs', MOCK_JOBS);
+
+export const useEmployerStore = create<EmployerState>((set, get) => ({
+  profile: CURRENT_EMPLOYER,
+  jobs: initialJobs,
   setProfile: (profile) => set({ profile }),
   updateProfile: (updates) =>
     set((state) => {
       const updated = state.profile ? { ...state.profile, ...updates } : null;
       return { profile: updated };
     }),
-  postJob: (jobData) =>
-    set((state) => {
-      const newJob: Job = {
-        id: `j_${Date.now()}`,
-        employerId: state.profile?.id ?? 'e1',
-        employer: state.profile ?? ({} as any),
-        title: jobData.title ?? 'General Shift',
-        description: jobData.description ?? '',
-        skillRequired: jobData.skillRequired ?? MOCK_JOBS[0].skillRequired,
-        location: jobData.location ?? MOCK_JOBS[0].location,
-        startDate: jobData.startDate ?? '2026-08-25',
-        startTime: jobData.startTime ?? '08:00 AM',
-        endTime: jobData.endTime ?? '05:00 PM',
-        workersRequired: jobData.workersRequired ?? 5,
-        workersHired: 0,
-        minWage: jobData.minWage ?? 800,
-        maxWage: jobData.maxWage ?? 1000,
-        requirements: jobData.requirements ?? [],
-        status: 'HIRING',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return { jobs: [newJob, ...state.jobs] };
-    }),
+  postJob: (jobData) => {
+    const activeProfile = get().profile ?? CURRENT_EMPLOYER;
+    const newJob: Job = {
+      id: `j_${Date.now()}`,
+      employerId: activeProfile.id,
+      employer: activeProfile,
+      title: jobData.title ?? 'Warehouse Loader',
+      description: jobData.description ?? 'Immediate requirement for reliable daily shift workers.',
+      skillRequired: jobData.skillRequired ?? {
+        id: 's_warehouse_loader',
+        name: jobData.title ?? 'Warehouse Loader',
+        category: 'Warehouse',
+        icon: 'package',
+      },
+      location: jobData.location ?? {
+        lat: 28.6139,
+        lng: 77.209,
+        address: 'Sector 62, NSEZ',
+        city: 'Noida',
+        state: 'Uttar Pradesh',
+        pincode: '201301',
+      },
+      startDate: jobData.startDate ?? '2026-08-25',
+      startTime: jobData.startTime ?? '09:00 AM',
+      endTime: jobData.endTime ?? '06:00 PM',
+      workersRequired: jobData.workersRequired ?? 2,
+      workersHired: 0,
+      minWage: jobData.minWage ?? 1000,
+      maxWage: jobData.maxWage ?? 1000,
+      requirements: jobData.requirements ?? ['Aadhaar Card', 'Physical Fitness', 'Punctuality'],
+      status: 'HIRING',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updatedJobs = [newJob, ...get().jobs];
+    set({ jobs: updatedJobs });
+    safeSetStorage('gigeasy_jobs', updatedJobs);
+    return newJob;
+  },
+  getJobById: (jobId) => get().jobs.find((j) => j.id === jobId),
 }));
 
 // ─── Jobs Store ───────────────────────────────────────────────────────────────

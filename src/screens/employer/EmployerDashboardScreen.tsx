@@ -167,7 +167,7 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Available Near You</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => (shellNavigation as any).navigate('MainApp', { initialMode: 'employer' })}>
             <Text style={styles.seeAll}>See all →</Text>
           </TouchableOpacity>
         </View>

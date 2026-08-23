@@ -101,22 +101,7 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handlePay = (app: JobApplication) => {
-    const wage = app.agreedWage ?? app.proposedWage;
-    Alert.alert(
-      `Pay ${app.worker.name}`,
-      `Transfer ${formatWage(wage)} via UPI?\n\nAmount will be sent to their registered UPI ID.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: `Pay ${formatWage(wage)}`,
-          style: 'default',
-          onPress: () => {
-            payWorker(app.id);
-            Alert.alert('Payment Sent ✓', `${formatWage(wage)} has been transferred to ${app.worker.name}.`);
-          },
-        },
-      ]
-    );
+    (navigation as any).navigate('Payment', { applicationId: app.id });
   };
 
   const handleSendEmployerCounter = () => {
@@ -132,8 +117,8 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
     const statusColor = getThemeStatusColor(app.status);
     const statusLabel = getThemeStatusLabel(app.status);
     const isAccepted = app.status === 'ACCEPTED';
-    const isCheckedIn = app.status === 'CHECKED_IN';
-    const isCompleted = app.status === 'COMPLETED' || app.status === 'IN_PROGRESS';
+    const isCheckedIn = app.status === 'CHECKED_IN' || app.status === 'IN_PROGRESS';
+    const isCompleted = app.status === 'COMPLETED' || app.status === 'PAYMENT_PENDING';
     const isPaid = app.status === 'PAID';
     const isApplied = app.status === 'APPLIED' || app.status === 'UNDER_REVIEW';
     const isNegotiating = app.status === 'NEGOTIATING';
@@ -528,7 +513,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   rejectBtn: { borderColor: '#FECACA', backgroundColor: T.errorLight },
-  acceptBtn: { borderColor: T.primary, backgroundColor: T.primary },
+  acceptBtn: { borderColor: Theme.primary, backgroundColor: Theme.primary },
   counterActionBtn: { borderColor: Theme.border, backgroundColor: Theme.surfaceSubtle },
   actionBtnText: { fontFamily: FontFamily.bold, fontSize: 13 },
   statusBanner: {
@@ -544,18 +529,23 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: T.primary,
+    backgroundColor: Theme.primary,
   },
   payBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: T.success,
+    backgroundColor: Theme.primary,
     borderRadius: 12,
     paddingVertical: 12,
+    shadowColor: Theme.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  payBtnText: { fontFamily: FontFamily.bold, fontSize: 14, color: T.white },
+  payBtnText: { fontFamily: FontFamily.bold, fontSize: 14, color: Theme.surface, letterSpacing: 0.2 },
 
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: 60 },

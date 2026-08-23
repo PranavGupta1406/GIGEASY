@@ -1,45 +1,43 @@
 /**
- * GigEasy Universal Design System Tokens
+ * GigEasy Universal Design System
  * 
- * Direction: Apple-level polish + MNC Consumer Marketplace confidence
- * Palette: Sophisticated Cobalt / Midnight Navy primary family with warm slate neutrals
- * Semantic colors ONLY for status (success, error, warning). No competing brand colors.
+ * Clean, restrained, human-crafted mobile product design.
+ * Warm off-white backgrounds, pure white content cards, crisp charcoal typography,
+ * selective cobalt blue for active/interactive states, and semantic status colors.
  */
 
 export const Theme = {
-  // ── Primary Brand Family ──────────────────────────────────────────────
-  /** Deep vibrant royal cobalt — universal primary action, key accents */
+  // ── Brand Accent Family ──────────────────────────────────────────────
+  /** Selective brand cobalt blue — active tabs, primary buttons, selected filters, links */
   primary: '#1D4ED8',
-  /** Midnight navy — headers, dark emphasis, prominent text */
-  primaryDark: '#0F172A',
-  /** Vibrant highlight blue */
   primaryVibrant: '#2563EB',
-  /** Subtle ice tint — active item background, soft highlights */
+  /** Very subtle blue tint for selected item background */
   primaryLight: '#EFF6FF',
-  /** Soft border for active cards/pills */
   primaryBorder: '#BFDBFE',
-  /** Muted blue for secondary elements */
   primaryMuted: '#DBEAFE',
 
-  // ── Neutrals (Apple-style Slate Scale) ─────────────────────────────────
-  /** Canvas background — crisp, warm neutral */
+  // ── Neutrals (Minimalist, Apple/MNC Polish) ──────────────────────────
+  /** Warm, crisp canvas background */
   bg: '#F8FAFC',
-  /** Pure white surface — cards, sheets, modals */
+  /** Clean white surface for cards, sheets, headers */
   surface: '#FFFFFF',
-  /** Subtle surface — search bars, inactive chips, pill backgrounds */
+  /** Subtle background for search inputs, inactive segmented controls */
   surfaceSubtle: '#F1F5F9',
-  /** Deep charcoal typography — highest contrast */
+  /** Charcoal typography for maximum readability */
   ink: '#0F172A',
   /** Secondary text, labels, subheads */
   textSecondary: '#475569',
-  /** Muted placeholder & timestamp text */
+  /** Muted placeholder & subtle timestamp text */
   textMuted: '#94A3B8',
-  /** Hairline crisp borders */
+  /** Crisp hairline border */
   border: '#E2E8F0',
-  /** Hover & divider border */
   borderSubtle: '#F1F5F9',
 
-  // ── Semantic Status Colors (Used ONLY for functional states) ───────────
+  // ── Dark Accent (Used for segmented switch pill and strong headers) ──
+  darkPill: '#0F172A',
+  darkPillHover: '#1E293B',
+
+  // ── Semantic Status Colors (Used ONLY for functional states) ──────────
   success: '#059669',
   successLight: '#ECFDF5',
   successBorder: '#A7F3D0',
@@ -56,40 +54,45 @@ export const Theme = {
   infoLight: '#F0F9FF',
   infoBorder: '#BAE6FD',
 
-  // ── Category Identities (Subtle, refined tints for icon tiles only) ────
+  // ── Category Identities (Subtle neutral icon tiles) ──────────────────
   categories: {
-    construction: { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
-    factory:      { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
-    transport:    { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
-    retail:       { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
-    hospitality:  { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
+    construction: { color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+    factory:      { color: '#334155', bg: '#F1F5F9', border: '#E2E8F0' },
+    transport:    { color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+    retail:       { color: '#334155', bg: '#F1F5F9', border: '#E2E8F0' },
+    hospitality:  { color: '#334155', bg: '#F1F5F9', border: '#E2E8F0' },
   },
 
-  // ── Shadows & Overlays ────────────────────────────────────────────────
+  // ── Subtle Native Elevation ──────────────────────────────────────────
   shadowColor: '#0F172A',
-  overlay: 'rgba(15, 23, 42, 0.6)',
+  overlay: 'rgba(15, 23, 42, 0.45)',
+
+  // Backward compatibility alias
+  primaryDark: '#0F172A',
+  black: '#0F172A',
 } as const;
 
 /** Universal Application Status Colors */
 export const statusColor = (status: string): string => {
   const map: Record<string, string> = {
-    APPLIED:       '#2563EB',
-    UNDER_REVIEW:  '#D97706',
-    NEGOTIATING:   '#D97706',
-    ACCEPTED:      '#059669',
-    CONFIRMED:     '#059669',
-    CHECKED_IN:    '#0284C7',
-    IN_PROGRESS:   '#2563EB',
-    COMPLETED:     '#059669',
-    PAID:          '#059669',
-    REJECTED:      '#DC2626',
-    WITHDRAWN:     '#94A3B8',
-    EXPIRED:       '#94A3B8',
-    HIRING:        '#2563EB',
-    FULL:          '#059669',
-    ACTIVE:        '#2563EB',
-    PUBLISHED:     '#2563EB',
-    CANCELLED:     '#DC2626',
+    APPLIED:         '#2563EB',
+    UNDER_REVIEW:    '#D97706',
+    NEGOTIATING:     '#D97706',
+    ACCEPTED:        '#059669',
+    CONFIRMED:       '#059669',
+    CHECKED_IN:      '#0284C7',
+    IN_PROGRESS:     '#2563EB',
+    COMPLETED:       '#059669',
+    PAYMENT_PENDING: '#D97706',
+    PAID:            '#059669',
+    REJECTED:        '#DC2626',
+    WITHDRAWN:       '#94A3B8',
+    EXPIRED:         '#94A3B8',
+    HIRING:          '#2563EB',
+    FULL:            '#059669',
+    ACTIVE:          '#2563EB',
+    PUBLISHED:       '#2563EB',
+    CANCELLED:       '#DC2626',
   };
   return map[status] ?? '#94A3B8';
 };
@@ -97,23 +100,24 @@ export const statusColor = (status: string): string => {
 /** Universal Application Status Labels */
 export const statusLabel = (status: string): string => {
   const map: Record<string, string> = {
-    APPLIED:       'Applied',
-    UNDER_REVIEW:  'In Review',
-    NEGOTIATING:   'Counter Offer',
-    ACCEPTED:      'Accepted ✓',
-    CONFIRMED:     'Confirmed',
-    CHECKED_IN:    'Checked In',
-    IN_PROGRESS:   'Shift Active',
-    COMPLETED:     'Work Completed',
-    PAID:          'Paid ✓',
-    REJECTED:      'Declined',
-    WITHDRAWN:     'Withdrawn',
-    EXPIRED:       'Expired',
-    HIRING:        'Hiring Open',
-    FULL:          'Staffed',
-    ACTIVE:        'Active',
-    PUBLISHED:     'Open',
-    CANCELLED:     'Cancelled',
+    APPLIED:         'Applied',
+    UNDER_REVIEW:    'In Review',
+    NEGOTIATING:     'Counter Offer',
+    ACCEPTED:        'Hired ✓',
+    CONFIRMED:       'Confirmed',
+    CHECKED_IN:      'Checked In',
+    IN_PROGRESS:     'Shift Active',
+    COMPLETED:       'Work Completed',
+    PAYMENT_PENDING: 'Payment Due',
+    PAID:            'Paid ✓',
+    REJECTED:        'Declined',
+    WITHDRAWN:       'Withdrawn',
+    EXPIRED:         'Expired',
+    HIRING:          'Hiring Open',
+    FULL:            'Staffed',
+    ACTIVE:          'Active',
+    PUBLISHED:       'Open',
+    CANCELLED:       'Cancelled',
   };
   return map[status] ?? status;
 };

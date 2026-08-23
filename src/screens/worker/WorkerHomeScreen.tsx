@@ -20,7 +20,7 @@ import { MOCK_JOBS, CURRENT_WORKER, formatWage } from '../../data/mockData';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
 import { GigEasyJobCard } from '../../components/GigEasyCards';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
-import { useLanguageStore } from '../../store';
+import { useLanguageStore, useEmployerStore, useWorkerStore } from '../../store';
 
 import { Theme } from '../../theme';
 
@@ -77,10 +77,12 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { t } = useLanguageStore();
 
-  const worker = CURRENT_WORKER;
+  const allJobs = useEmployerStore((s) => s.jobs);
+  const workerProfile = useWorkerStore((s) => s.profile);
+  const worker = workerProfile ?? CURRENT_WORKER;
 
   const filteredJobs = useMemo(() => {
-    return MOCK_JOBS.filter((job) => {
+    return allJobs.filter((job) => {
       const jobCat = job?.skillRequired?.category || '';
       const matchCat =
         selectedCategory === 'All' ||
@@ -88,7 +90,7 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
       const matchWage = (job?.maxWage ?? 0) >= selectedWageMin;
       return matchCat && matchWage;
     });
-  }, [selectedCategory, selectedWageMin]);
+  }, [allJobs, selectedCategory, selectedWageMin]);
 
   const hasActiveFilters = selectedCategory !== 'All' || selectedWageMin > 0;
 
@@ -651,12 +653,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: T.primary,
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 13,
     shadowColor: T.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 3,
   },
   applyBtnText: {

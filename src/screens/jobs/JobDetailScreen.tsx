@@ -23,7 +23,7 @@ import { FontFamily, FontSize } from '../../constants';
 import { MOCK_JOBS, formatWage, formatDate, formatDistance } from '../../data/mockData';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
 import { getCategoryVisual, GigEasyVerifiedBadge } from '../../components/GigEasyPrimitives';
-import { useLanguageStore, useWorkerStore, useSharedApplicationsStore } from '../../store';
+import { useLanguageStore, useWorkerStore, useSharedApplicationsStore, useEmployerStore } from '../../store';
 import { googleMapsService } from '../../services/maps/googleMapsService';
 import { Theme, statusColor, statusLabel } from '../../theme';
 
@@ -47,8 +47,8 @@ const T = {
 export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
 
-  // Look up in employer store first (to get live posted jobs), fallback to MOCK_JOBS
-  const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
+  const employerJobs = useEmployerStore((s) => s.jobs);
+  const job = employerJobs.find((j) => j.id === jobId) ?? MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
 
   const { t } = useLanguageStore();
   const workerProfile = useWorkerStore((s) => s.profile);
@@ -700,21 +700,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: T.primary,
-    borderRadius: 16,
-    height: 54,
+    backgroundColor: Theme.primary,
+    borderRadius: 14,
+    height: 52,
     paddingHorizontal: 16,
-    shadowColor: T.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
+    shadowColor: Theme.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
     elevation: 3,
   },
   applyBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: T.white,
-    letterSpacing: -0.2,
+    color: Theme.surface,
+    letterSpacing: 0.2,
   },
   counterBtn: {
     flex: 1,
@@ -725,8 +725,8 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.surfaceSubtle,
     borderWidth: 1.5,
     borderColor: Theme.border,
-    borderRadius: 16,
-    height: 54,
+    borderRadius: 14,
+    height: 52,
   },
   counterBtnText: {
     fontFamily: FontFamily.bold,

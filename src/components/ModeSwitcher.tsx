@@ -1,5 +1,5 @@
-// GigEasy ModeSwitcher — "Find Work" | "Hire Workers"
-// Smooth spring-animated sliding pill · Brand #6497B2 · Equal visual weight
+// GigEasy ModeSwitcher — Clean Neutral Segmented Control
+// Restrained dark pill (#0F172A) for active selection, neutral background for inactive
 
 import React, { useRef, useEffect } from 'react';
 import {
@@ -9,8 +9,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
-import { FontFamily, FontSize } from '../constants';
-
+import { FontFamily } from '../constants';
 import { Theme } from '../theme';
 
 type Mode = 'worker' | 'employer';
@@ -20,16 +19,6 @@ interface ModeSwitcherProps {
   onSwitch: (mode: Mode) => void;
 }
 
-const T = {
-  primary: Theme.primary,
-  primaryMuted: Theme.primaryLight,
-  ink: Theme.ink,
-  muted: Theme.textSecondary,
-  bg: Theme.surfaceSubtle,
-  border: Theme.border,
-  white: Theme.surface,
-};
-
 export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
   const isWorker = activeMode === 'worker';
   const slideAnim = useRef(new Animated.Value(isWorker ? 0 : 1)).current;
@@ -38,33 +27,45 @@ export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
     Animated.spring(slideAnim, {
       toValue: isWorker ? 0 : 1,
       useNativeDriver: false,
-      tension: 260,
-      friction: 22,
+      tension: 320,
+      friction: 28,
     }).start();
   }, [activeMode]);
 
   return (
     <View style={styles.container}>
       <View style={styles.track}>
-        {/* Animated sliding pill */}
+        {/* Animated sliding dark pill */}
         <Animated.View
           style={[
             styles.pill,
             {
               left: slideAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: ['1.5%', '50%'],
+                outputRange: ['2%', '50%'],
               }),
             },
           ]}
         />
 
-        <TouchableOpacity style={styles.tab} onPress={() => onSwitch('worker')} activeOpacity={0.8}>
-          <Text style={[styles.tabText, isWorker && styles.tabTextActive]}>Find Work</Text>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onSwitch('worker')}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.tabText, isWorker && styles.tabTextActive]}>
+            Find Work
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => onSwitch('employer')} activeOpacity={0.8}>
-          <Text style={[styles.tabText, !isWorker && styles.tabTextActive]}>Hire Workers</Text>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onSwitch('employer')}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.tabText, !isWorker && styles.tabTextActive]}>
+            Hire Workers
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -79,26 +80,26 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: T.bg,
-    borderRadius: 22,
+    backgroundColor: Theme.surfaceSubtle,
+    borderRadius: 20,
     padding: 3,
     position: 'relative',
-    width: 220,
-    height: 38,
+    width: 216,
+    height: 36,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: Theme.border,
   },
   pill: {
     position: 'absolute',
     top: 3,
     bottom: 3,
     width: '48%',
-    backgroundColor: T.primary,
-    borderRadius: 18,
-    shadowColor: T.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    backgroundColor: Theme.darkPill,
+    borderRadius: 16,
+    shadowColor: Theme.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
     elevation: 2,
   },
   tab: {
@@ -111,11 +112,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontFamily: FontFamily.medium,
     fontSize: 12,
-    color: T.muted,
+    color: Theme.textSecondary,
     letterSpacing: 0.1,
   },
   tabTextActive: {
-    color: T.white,
+    color: Theme.surface,
     fontFamily: FontFamily.bold,
   },
 });

@@ -1,5 +1,7 @@
-// GigEasy BottomNav — Brand #1A68D5 active state
-// Smooth spring scale animation on tab press + multilingual labels
+// GigEasy BottomNav — Premium Modern App Navigation
+// Clean white bar with subtle top border.
+// Active tab: compact solid near-black rounded square with pure white icon + bold near-black label.
+// Inactive tabs: direct dark charcoal icon (no background box) + muted grey label.
 
 import React, { useRef } from 'react';
 import {
@@ -14,18 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { FontFamily } from '../constants';
 import { useLanguageStore } from '../store';
-
 import { Theme } from '../theme';
 
 type Mode = 'worker' | 'employer';
-
-const T = {
-  primary: Theme.primary,
-  inactive: Theme.textMuted,
-  bg: Theme.surface,
-  border: Theme.border,
-  activeDot: Theme.primary,
-};
 
 interface NavTab {
   key: string;
@@ -43,7 +36,7 @@ const WORKER_TABS: NavTab[] = [
 
 const EMPLOYER_TABS: NavTab[] = [
   { key: 'Dashboard', labelEn: 'Home',    labelHi: 'होम',       icon: 'home' },
-  { key: 'Jobs',      labelEn: 'Jobs',    labelHi: 'नौकरियां', icon: 'briefcase' },
+  { key: 'Jobs',      labelEn: 'My Jobs', labelHi: 'नौकरियां', icon: 'briefcase' },
   { key: 'Workers',   labelEn: 'Workers', labelHi: 'कामगार',   icon: 'users' },
   { key: 'Profile',   labelEn: 'Profile', labelHi: 'प्रोफ़ाइल', icon: 'user' },
 ];
@@ -68,8 +61,8 @@ function NavItem({
 
   const handlePress = () => {
     Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 0.82, tension: 450, friction: 14, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1,    tension: 280, friction: 14, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 0.9, tension: 450, friction: 14, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1,   tension: 280, friction: 14, useNativeDriver: true }),
     ]).start();
     onPress();
   };
@@ -77,20 +70,20 @@ function NavItem({
   const label = language === 'hi' ? tab.labelHi : tab.labelEn;
 
   return (
-    <TouchableOpacity style={styles.navItem} onPress={handlePress} activeOpacity={1}>
+    <TouchableOpacity
+      style={styles.navItem}
+      onPress={handlePress}
+      activeOpacity={0.75}
+    >
       <Animated.View style={[styles.navItemInner, { transform: [{ scale: scaleAnim }] }]}>
-        {/* Active indicator dot above icon */}
-        {focused && <View style={styles.activeDot} />}
-
-        <View style={[styles.iconBg, focused && styles.iconBgActive]}>
+        <View style={[styles.iconBox, focused ? styles.iconBoxActive : styles.iconBoxInactive]}>
           <Feather
             name={tab.icon}
-            size={20}
-            color={focused ? T.primary : T.inactive}
-            strokeWidth={focused ? 2.2 : 1.5}
+            size={focused ? 19 : 20}
+            color={focused ? '#FFFFFF' : '#475569'}
+            strokeWidth={focused ? 2.2 : 1.7}
           />
         </View>
-
         <Text style={[styles.navLabel, focused && styles.navLabelActive]} numberOfLines={1}>
           {label}
         </Text>
@@ -107,9 +100,7 @@ export function BottomNav({ mode, activeTab, onTabPress }: BottomNavProps) {
     <View
       style={[
         styles.container,
-        {
-          paddingBottom: Math.max(insets.bottom, 6),
-        },
+        { paddingBottom: Math.max(insets.bottom, 8) },
       ]}
     >
       {tabs.map((tab) => (
@@ -127,57 +118,58 @@ export function BottomNav({ mode, activeTab, onTabPress }: BottomNavProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: T.bg,
+    backgroundColor: Theme.surface,
     borderTopWidth: 1,
-    borderTopColor: T.border,
-    paddingTop: 8,
+    borderTopColor: Theme.border,
+    paddingTop: 6,
     ...Platform.select({
       ios: {
-        shadowColor: '#0F172A',
+        shadowColor: Theme.shadowColor,
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
+        shadowOpacity: 0.04,
+        shadowRadius: 5,
       },
-      android: { elevation: 10 },
+      android: { elevation: 4 },
     }),
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   navItemInner: {
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
     paddingVertical: 2,
   },
-  activeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: T.activeDot,
-    marginBottom: 4,
-  },
-  iconBg: {
-    width: 36,
-    height: 28,
+  iconBox: {
+    width: 44,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 11,
   },
-  iconBgActive: {
-    backgroundColor: '#EBF3FC',
+  iconBoxActive: {
+    backgroundColor: '#0F172A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iconBoxInactive: {
+    backgroundColor: 'transparent',
   },
   navLabel: {
     fontFamily: FontFamily.medium,
     fontSize: 10,
-    color: T.inactive,
-    marginTop: 1,
+    color: '#64748B',
+    marginTop: 3,
     letterSpacing: 0.1,
   },
   navLabelActive: {
-    color: T.primary,
+    color: '#0F172A',
     fontFamily: FontFamily.bold,
+    fontSize: 10,
   },
 });

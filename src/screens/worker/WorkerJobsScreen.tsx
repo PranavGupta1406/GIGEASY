@@ -20,7 +20,7 @@ import { MOCK_JOBS } from '../../data/mockData';
 import { GigEasyJobCard } from '../../components/GigEasyCards';
 import { GigEasyEmptyState } from '../../components';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
-import { useLanguageStore } from '../../store';
+import { useLanguageStore, useEmployerStore } from '../../store';
 
 import { Theme } from '../../theme';
 
@@ -66,8 +66,10 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { t } = useLanguageStore();
 
+  const allJobs = useEmployerStore((s) => s.jobs);
+
   const filtered = useMemo(() => {
-    return MOCK_JOBS.filter((job) => {
+    return allJobs.filter((job) => {
       const title = job?.title || '';
       const city = job?.location?.city || '';
       const businessName = job?.employer?.businessName || '';
@@ -84,7 +86,7 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
       const matchWage = (job?.maxWage ?? 0) >= selectedWageMin;
       return matchSearch && matchCat && matchWage;
     });
-  }, [search, selectedCat, selectedWageMin]);
+  }, [allJobs, search, selectedCat, selectedWageMin]);
 
   const hasActiveFilters = selectedCat !== 'All' || selectedWageMin > 0;
 

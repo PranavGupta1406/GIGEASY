@@ -119,9 +119,9 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
     const statusColor = getStatusColor(app.status);
     const statusLabel = getStatusLabel(app.status);
     const isPaid = app.status === 'PAID';
-    const isCompleted = app.status === 'COMPLETED' || app.status === 'IN_PROGRESS';
+    const isCompleted = app.status === 'COMPLETED' || app.status === 'PAYMENT_PENDING';
     const isAccepted = app.status === 'ACCEPTED';
-    const isCheckedIn = app.status === 'CHECKED_IN';
+    const isCheckedIn = app.status === 'CHECKED_IN' || app.status === 'IN_PROGRESS';
     const isNegotiating = app.status === 'NEGOTIATING';
     const isRejected = app.status === 'REJECTED';
 

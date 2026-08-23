@@ -28,17 +28,20 @@ import { WorkerProfileScreen } from '../screens/worker/WorkerProfileScreen';
 // Employer onboarding
 import { EmployerNameScreen } from '../screens/employer/onboarding/EmployerNameScreen';
 
-// Employer main (Marketplace)
-import { EmployerMarketplaceScreen } from '../screens/employer/EmployerMarketplaceScreen';
-import { EmployerOrderHistoryScreen } from '../screens/employer/EmployerOrderHistoryScreen';
+// Employer main
+import { EmployerDashboardScreen } from '../screens/employer/EmployerDashboardScreen';
+import { EmployerJobsScreen } from '../screens/employer/EmployerJobsScreen';
+import { EmployerWorkersScreen } from '../screens/employer/EmployerWorkersScreen';
 import { EmployerProfileScreen } from '../screens/employer/EmployerProfileScreen';
+import { PostJobScreen } from '../screens/employer/PostJobScreen';
+import { PaymentScreen } from '../screens/payment/PaymentScreen';
 
 // Shared
 import { JobDetailScreen } from '../screens/jobs/JobDetailScreen';
 import { JobApplyScreen } from '../screens/jobs/JobApplyScreen';
 import { WorkerDetailScreen } from '../screens/employer/WorkerDetailScreen';
 
-// New Employer Order Flow
+// Order Flow & Applicants
 import { CategoryServicesScreen } from '../screens/employer/CategoryServicesScreen';
 import { ServiceConfigScreen } from '../screens/employer/ServiceConfigScreen';
 import { EmployerCartScreen } from '../screens/employer/EmployerCartScreen';
@@ -65,6 +68,7 @@ export type RootStackParamList = {
   JobApply: { jobId: string };
   JobApplicants: { jobId: string };
   PostJob: undefined;
+  Payment: { applicationId: string };
   WorkerDetail: { workerId: string };
   CategoryServices: { categoryId: string };
   ServiceConfig: { serviceId: string };
@@ -79,7 +83,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type Mode = 'worker' | 'employer';
 type WorkerTab = 'Home' | 'Jobs' | 'Activity' | 'Profile';
-type EmployerTab = 'Dashboard' | 'History' | 'Cart' | 'Profile';
+type EmployerTab = 'Dashboard' | 'Jobs' | 'Workers' | 'Profile';
 
 import { Theme } from '../theme';
 
@@ -110,26 +114,11 @@ function MainAppScreen({ route, navigation }: any) {
     if (mode === 'worker') {
       setWorkerTab(tabKey as WorkerTab);
     } else {
-      // Map frontend tab names to actual tabs
-      let newTab: EmployerTab = tabKey as EmployerTab;
-      if (tabKey === 'Jobs') newTab = 'History'; // Remap old bottom nav strings
-      if (tabKey === 'Workers') newTab = 'Cart'; 
-      setEmployerTab(newTab);
-      
-      // If clicking cart, we can also push the cart screen directly instead of embedding in shell
-      if (newTab === 'Cart') {
-        navigation.navigate('EmployerCart');
-        setEmployerTab('Dashboard'); // reset tab back visually
-      }
+      setEmployerTab(tabKey as EmployerTab);
     }
   };
 
-  const activeTab = mode === 'worker' ? workerTab : (
-    // Map back for the bottom nav UI
-    employerTab === 'History' ? 'Jobs' : 
-    employerTab === 'Cart' ? 'Workers' : 
-    employerTab
-  );
+  const activeTab = mode === 'worker' ? workerTab : employerTab;
 
   const renderContent = () => {
     if (mode === 'worker') {
@@ -142,10 +131,11 @@ function MainAppScreen({ route, navigation }: any) {
       }
     } else {
       switch (employerTab) {
-        case 'Dashboard': return <EmployerMarketplaceScreen shellNavigation={navigation} />;
-        case 'History': return <EmployerOrderHistoryScreen shellNavigation={navigation} />;
+        case 'Dashboard': return <EmployerDashboardScreen shellNavigation={navigation} />;
+        case 'Jobs': return <EmployerJobsScreen shellNavigation={navigation} />;
+        case 'Workers': return <EmployerWorkersScreen shellNavigation={navigation} />;
         case 'Profile': return <EmployerProfileScreen shellNavigation={navigation} onSwitchMode={() => handleModeSwitch('worker')} />;
-        default: return <EmployerMarketplaceScreen shellNavigation={navigation} />;
+        default: return <EmployerDashboardScreen shellNavigation={navigation} />;
       }
     }
   };
@@ -203,6 +193,11 @@ export function RootNavigator() {
             <Stack.Screen name="WorkerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
             <Stack.Screen name="EmployerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
 
+            {/* Post Job & Payment */}
+            <Stack.Screen name="PostJob" component={PostJobScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Payment" component={PaymentScreen} options={{ animation: 'slide_from_bottom' }} />
+
+            {/* Employer Order Flow */}
             <Stack.Screen name="CategoryServices" component={CategoryServicesScreen} />
             <Stack.Screen name="ServiceConfig" component={ServiceConfigScreen} />
             <Stack.Screen name="EmployerCart" component={EmployerCartScreen} options={{ animation: 'slide_from_bottom' }} />
@@ -221,10 +216,22 @@ export function RootNavigator() {
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: BRAND.background },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', paddingHorizontal: 18, paddingBottom: 11 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingBottom: 10,
+  },
   logoArea: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  wordmark: { fontFamily: FontFamily.bold, fontSize: 17, color: BRAND.navy, letterSpacing: -0.5 },
+  wordmark: {
+    fontFamily: FontFamily.bold,
+    fontSize: 18,
+    color: BRAND.navy,
+    letterSpacing: -0.8,
+  },
   topRight: { flex: 1, alignItems: 'flex-end' },
-  topBarBorder: { height: 1, backgroundColor: BRAND.border },
+  topBarBorder: { height: 1, backgroundColor: '#E9ECF0' },
   content: { flex: 1 },
 });

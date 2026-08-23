@@ -24,7 +24,7 @@ import {
 } from '../../constants';
 import { GigEasyButton } from '../../components';
 import { MOCK_JOBS, formatWage } from '../../data/mockData';
-import { useSharedApplicationsStore, useWorkerStore, useLanguageStore } from '../../store';
+import { useSharedApplicationsStore, useWorkerStore, useLanguageStore, useEmployerStore } from '../../store';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { CURRENT_WORKER } from '../../data/mockData';
 
@@ -46,7 +46,8 @@ const T = {
 
 export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
-  const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
+  const employerJobs = useEmployerStore((s) => s.jobs);
+  const job = employerJobs.find((j) => j.id === jobId) ?? MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
   const { applyForJob } = useSharedApplicationsStore();
   const workerProfile = useWorkerStore((s) => s.profile);
   const { t } = useLanguageStore();
