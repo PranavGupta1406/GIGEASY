@@ -1,5 +1,4 @@
-// Phone Screen — Clean Indian Mobile Entry
-// Vibrant Brand Blue (#1A68D5) · Multilingual
+// Phone Screen — Indian Mobile Entry · Unified Design System
 
 import React, { useState } from 'react';
 import {
@@ -19,18 +18,9 @@ import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, Spacing, BorderRadius } from '../../constants';
 import { useAuthStore, useLanguageStore } from '../../store';
+import { Theme } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Phone'>;
-
-const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-};
 
 export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState('');
@@ -56,7 +46,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
 
       {/* Back */}
       <View style={styles.navHeader}>
@@ -65,7 +55,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.backBtn}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color={T.ink} />
+          <Feather name="arrow-left" size={22} color={Theme.ink} />
         </TouchableOpacity>
       </View>
 
@@ -94,7 +84,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
             <TextInput
               style={styles.phoneInput}
               placeholder="98765 43210"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={Theme.textMuted}
               keyboardType="number-pad"
               maxLength={10}
               value={phone}
@@ -107,7 +97,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={() => setPhone('')}
                 style={styles.clearBtn}
               >
-                <Feather name="x-circle" size={16} color="#94A3B8" />
+                <Feather name="x-circle" size={16} color={Theme.textMuted} />
               </TouchableOpacity>
             )}
           </View>
@@ -133,7 +123,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
                 <Feather
                   name="arrow-right"
                   size={17}
-                  color={isValid ? '#FFFFFF' : '#94A3B8'}
+                  color={isValid ? Theme.surface : Theme.textMuted}
                 />
               )}
             </TouchableOpacity>
@@ -151,7 +141,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: T.bg,
+    backgroundColor: Theme.bg,
   },
   navHeader: {
     paddingHorizontal: Spacing[5],
@@ -175,7 +165,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FontFamily.bold,
     fontSize: 30,
-    color: T.ink,
+    color: Theme.ink,
     lineHeight: 36,
     letterSpacing: -1,
     marginBottom: Spacing[2],
@@ -183,26 +173,26 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
     lineHeight: 22,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: T.white,
+    backgroundColor: Theme.surface,
     borderWidth: 1.5,
-    borderColor: T.border,
+    borderColor: Theme.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     height: 60,
-    shadowColor: '#0F172A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
   inputContainerActive: {
-    borderColor: T.primary,
+    borderColor: Theme.primary,
   },
   countryBadge: {
     flexDirection: 'row',
@@ -216,19 +206,19 @@ const styles = StyleSheet.create({
   countryCode: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: T.ink,
+    color: Theme.ink,
   },
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: T.border,
+    backgroundColor: Theme.border,
     marginRight: 14,
   },
   phoneInput: {
     flex: 1,
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,
-    color: T.ink,
+    color: Theme.ink,
     letterSpacing: 1,
   },
   clearBtn: {
@@ -242,34 +232,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: T.primary,
+    backgroundColor: Theme.primary,
     borderRadius: 16,
     height: 56,
     paddingHorizontal: 20,
-    shadowColor: T.primary,
+    shadowColor: Theme.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.20,
     shadowRadius: 8,
     elevation: 3,
   },
   sendBtnDisabled: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: Theme.surfaceSubtle,
     shadowOpacity: 0,
     elevation: 0,
   },
   sendBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 16,
-    color: T.white,
+    color: Theme.surface,
     letterSpacing: -0.3,
   },
   sendBtnTextDisabled: {
-    color: '#94A3B8',
+    color: Theme.textMuted,
   },
   termsText: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#94A3B8',
+    color: Theme.textMuted,
     textAlign: 'center',
     lineHeight: 16,
   },

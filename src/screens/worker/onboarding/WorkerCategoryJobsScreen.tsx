@@ -4,7 +4,7 @@
  * Shows the specific skills within the selected category.
  * Worker selects one or more skills, then continues to the main app.
  *
- * Has back button → returns to WorkerCategoryScreen (Step 1).
+ * 100% Unified Design Tokens.
  */
 
 import React, { useMemo } from 'react';
@@ -100,7 +100,7 @@ export const WorkerCategoryJobsScreen: React.FC<Props> = ({ route, navigation })
 
         {selectedInThisGroup.length > 0 && (
           <View style={styles.selectedPill}>
-            <Feather name="check-circle" size={12} color={Theme.accent} />
+            <Feather name="check-circle" size={12} color={Theme.primary} />
             <Text style={styles.selectedPillText}>
               {selectedInThisGroup.length} skill{selectedInThisGroup.length > 1 ? 's' : ''} selected
             </Text>
@@ -127,12 +127,12 @@ export const WorkerCategoryJobsScreen: React.FC<Props> = ({ route, navigation })
               {/* Icon */}
               <View style={[
                 styles.skillIcon,
-                { backgroundColor: isSelected ? Theme.accent + '18' : visual.bg }
+                { backgroundColor: isSelected ? Theme.primaryLight : Theme.surfaceSubtle }
               ]}>
                 <Feather
                   name={visual.iconName}
                   size={24}
-                  color={isSelected ? Theme.accent : visual.color}
+                  color={isSelected ? Theme.primary : Theme.textSecondary}
                 />
               </View>
 
@@ -216,13 +216,13 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Theme.accent,
+    backgroundColor: Theme.primary,
     borderRadius: 2,
   },
   stepLabel: {
     fontFamily: FontFamily.bold,
     fontSize: 10,
-    color: Theme.accent,
+    color: Theme.primary,
     letterSpacing: 1,
     marginBottom: 6,
   },
@@ -236,14 +236,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: 13,
-    color: Theme.textMuted,
+    color: Theme.textSecondary,
     marginBottom: 6,
   },
   selectedPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: Theme.accentLight,
+    backgroundColor: Theme.primaryLight,
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   selectedPillText: {
     fontFamily: FontFamily.bold,
     fontSize: 11,
-    color: Theme.accent,
+    color: Theme.primary,
   },
   grid: {
     paddingHorizontal: 16,
@@ -271,15 +271,15 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
     position: 'relative',
-    shadowColor: Theme.shadow,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
   },
   skillCardActive: {
-    borderColor: Theme.accent,
-    backgroundColor: Theme.accentLight,
+    borderColor: Theme.primary,
+    backgroundColor: Theme.primaryLight,
   },
   skillIcon: {
     width: 52,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   skillNameActive: {
-    color: Theme.accent,
+    color: Theme.primary,
   },
   checkBadge: {
     position: 'absolute',
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: Theme.accent,
+    backgroundColor: Theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -321,28 +321,28 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'android' ? 20 : 32,
     borderTopWidth: 1,
     borderTopColor: Theme.border,
-    shadowColor: Theme.shadow,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Theme.accent,
+    backgroundColor: Theme.primary,
     borderRadius: 16,
     height: 54,
-    shadowColor: Theme.accent,
+    shadowColor: Theme.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 3,
   },
   continueBtnDisabled: {
-    backgroundColor: Theme.chipBg,
+    backgroundColor: Theme.surfaceSubtle,
     shadowOpacity: 0,
     elevation: 0,
   },

@@ -23,22 +23,24 @@ import { GigEasyStatusPill, GigEasyVerifiedBadge } from '../../components/GigEas
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { useLanguageStore, useEmployerStore, useSharedApplicationsStore } from '../../store';
 
+import { Theme } from '../../theme';
+
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  primaryLight: '#D6E6FA',
-  money: '#1A68D5',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryMuted: Theme.primaryLight,
+  primaryLight: Theme.primaryLight,
+  money: Theme.primary,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
 };
 
 export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) => {

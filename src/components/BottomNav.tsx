@@ -15,14 +15,16 @@ import { Feather } from '@expo/vector-icons';
 import { FontFamily } from '../constants';
 import { useLanguageStore } from '../store';
 
+import { Theme } from '../theme';
+
 type Mode = 'worker' | 'employer';
 
 const T = {
-  primary: '#1A68D5',
-  inactive: '#94A3B8',
-  bg: '#FFFFFF',
-  border: '#E2E8F0',
-  activeDot: '#1A68D5',
+  primary: Theme.primary,
+  inactive: Theme.textMuted,
+  bg: Theme.surface,
+  border: Theme.border,
+  activeDot: Theme.primary,
 };
 
 interface NavTab {

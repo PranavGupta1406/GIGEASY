@@ -18,15 +18,17 @@ import { FontFamily, FontSize } from '../../../constants';
 import { GigEasyButton } from '../../../components';
 import { useOnboardingStore } from '../../../store';
 
+import { Theme } from '../../../theme';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerName'>;
 
 const B = {
-  bg: '#F8FAFC',
-  navy: '#1A68D5',
-  ink: '#0F172A',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
+  bg: Theme.bg,
+  navy: Theme.primary,
+  ink: Theme.ink,
+  textMuted: Theme.textSecondary,
+  border: Theme.border,
+  white: Theme.surface,
 };
 
 export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {

@@ -1,127 +1,117 @@
 /**
- * GigEasy Brand Theme
+ * GigEasy Universal Design System Tokens
  * 
- * Deep navy identity + warm orange accent
- * Premium consumer brand — NOT AI SaaS, NOT monochromatic
+ * Direction: Apple-level polish + MNC Consumer Marketplace confidence
+ * Palette: Sophisticated Cobalt / Midnight Navy primary family with warm slate neutrals
+ * Semantic colors ONLY for status (success, error, warning). No competing brand colors.
  */
 
 export const Theme = {
-  // ── Core Brand ──────────────────────────────────────────────────────────
-  /** Deep navy — wordmark, primary text, brand identity */
-  brand: '#1B1B2F',
-  brandMid: '#2D2D4E',
-  /** Warm orange — primary CTA, apply, hire, post job */
-  accent: '#F97316',
-  accentLight: '#FFF7ED',
-  accentMuted: '#FDBA74',
+  // ── Primary Brand Family ──────────────────────────────────────────────
+  /** Deep vibrant royal cobalt — universal primary action, key accents */
+  primary: '#1D4ED8',
+  /** Midnight navy — headers, dark emphasis, prominent text */
+  primaryDark: '#0F172A',
+  /** Vibrant highlight blue */
+  primaryVibrant: '#2563EB',
+  /** Subtle ice tint — active item background, soft highlights */
+  primaryLight: '#EFF6FF',
+  /** Soft border for active cards/pills */
+  primaryBorder: '#BFDBFE',
+  /** Muted blue for secondary elements */
+  primaryMuted: '#DBEAFE',
 
-  // ── Semantic Colors ──────────────────────────────────────────────────────
-  success: '#16A34A',
-  successLight: '#DCFCE7',
-  successBorder: '#86EFAC',
+  // ── Neutrals (Apple-style Slate Scale) ─────────────────────────────────
+  /** Canvas background — crisp, warm neutral */
+  bg: '#F8FAFC',
+  /** Pure white surface — cards, sheets, modals */
+  surface: '#FFFFFF',
+  /** Subtle surface — search bars, inactive chips, pill backgrounds */
+  surfaceSubtle: '#F1F5F9',
+  /** Deep charcoal typography — highest contrast */
+  ink: '#0F172A',
+  /** Secondary text, labels, subheads */
+  textSecondary: '#475569',
+  /** Muted placeholder & timestamp text */
+  textMuted: '#94A3B8',
+  /** Hairline crisp borders */
+  border: '#E2E8F0',
+  /** Hover & divider border */
+  borderSubtle: '#F1F5F9',
+
+  // ── Semantic Status Colors (Used ONLY for functional states) ───────────
+  success: '#059669',
+  successLight: '#ECFDF5',
+  successBorder: '#A7F3D0',
 
   error: '#DC2626',
-  errorLight: '#FEE2E2',
+  errorLight: '#FEF2F2',
   errorBorder: '#FECACA',
 
   warning: '#D97706',
-  warningLight: '#FEF3C7',
+  warningLight: '#FFFBEB',
   warningBorder: '#FDE68A',
 
-  info: '#0891B2',
-  infoLight: '#CFFAFE',
+  info: '#0284C7',
+  infoLight: '#F0F9FF',
+  infoBorder: '#BAE6FD',
 
-  // ── Neutrals ─────────────────────────────────────────────────────────────
-  /** Warm off-white — app background */
-  bg: '#FAFAF9',
-  /** Pure white — cards, panels, surfaces */
-  surface: '#FFFFFF',
-  /** Near-black — primary text */
-  ink: '#111827',
-  /** Secondary text, labels */
-  textSecondary: '#374151',
-  /** Muted / placeholder text */
-  textMuted: '#6B7280',
-  /** Very light muted */
-  textLight: '#9CA3AF',
-  /** Border / divider */
-  border: '#E5E7EB',
-  /** Light background for chips/tags */
-  chipBg: '#F3F4F6',
-
-  // ── Category Colors (each work group gets its own identity) ───────────────
-  construction: {
-    primary: '#B45309',
-    bg: '#FEF3C7',
-    icon: '#D97706',
-  },
-  factory: {
-    primary: '#6D28D9',
-    bg: '#EDE9FE',
-    icon: '#7C3AED',
-  },
-  transport: {
-    primary: '#0E7490',
-    bg: '#CFFAFE',
-    icon: '#0891B2',
-  },
-  retail: {
-    primary: '#065F46',
-    bg: '#D1FAE5',
-    icon: '#059669',
-  },
-  hospitality: {
-    primary: '#9D174D',
-    bg: '#FCE7F3',
-    icon: '#DB2777',
+  // ── Category Identities (Subtle, refined tints for icon tiles only) ────
+  categories: {
+    construction: { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
+    factory:      { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
+    transport:    { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
+    retail:       { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
+    hospitality:  { color: '#0F172A', bg: '#F1F5F9', border: '#E2E8F0' },
   },
 
-  // ── Misc ────────────────────────────────────────────────────────────────
-  shadow: '#111827',
-  overlay: 'rgba(17, 24, 39, 0.55)',
+  // ── Shadows & Overlays ────────────────────────────────────────────────
+  shadowColor: '#0F172A',
+  overlay: 'rgba(15, 23, 42, 0.6)',
 } as const;
 
-/** Application status → color mapping */
+/** Universal Application Status Colors */
 export const statusColor = (status: string): string => {
   const map: Record<string, string> = {
     APPLIED:       '#2563EB',
     UNDER_REVIEW:  '#D97706',
-    NEGOTIATING:   '#7C3AED',
-    ACCEPTED:      '#16A34A',
-    CONFIRMED:     '#16A34A',
-    CHECKED_IN:    '#0891B2',
-    IN_PROGRESS:   '#7C3AED',
+    NEGOTIATING:   '#D97706',
+    ACCEPTED:      '#059669',
+    CONFIRMED:     '#059669',
+    CHECKED_IN:    '#0284C7',
+    IN_PROGRESS:   '#2563EB',
     COMPLETED:     '#059669',
     PAID:          '#059669',
     REJECTED:      '#DC2626',
-    WITHDRAWN:     '#6B7280',
-    EXPIRED:       '#6B7280',
-    HIRING:        '#F97316',
-    FULL:          '#16A34A',
-    ACTIVE:        '#7C3AED',
+    WITHDRAWN:     '#94A3B8',
+    EXPIRED:       '#94A3B8',
+    HIRING:        '#2563EB',
+    FULL:          '#059669',
+    ACTIVE:        '#2563EB',
     PUBLISHED:     '#2563EB',
     CANCELLED:     '#DC2626',
   };
-  return map[status] ?? '#6B7280';
+  return map[status] ?? '#94A3B8';
 };
 
+/** Universal Application Status Labels */
 export const statusLabel = (status: string): string => {
   const map: Record<string, string> = {
     APPLIED:       'Applied',
     UNDER_REVIEW:  'In Review',
-    NEGOTIATING:   'Counter Offer Pending',
+    NEGOTIATING:   'Counter Offer',
     ACCEPTED:      'Accepted ✓',
     CONFIRMED:     'Confirmed',
     CHECKED_IN:    'Checked In',
-    IN_PROGRESS:   'Work in Progress',
-    COMPLETED:     'Work Done',
+    IN_PROGRESS:   'Shift Active',
+    COMPLETED:     'Work Completed',
     PAID:          'Paid ✓',
     REJECTED:      'Declined',
     WITHDRAWN:     'Withdrawn',
     EXPIRED:       'Expired',
     HIRING:        'Hiring Open',
-    FULL:          'Fully Staffed',
-    ACTIVE:        'Active Shift',
+    FULL:          'Staffed',
+    ACTIVE:        'Active',
     PUBLISHED:     'Open',
     CANCELLED:     'Cancelled',
   };

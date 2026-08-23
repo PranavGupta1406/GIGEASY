@@ -1,10 +1,8 @@
 /**
  * WorkerCategoryScreen — Step 1 of 2 in Worker Onboarding
  *
- * Shows exactly 5 large category cards. Tapping one navigates to
- * WorkerCategoryJobsScreen which shows the specific skills within it.
- *
- * NO individual jobs/skills shown on this screen.
+ * Shows exactly 5 large category cards in a unified, premium design language.
+ * Tapping one navigates to WorkerCategoryJobsScreen for skill selection.
  */
 
 import React from 'react';
@@ -16,7 +14,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -28,7 +25,6 @@ import { Theme } from '../../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerCategory'>;
 
-// Icon name per category
 const CATEGORY_ICONS: Record<string, any> = {
   grp_construction: 'tool',
   grp_factory:      'cpu',
@@ -37,16 +33,6 @@ const CATEGORY_ICONS: Record<string, any> = {
   grp_hospitality:  'coffee',
 };
 
-// Color per category
-const CATEGORY_STYLES: Record<string, { bg: string; color: string; border: string }> = {
-  grp_construction: { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' },
-  grp_factory:      { bg: '#EDE9FE', color: '#6D28D9', border: '#DDD6FE' },
-  grp_transport:    { bg: '#CFFAFE', color: '#0E7490', border: '#A5F3FC' },
-  grp_retail:       { bg: '#D1FAE5', color: '#065F46', border: '#A7F3D0' },
-  grp_hospitality:  { bg: '#FCE7F3', color: '#9D174D', border: '#FBCFE8' },
-};
-
-// Job count per category
 const JOB_COUNTS: Record<string, number> = {
   grp_construction: 10,
   grp_factory:      5,
@@ -74,7 +60,7 @@ export const WorkerCategoryScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: '50%' }]} />
         </View>
-        <Text style={styles.stepLabel}>STEP 2 OF 2 · WORK TYPE</Text>
+        <Text style={styles.stepLabel}>STEP 1 OF 2 · WORK TYPE</Text>
         <Text style={styles.title}>
           {language === 'hi' ? 'आप किस तरह का काम करते हैं?' : 'What type of work\ndo you do?'}
         </Text>
@@ -91,7 +77,6 @@ export const WorkerCategoryScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {WORK_GROUPS.map((group) => {
-          const cs = CATEGORY_STYLES[group.id] ?? { bg: Theme.chipBg, color: Theme.brand, border: Theme.border };
           const iconName = CATEGORY_ICONS[group.id] ?? 'briefcase';
           const count = JOB_COUNTS[group.id] ?? group.skills.length;
           const name = language === 'hi' ? group.nameHi : group.name;
@@ -99,13 +84,13 @@ export const WorkerCategoryScreen: React.FC<Props> = ({ navigation }) => {
           return (
             <TouchableOpacity
               key={group.id}
-              style={[styles.card, { borderColor: cs.border }]}
+              style={styles.card}
               onPress={() => handleSelect(group.id, name)}
               activeOpacity={0.82}
             >
               {/* Left: Icon block */}
-              <View style={[styles.iconBlock, { backgroundColor: cs.bg }]}>
-                <Feather name={iconName} size={32} color={cs.color} />
+              <View style={styles.iconBlock}>
+                <Feather name={iconName} size={28} color={Theme.primary} />
               </View>
 
               {/* Middle: Text */}
@@ -117,8 +102,8 @@ export const WorkerCategoryScreen: React.FC<Props> = ({ navigation }) => {
               </View>
 
               {/* Right: Arrow */}
-              <View style={[styles.arrowCircle, { backgroundColor: cs.bg }]}>
-                <Feather name="chevron-right" size={18} color={cs.color} />
+              <View style={styles.arrowCircle}>
+                <Feather name="chevron-right" size={18} color={Theme.textSecondary} />
               </View>
             </TouchableOpacity>
           );
@@ -152,13 +137,13 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Theme.accent,
+    backgroundColor: Theme.primary,
     borderRadius: 2,
   },
   stepLabel: {
     fontFamily: FontFamily.bold,
     fontSize: 10,
-    color: Theme.accent,
+    color: Theme.primary,
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -173,7 +158,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: 13,
-    color: Theme.textMuted,
+    color: Theme.textSecondary,
     lineHeight: 19,
   },
   list: {
@@ -184,21 +169,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.surface,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Theme.border,
     marginBottom: 12,
     padding: 16,
     gap: 14,
-    shadowColor: Theme.shadow,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 1,
   },
   iconBlock: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: Theme.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -215,13 +202,14 @@ const styles = StyleSheet.create({
   },
   cardCount: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: Theme.textMuted,
+    fontSize: 12.5,
+    color: Theme.textSecondary,
   },
   arrowCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Theme.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

@@ -18,6 +18,7 @@ import { FontFamily } from '../../constants';
 import { formatWage, formatDate, getStatusLabel, getStatusColor, CURRENT_WORKER } from '../../data/mockData';
 import { useSharedApplicationsStore, useWorkerStore, useLanguageStore } from '../../store';
 import { JobApplication } from '../../types';
+import { Theme, statusColor as getThemeStatusColor, statusLabel as getThemeStatusLabel } from '../../theme';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
@@ -25,20 +26,20 @@ interface Props { shellNavigation: NavProp; }
 type TabKey = 'applications' | 'earnings';
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#16A34A',
-  successLight: '#DCFCE7',
-  warning: '#D97706',
-  warningBg: '#FEF3C7',
-  error: '#DC2626',
-  errorBg: '#FEE2E2',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryMuted: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
+  warning: Theme.warning,
+  warningBg: Theme.warningLight,
+  error: Theme.error,
+  errorBg: Theme.errorLight,
 };
 
 const STATUS_ORDER: Record<string, number> = {

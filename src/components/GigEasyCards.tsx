@@ -33,19 +33,21 @@ import {
 } from './GigEasyPrimitives';
 import { useLanguageStore } from '../store';
 
+import { Theme } from '../theme';
+
 const T = {
-  primary: '#1A68D5',
-  primaryLight: '#D6E6FA',
-  primaryMuted: '#EBF3FC',
-  money: '#1A68D5',
-  moneyBg: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
+  primary: Theme.primary,
+  primaryLight: Theme.primaryLight,
+  primaryMuted: Theme.primaryLight,
+  money: Theme.primary,
+  moneyBg: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
 };
 
 // ─── Visual Job Card ──────────────────────────────────────────────────────────

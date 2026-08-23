@@ -17,6 +17,8 @@ import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { CURRENT_WORKER, formatWage } from '../../data/mockData';
 import { useWorkerStore, useAuthStore } from '../../store';
 
+import { Theme } from '../../theme';
+
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props {
   shellNavigation: NavProp;
@@ -24,18 +26,18 @@ interface Props {
 }
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryLight: '#D6E6FA',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryDark: Theme.primaryDark,
+  primaryLight: Theme.primaryLight,
+  primaryMuted: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
 };
 
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {

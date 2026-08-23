@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { FontFamily, FontSize } from '../constants';
 
+import { Theme } from '../theme';
+
 type Mode = 'worker' | 'employer';
 
 interface ModeSwitcherProps {
@@ -19,13 +21,13 @@ interface ModeSwitcherProps {
 }
 
 const T = {
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  muted: '#64748B',
-  bg: '#F1F5F9',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
+  primary: Theme.primary,
+  primaryMuted: Theme.primaryLight,
+  ink: Theme.ink,
+  muted: Theme.textSecondary,
+  bg: Theme.surfaceSubtle,
+  border: Theme.border,
+  white: Theme.surface,
 };
 
 export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {

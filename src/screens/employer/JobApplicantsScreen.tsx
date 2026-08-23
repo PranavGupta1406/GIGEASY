@@ -26,8 +26,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JobApplicants'>;
 
 const T = {
   bg: Theme.bg,
-  primary: Theme.accent,
-  primaryMuted: Theme.accentLight,
+  primary: Theme.primary,
+  primaryMuted: Theme.primaryLight,
   ink: Theme.ink,
   textSecondary: Theme.textSecondary,
   textMuted: Theme.textMuted,
@@ -214,8 +214,8 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
               }}
               activeOpacity={0.85}
             >
-              <Feather name="edit-2" size={14} color={Theme.brand} />
-              <Text style={[styles.actionBtnText, { color: Theme.brand }]}>Counter</Text>
+              <Feather name="edit-2" size={14} color={Theme.ink} />
+              <Text style={[styles.actionBtnText, { color: Theme.ink }]}>Counter</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -257,8 +257,8 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
                   }}
                   activeOpacity={0.85}
                 >
-                  <Feather name="edit-2" size={14} color={Theme.brand} />
-                  <Text style={[styles.actionBtnText, { color: Theme.brand }]}>Counter</Text>
+                  <Feather name="edit-2" size={14} color={Theme.ink} />
+                  <Text style={[styles.actionBtnText, { color: Theme.ink }]}>Counter</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
   rejectBtn: { borderColor: '#FECACA', backgroundColor: T.errorLight },
   acceptBtn: { borderColor: T.primary, backgroundColor: T.primary },
-  counterActionBtn: { borderColor: Theme.border, backgroundColor: Theme.chipBg },
+  counterActionBtn: { borderColor: Theme.border, backgroundColor: Theme.surfaceSubtle },
   actionBtnText: { fontFamily: FontFamily.bold, fontSize: 13 },
   statusBanner: {
     flexDirection: 'row',

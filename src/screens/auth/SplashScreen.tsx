@@ -6,6 +6,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../constants';
+import { Theme } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   brandDot: {
-    color: '#1A68D5',
+    color: Theme.primaryVibrant,
     fontFamily: FontFamily.extraBold,
   },
   tagline: {
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#1A68D5',
+    backgroundColor: Theme.primaryVibrant,
     marginRight: 8,
   },
   footerText: {

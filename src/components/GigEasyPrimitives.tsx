@@ -12,19 +12,21 @@ import {
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { FontFamily, FontSize, BorderRadius } from '../constants';
 
+import { Theme } from '../theme';
+
 const T = {
-  primary: '#1A68D5',
-  primaryLight: '#D6E6FA',
-  primaryMuted: '#EBF3FC',
-  money: '#EA580C',
-  moneyLight: '#FFEDD5',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
+  primary: Theme.primary,
+  primaryLight: Theme.primaryLight,
+  primaryMuted: Theme.primaryLight,
+  money: Theme.primary,
+  moneyLight: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
 };
 
 // Category icon & color mapping helper
@@ -58,7 +60,7 @@ export function getCategoryVisual(category: string): {
   if (cat.includes('cook') || cat.includes('hosp') || cat.includes('kitchen')) {
     return { iconName: 'coffee', color: '#DB2777', bg: '#FCE7F3' };
   }
-  return { iconName: 'briefcase', color: '#1A68D5', bg: '#EBF3FC' };
+  return { iconName: 'briefcase', color: Theme.primary, bg: Theme.primaryLight };
 }
 
 // ─── GigEasyAvatar ────────────────────────────────────────────────────────────

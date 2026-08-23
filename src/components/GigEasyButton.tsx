@@ -30,17 +30,19 @@ interface ButtonProps {
   showArrow?: boolean;
 }
 
+import { Theme } from '../theme';
+
 // Design tokens
 const T = {
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryLight: '#D6E6FA',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  white: '#FFFFFF',
-  border: '#E2E8F0',
-  danger: '#EF4444',
-  dangerLight: '#FEE2E2',
+  primary: Theme.primary,
+  primaryDark: Theme.primaryDark,
+  primaryLight: Theme.primaryLight,
+  primaryMuted: Theme.primaryLight,
+  ink: Theme.ink,
+  white: Theme.surface,
+  border: Theme.border,
+  danger: Theme.error,
+  dangerLight: Theme.errorLight,
 };
 
 export const GigEasyButton: React.FC<ButtonProps> = ({
@@ -152,30 +154,30 @@ const styles = StyleSheet.create({
   },
   // Variants
   primary: {
-    backgroundColor: '#1A68D5',
-    shadowColor: '#1A68D5',
+    backgroundColor: Theme.primary,
+    shadowColor: Theme.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 3,
   },
   secondary: {
-    backgroundColor: '#EBF3FC',
+    backgroundColor: Theme.primaryLight,
     borderWidth: 1,
-    borderColor: '#D6E6FA',
+    borderColor: Theme.primaryBorder,
   },
   outline: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Theme.surface,
     borderWidth: 1.5,
-    borderColor: '#1A68D5',
+    borderColor: Theme.primary,
   },
   ghost: {
     backgroundColor: 'transparent',
   },
   danger: {
-    backgroundColor: '#FCE8E8',
+    backgroundColor: Theme.errorLight,
     borderWidth: 1,
-    borderColor: '#F4B8B8',
+    borderColor: Theme.errorBorder,
   },
   // Sizes
   sm: {

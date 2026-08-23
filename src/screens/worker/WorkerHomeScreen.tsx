@@ -22,22 +22,24 @@ import { GigEasyJobCard } from '../../components/GigEasyCards';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { useLanguageStore } from '../../store';
 
+import { Theme } from '../../theme';
+
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryMuted: '#EBF3FC',
-  primaryLight: '#D6E6FA',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
-  money: '#EA580C',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryDark: Theme.primaryDark,
+  primaryMuted: Theme.primaryLight,
+  primaryLight: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  money: Theme.primary,
 };
 
 const MAP_JOB_PINS = [

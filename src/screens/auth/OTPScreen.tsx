@@ -6,6 +6,7 @@
  * - Numeric keyboard
  * - Demo autofill: 1234
  * - Working resend countdown
+ * - 100% Unified Design Tokens
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -154,7 +155,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Title */}
           <View style={styles.titleBlock}>
             <View style={styles.lockIcon}>
-              <Feather name="lock" size={22} color={Theme.accent} />
+              <Feather name="lock" size={22} color={Theme.primary} />
             </View>
             <Text style={styles.title}>Verify your number</Text>
             <Text style={styles.subtitle}>
@@ -200,7 +201,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
             onPress={handleAutoFill}
             activeOpacity={0.8}
           >
-            <Feather name="zap" size={13} color={Theme.accent} />
+            <Feather name="zap" size={13} color={Theme.primary} />
             <Text style={styles.demoText}>Auto-fill demo code (1234)</Text>
           </TouchableOpacity>
 
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 15,
-    backgroundColor: Theme.accentLight,
+    backgroundColor: Theme.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: 14,
-    color: Theme.textMuted,
+    color: Theme.textSecondary,
     lineHeight: 21,
   },
   phone: {
@@ -313,9 +314,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   boxFilled: {
-    borderColor: Theme.accent,
-    backgroundColor: Theme.accentLight,
-    color: Theme.accent,
+    borderColor: Theme.primary,
+    backgroundColor: Theme.primaryLight,
+    color: Theme.primary,
   },
   boxError: {
     borderColor: Theme.error,
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Theme.accentLight,
+    backgroundColor: Theme.primaryLight,
     alignSelf: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
   demoText: {
     fontFamily: FontFamily.bold,
     fontSize: 12.5,
-    color: Theme.accent,
+    color: Theme.primary,
   },
   resendRow: {
     alignItems: 'center',
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
   resendTimer: {
     fontFamily: FontFamily.regular,
     fontSize: 13,
-    color: Theme.textMuted,
+    color: Theme.textSecondary,
   },
   resendCount: {
     fontFamily: FontFamily.bold,
@@ -365,24 +366,24 @@ const styles = StyleSheet.create({
   resendAction: {
     fontFamily: FontFamily.bold,
     fontSize: 13,
-    color: Theme.accent,
+    color: Theme.primary,
   },
   verifyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Theme.brand,
+    backgroundColor: Theme.primary,
     borderRadius: 16,
     height: 56,
     paddingHorizontal: 20,
-    shadowColor: Theme.brand,
+    shadowColor: Theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.22,
     shadowRadius: 10,
     elevation: 4,
   },
   verifyBtnDisabled: {
-    backgroundColor: Theme.chipBg,
+    backgroundColor: Theme.surfaceSubtle,
     shadowOpacity: 0,
     elevation: 0,
   },

@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { FontFamily, BorderRadius } from '../constants';
 import { GOOGLE_MAPS_API_KEY, DEFAULT_MAP_COORDINATES } from '../config/maps';
 import { googleMapsService } from '../services/maps/googleMapsService';
+import { Theme } from '../theme';
 
 export interface MapJobMarker {
   id: string;
@@ -44,16 +45,16 @@ interface InteractiveMapVisualProps {
 }
 
 const B = {
-  navy: '#1A68D5',
-  navyLight: '#EBF3FC',
-  ink: '#0F172A',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  mapBg: '#F1F5F9',
-  road: '#E2E8F0',
-  green: '#10B981',
-  money: '#EA580C',
+  navy: Theme.primary,
+  navyLight: Theme.primaryLight,
+  ink: Theme.ink,
+  textMuted: Theme.textSecondary,
+  border: Theme.border,
+  white: Theme.surface,
+  mapBg: Theme.surfaceSubtle,
+  road: Theme.border,
+  green: Theme.success,
+  money: Theme.primary,
 };
 
 export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({

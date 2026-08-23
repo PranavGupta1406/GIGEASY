@@ -1,11 +1,11 @@
 /**
- * WelcomeScreen — GigEasy Consumer Launch Experience
+ * WelcomeScreen — GigEasy Unified Consumer Launch Experience
  *
  * Balanced, centered global-consumer composition:
  *   - Balanced GigEasy wordmark + natural tagline
  *   - Clean top-right language switcher [ EN | हिंदी ]
  *   - Living Network Canvas (Worker ↔ Job ↔ Employer)
- *   - Dual equal-weight CTAs:
+ *   - Dual equal-weight CTAs in the SAME brand language:
  *     [ FIND WORK NEAR ME / आस-पास काम खोजें ]
  *     [ HIRE WORKERS NEAR ME / कर्मचारी खोजें ]
  */
@@ -27,22 +27,9 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../constants';
 import { HeroCanvas, HeroPhase } from '../../components/hero/HeroCanvas';
 import { useAuthStore, useLanguageStore } from '../../store';
-
 import { Theme } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
-
-const T = {
-  bg: Theme.bg,
-  primary: Theme.brand,
-  accent: Theme.accent,
-  accentLight: Theme.accentLight,
-  ink: Theme.ink,
-  textSecondary: Theme.textSecondary,
-  border: Theme.border,
-  white: Theme.surface,
-  sheetBg: 'rgba(250, 250, 249, 0.98)',
-};
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const [phase, setPhase] = useState<HeroPhase>('SPAWN');
@@ -100,12 +87,12 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
 
       {/* Living Network Canvas */}
       <HeroCanvas onPhaseChange={handlePhaseChange} activeModeTransition={activeTransition} />
 
-      {/* Top Header Row with Balanced Centered Brand & Language Switch */}
+      {/* Top Header Row with Centered Brand & Language Switch */}
       <SafeAreaView style={styles.topContainer}>
         {/* Language switch button in top-right */}
         <View style={styles.langRow}>
@@ -114,7 +101,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={toggleLanguage}
             activeOpacity={0.8}
           >
-            <Feather name="globe" size={13} color={T.primary} />
+            <Feather name="globe" size={13} color={Theme.primary} />
             <Text style={styles.langText}>
               {language === 'en' ? 'हिंदी' : 'English'}
             </Text>
@@ -140,7 +127,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </SafeAreaView>
 
-      {/* Bottom Sheet: Role Selection CTAs */}
+      {/* Bottom Sheet: Role Selection CTAs — Unified Premium Brand Language */}
       {isActionsVisible && (
         <Animated.View
           style={[
@@ -153,27 +140,27 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
         >
           <Text style={styles.questionPrompt}>{t('needWorkQuestion')}</Text>
 
-          {/* Option 1: Find Work (Equal Weight Primary) */}
+          {/* Option 1: Find Work (Primary Solid Cobalt) */}
           <TouchableOpacity
-            style={styles.roleCTA}
+            style={styles.roleCTAPrimary}
             onPress={() => handleSelectMode('worker')}
             activeOpacity={0.88}
           >
             <View style={styles.roleCTAInner}>
-              <View style={styles.iconCircle}>
-                <Feather name="briefcase" size={18} color={T.white} />
+              <View style={styles.iconCirclePrimary}>
+                <Feather name="briefcase" size={18} color={Theme.surface} />
               </View>
               <View style={styles.roleTextCol}>
-                <Text style={styles.roleTitle}>{t('findWork')}</Text>
-                <Text style={styles.roleSub}>{t('findWorkSub')}</Text>
+                <Text style={styles.roleTitlePrimary}>{t('findWork')}</Text>
+                <Text style={styles.roleSubPrimary}>{t('findWorkSub')}</Text>
               </View>
             </View>
-            <View style={styles.arrowCircle}>
-              <Feather name="arrow-right" size={16} color={T.white} />
+            <View style={styles.arrowCirclePrimary}>
+              <Feather name="arrow-right" size={16} color={Theme.surface} />
             </View>
           </TouchableOpacity>
 
-          {/* Option 2: Hire Workers (Equal Weight Primary) */}
+          {/* Option 2: Hire Workers (Secondary Surface with Crisp Navy Border) */}
           <TouchableOpacity
             style={styles.roleCTASecondary}
             onPress={() => handleSelectMode('employer')}
@@ -181,7 +168,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           >
             <View style={styles.roleCTAInner}>
               <View style={styles.iconCircleSecondary}>
-                <Feather name="users" size={18} color={T.primary} />
+                <Feather name="users" size={18} color={Theme.primaryDark} />
               </View>
               <View style={styles.roleTextCol}>
                 <Text style={styles.roleTitleSecondary}>{t('hireWorkers')}</Text>
@@ -189,7 +176,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
             <View style={styles.arrowCircleSecondary}>
-              <Feather name="arrow-right" size={16} color={T.primary} />
+              <Feather name="arrow-right" size={16} color={Theme.primaryDark} />
             </View>
           </TouchableOpacity>
 
@@ -209,7 +196,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: T.bg,
+    backgroundColor: Theme.bg,
   },
 
   // Top Area
@@ -231,13 +218,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: T.white,
+    backgroundColor: Theme.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: T.border,
-    shadowColor: '#0F172A',
+    borderColor: Theme.border,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -246,7 +233,7 @@ const styles = StyleSheet.create({
   langText: {
     fontFamily: FontFamily.bold,
     fontSize: 12,
-    color: T.primary,
+    color: Theme.primary,
   },
 
   // Centered Brand Title & Tagline Block
@@ -258,7 +245,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontFamily: FontFamily.extraBold,
     fontSize: 34,
-    color: T.primary,
+    color: Theme.primaryDark,
     letterSpacing: -1.2,
     lineHeight: 38,
     textAlign: 'center',
@@ -266,7 +253,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontFamily: FontFamily.medium,
     fontSize: 13,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
     marginTop: 3,
     textAlign: 'center',
   },
@@ -280,130 +267,132 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === 'android' ? 24 : 36,
     paddingTop: 16,
-    backgroundColor: T.sheetBg,
+    backgroundColor: 'rgba(248, 250, 252, 0.98)',
     borderTopWidth: 1,
-    borderTopColor: T.border,
+    borderTopColor: Theme.border,
     zIndex: 20,
     gap: 10,
   },
   questionPrompt: {
     fontFamily: FontFamily.bold,
     fontSize: 13,
-    color: T.ink,
+    color: Theme.ink,
     textAlign: 'center',
     marginBottom: 4,
   },
 
-  // Equal Role CTA 1: Find Work
-  roleCTA: {
+  // Role CTA 1: Find Work (Solid Primary Royal Cobalt)
+  roleCTAPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: T.accent,
+    backgroundColor: Theme.primary,
     borderRadius: 16,
     paddingVertical: 13,
     paddingHorizontal: 16,
     minHeight: 58,
-    shadowColor: T.accent,
+    shadowColor: Theme.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 3,
   },
-  roleCTAInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  iconCircle: {
+  iconCirclePrimary: {
     width: 38,
     height: 38,
     borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  roleTextCol: {
-    flex: 1,
-  },
-  roleTitle: {
+  roleTitlePrimary: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: T.white,
+    color: Theme.surface,
     letterSpacing: -0.3,
   },
-  roleSub: {
+  roleSubPrimary: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.88)',
     marginTop: 1,
   },
-  arrowCircle: {
+  arrowCirclePrimary: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Equal Role CTA 2: Hire Workers
+  // Role CTA 2: Hire Workers (Crisp Clean White Surface with Slate Border)
   roleCTASecondary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: T.white,
+    backgroundColor: Theme.surface,
     borderRadius: 16,
     paddingVertical: 13,
     paddingHorizontal: 16,
     minHeight: 58,
     borderWidth: 1.5,
-    borderColor: T.primary,
-    shadowColor: '#0F172A',
+    borderColor: Theme.border,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 1,
   },
   iconCircleSecondary: {
     width: 38,
     height: 38,
     borderRadius: 11,
-    backgroundColor: T.accentLight,
+    backgroundColor: Theme.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   roleTitleSecondary: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: T.primary,
+    color: Theme.primaryDark,
     letterSpacing: -0.3,
   },
   roleSubSecondary: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
     marginTop: 1,
   },
   arrowCircleSecondary: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: T.accentLight,
+    backgroundColor: Theme.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Shared Inner Row
+  roleCTAInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  roleTextCol: {
+    flex: 1,
   },
 
   trustFooter: {
     fontFamily: FontFamily.medium,
     fontSize: 10.5,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
     textAlign: 'center',
     marginTop: 4,
   },
 
   exitCover: {
-    backgroundColor: T.bg,
+    backgroundColor: Theme.bg,
   },
 });

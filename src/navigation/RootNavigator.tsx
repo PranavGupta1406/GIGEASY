@@ -81,10 +81,12 @@ type Mode = 'worker' | 'employer';
 type WorkerTab = 'Home' | 'Jobs' | 'Activity' | 'Profile';
 type EmployerTab = 'Dashboard' | 'History' | 'Cart' | 'Profile';
 
+import { Theme } from '../theme';
+
 const BRAND = {
-  navy: '#1A68D5',
-  background: '#F8FAFC',
-  border: '#E2E8F0',
+  navy: Theme.primaryDark,
+  background: Theme.bg,
+  border: Theme.border,
 };
 
 function MainAppScreen({ route, navigation }: any) {

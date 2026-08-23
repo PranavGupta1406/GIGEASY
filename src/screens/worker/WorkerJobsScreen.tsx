@@ -22,19 +22,21 @@ import { GigEasyEmptyState } from '../../components';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { useLanguageStore } from '../../store';
 
+import { Theme } from '../../theme';
+
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryDark: Theme.primaryDark,
+  primaryMuted: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
 };
 
 const CATEGORIES = [

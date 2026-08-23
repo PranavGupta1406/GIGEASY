@@ -16,24 +16,26 @@ import { FontFamily, FontSize, BorderRadius } from '../../constants';
 import { CURRENT_EMPLOYER, formatWage, formatDate } from '../../data/mockData';
 import { useEmployerStore, useSharedApplicationsStore } from '../../store';
 
+import { Theme } from '../../theme';
+
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
 type FilterTab = 'all' | 'hiring' | 'full';
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryLight: '#D6E6FA',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryDark: Theme.primaryDark,
+  primaryLight: Theme.primaryLight,
+  primaryMuted: Theme.primaryLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
+  successLight: Theme.successLight,
 };
 
 export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {

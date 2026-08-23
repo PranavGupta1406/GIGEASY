@@ -32,9 +32,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 // Use Theme tokens instead of local T
 const T = {
   bg: Theme.bg,
-  primary: Theme.accent,
-  primaryMuted: Theme.accentLight,
-  money: Theme.accent,
+  primary: Theme.primary,
+  primaryMuted: Theme.primaryLight,
+  money: Theme.primary,
   ink: Theme.ink,
   textSecondary: Theme.textSecondary,
   textMuted: Theme.textMuted,
@@ -374,7 +374,7 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               onPress={() => { setCounterWageText(String(job.minWage)); setShowCounterModal(true); }}
               activeOpacity={0.8}
             >
-              <Feather name="edit-2" size={15} color={Theme.brand} />
+              <Feather name="edit-2" size={15} color={Theme.ink} />
               <Text style={styles.counterBtnText}>Counter</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -722,16 +722,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: Theme.accentLight,
+    backgroundColor: Theme.surfaceSubtle,
     borderWidth: 1.5,
-    borderColor: Theme.accentMuted,
+    borderColor: Theme.border,
     borderRadius: 16,
     height: 54,
   },
   counterBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 14,
-    color: Theme.brand,
+    color: Theme.ink,
   },
   appliedStatusBar: {
     flexDirection: 'row',
