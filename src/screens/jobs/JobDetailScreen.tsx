@@ -1,7 +1,7 @@
 // Job Detail Screen — Premium showcase transaction screen
 // Large wage · Map route visual · Staffing · Employer trust · Sticky action
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,27 +13,44 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import {
-  MOCK_JOBS,
-  CURRENT_WORKER,
-  formatWage,
-  formatDate,
-  formatDistance,
-} from '../../data/mockData';
+import { api } from '../../services/api';
 import { useAuthStore } from '../../store';
-import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
-import { googleMapsService } from '../../services/maps/googleMapsService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
 export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
   const role = useAuthStore((s) => s.role);
-  const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-  const hiringProgress = job.workersRequired > 0 ? job.workersHired / job.workersRequired : 0;
-  const isFull = job.workersHired >= job.workersRequired;
-  const match = computeJobWorkerMatch(job, CURRENT_WORKER);
+  const [job, setJob] = useState<any>({
+    job_id: jobId,
+    title: 'Commercial Wiring & Setup',
+    description: 'Urgent need for certified electrician for commercial building panel wiring.',
+    skill_required: 'Electrician',
+    wage: 1200,
+    job_date: '2026-08-25',
+    start_time: '09:00',
+    end_time: '18:00',
+    location: 'Okhla Phase 3, New Delhi',
+    workers_required: 2,
+    status: 'OPEN',
+    company_name: 'Apex Builders Pvt Ltd'
+  });
+
+  useEffect(() => {
+    async function loadJob() {
+      try {
+        const fetched = await api.getJobById(jobId);
+        if (fetched) setJob(fetched);
+      } catch (err) {
+        console.error('Error fetching job details:', err);
+      }
+    }
+    loadJob();
+  }, [jobId]);
+
+  const hiringProgress = (job.workers_required || 1) > 0 ? (job.workers_hired || 0) / (job.workers_required || 1) : 0;
+  const isFull = (job.workers_hired || 0) >= (job.workers_required || 1);
 
   return (
     <View style={styles.container}>

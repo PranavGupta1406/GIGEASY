@@ -1,7 +1,7 @@
 // Worker Profile Screen — Digital Work Identity + Trust Score Breakdown
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import { CURRENT_WORKER, formatWage } from '../../data/mockData';
+import { api } from '../../services/api';
 import { useAuthStore, useWorkerStore } from '../../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -24,8 +24,35 @@ interface Props {
 }
 
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
-  const profile = useWorkerStore((s) => s.profile);
-  const worker = profile ?? CURRENT_WORKER;
+  const workerId = useAuthStore((s) => s.workerId) || 1;
+  const [worker, setWorker] = useState<any>({
+    worker_id: 1,
+    full_name: 'Ramesh Kumar',
+    location: 'Connaught Place, New Delhi',
+    experience_years: 5.5,
+    verified: true,
+    skills: ['Electrician', 'Helper'],
+    completed_jobs_count: 5,
+    average_rating: 4.9
+  });
+  const [earningsSummary, setEarningsSummary] = useState<any>({ today_earnings: 1200, weekly_earnings: 4500, monthly_earnings: 18000, total_earnings: 32000 });
+
+  useEffect(() => {
+    async function loadWorkerData() {
+      try {
+        const [wData, summary] = await Promise.all([
+          api.getWorkerProfile(workerId),
+          api.getEarningsSummary(workerId)
+        ]);
+        if (wData) setWorker(wData);
+        if (summary) setEarningsSummary(summary);
+      } catch (err) {
+        console.error('Error fetching worker profile screen data:', err);
+      }
+    }
+    loadWorkerData();
+  }, [workerId]);
+
   const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = () => {

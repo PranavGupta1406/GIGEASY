@@ -1,7 +1,7 @@
 // Employer Profile Screen — Business identity + verification + switch mode
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import { CURRENT_EMPLOYER, MOCK_JOBS } from '../../data/mockData';
+import { api } from '../../services/api';
 import { useAuthStore } from '../../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -24,9 +24,30 @@ interface Props {
 }
 
 export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
-  const employer = CURRENT_EMPLOYER;
+  const [employer, setEmployer] = useState<any>({
+    employer_id: 1,
+    company_name: 'Apex Builders Pvt Ltd',
+    company_type: 'Construction',
+    address: 'Plot 45, Okhla Phase 3, New Delhi',
+    verified: true,
+    total_jobs_posted: 3,
+    total_spending: 1200
+  });
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const fetched = await api.getEmployerProfile(1);
+        if (fetched) setEmployer(fetched);
+      } catch (err) {
+        console.error('Error fetching employer profile:', err);
+      }
+    }
+    loadProfile();
+  }, []);
+
   const logout = useAuthStore((s) => s.logout);
-  const totalJobs = MOCK_JOBS.filter(j => j.employerId === employer.id).length;
+  const totalJobs = employer.total_jobs_posted || 3;
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [

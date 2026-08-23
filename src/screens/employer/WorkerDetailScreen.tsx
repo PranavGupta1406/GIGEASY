@@ -1,7 +1,7 @@
 // Worker Detail Screen (Employer Inspection) — Trust Scorecard, Verified History & Direct Hire
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,13 +29,34 @@ import {
   GigEasyRating,
   GigEasyButton,
 } from '../../components';
-import { MOCK_WORKERS, formatWage, formatDate } from '../../data/mockData';
+import { api } from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerDetail'>;
 
 export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { workerId } = route.params;
-  const worker = MOCK_WORKERS.find((w) => w.id === workerId) ?? MOCK_WORKERS[0];
+  const [worker, setWorker] = useState<any>({
+    worker_id: workerId,
+    full_name: 'Ramesh Kumar',
+    location: 'Connaught Place, New Delhi',
+    experience_years: 5.5,
+    verified: true,
+    skills: ['Electrician', 'Helper'],
+    completed_jobs_count: 5,
+    average_rating: 4.9
+  });
+
+  useEffect(() => {
+    async function loadWorker() {
+      try {
+        const fetched = await api.getWorkerProfile(workerId);
+        if (fetched) setWorker(fetched);
+      } catch (err) {
+        console.error('Error fetching worker details:', err);
+      }
+    }
+    loadWorker();
+  }, [workerId]);
 
   const handleDirectOffer = () => {
     Alert.alert(

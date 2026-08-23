@@ -28,6 +28,15 @@ class ApplicationController {
     }
   }
 
+  async selectWorker(req, res, next) {
+    try {
+      const result = await applicationService.selectWorker(req.body);
+      res.json({ success: true, message: 'Worker selected and booking confirmed successfully', data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async viewApplications(req, res, next) {
     try {
       const applications = await applicationService.viewApplications(req.query);

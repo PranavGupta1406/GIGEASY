@@ -15,9 +15,12 @@ class BookingService {
     return booking;
   }
 
+  async getBookings(filters) {
+    return await bookingRepository.findByWorkerOrEmployer(filters);
+  }
+
   async completeBooking(id) {
-    await this.getBookingById(id);
-    return await bookingRepository.updateStatus(id, 'COMPLETED');
+    return await bookingRepository.completeJobTransaction(id);
   }
 }
 

@@ -10,6 +10,15 @@ class BookingController {
     }
   }
 
+  async getBookings(req, res, next) {
+    try {
+      const bookings = await bookingService.getBookings(req.query);
+      res.json({ success: true, data: bookings });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getBooking(req, res, next) {
     try {
       const booking = await bookingService.getBookingById(req.params.id);
@@ -21,8 +30,8 @@ class BookingController {
 
   async completeBooking(req, res, next) {
     try {
-      const booking = await bookingService.completeBooking(req.params.id);
-      res.json({ success: true, data: booking });
+      const result = await bookingService.completeBooking(req.params.id);
+      res.json({ success: true, message: 'Job completed and earnings record generated successfully', data: result });
     } catch (err) {
       next(err);
     }

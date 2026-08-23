@@ -1,7 +1,7 @@
 // Worker Home Screen — Flagship map experience + earnings hero + horizontal job discovery
 // Location + Opportunities + Earnings + Availability
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, Spacing, BorderRadius, Colors, Shadow } from '../../constants';
-import { MOCK_JOBS, CURRENT_WORKER, formatWage } from '../../data/mockData';
-import { rankJobsForWorker } from '../../services/matching/matchingEngine';
+import { api } from '../../services/api';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
 
 import { useWorkerStore } from '../../store';
@@ -23,21 +22,35 @@ import { useWorkerStore } from '../../store';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
-const MAP_JOB_PINS = [
-  { id: 'j1', wage: '₹1,000', title: 'Warehouse Loading', top: '30%', left: '62%', lat: 28.6139, lng: 77.209 },
-  { id: 'j2', wage: '₹1,500', title: 'Industrial Electrician', top: '56%', left: '18%', lat: 28.5355, lng: 77.391 },
-  { id: 'j3', wage: '₹850', title: 'Site Helper', top: '22%', left: '26%', lat: 28.6304, lng: 77.2177 },
-  { id: 'j4', wage: '₹1,200', title: 'Event Setup', top: '68%', left: '72%', lat: 28.4089, lng: 77.3178 },
-];
-
 export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [isAvailable, setIsAvailable] = useState(true);
-  const [selectedPinId, setSelectedPinId] = useState('j1');
-  const [selectedCategory, setSelectedCategory] = useState<string>('MY SKILLS');
+  const [dbJobs, setDbJobs] = useState<any[]>([]);
+  const [earningsSummary, setEarningsSummary] = useState<any>({ today_earnings: 1200, weekly_earnings: 4500, monthly_earnings: 18000 });
+  const [worker, setWorker] = useState<any>({
+    full_name: 'Ramesh Kumar',
+    location: 'Connaught Place, New Delhi',
+    skills: ['Electrician', 'Helper'],
+    completed_jobs_count: 5,
+    average_rating: 4.9
+  });
 
-  const profile = useWorkerStore((s) => s.profile);
-  const worker = profile ?? CURRENT_WORKER;
-  const rankedJobs = useMemo(() => rankJobsForWorker(MOCK_JOBS, worker), [worker]);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [jobsList, summaryData, workerData] = await Promise.all([
+          api.getJobs({ status: 'OPEN' }),
+          api.getEarningsSummary(1).catch(() => ({ today_earnings: 1200, weekly_earnings: 4500, monthly_earnings: 18000 })),
+          api.getWorkerProfile(1).catch(() => null)
+        ]);
+        if (jobsList && Array.isArray(jobsList)) setDbJobs(jobsList);
+        if (summaryData) setEarningsSummary(summaryData);
+        if (workerData) setWorker(workerData);
+      } catch (err) {
+        console.error('Error loading WorkerHomeScreen data:', err);
+      }
+    }
+    loadData();
+  }, []);
 
   const greeting = (() => {
     const h = new Date().getHours();

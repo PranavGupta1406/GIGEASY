@@ -1,7 +1,7 @@
 // Job Apply & Daily Wage Proposal Screen
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,20 +25,52 @@ import {
   Shadow,
 } from '../../constants';
 import { GigEasyButton } from '../../components';
-import { MOCK_JOBS, formatWage } from '../../data/mockData';
-import { useWorkerStore } from '../../store';
+import { api } from '../../services/api';
+import { useWorkerStore, useAuthStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApply'>;
 
 export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
-  const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-  const profile = useWorkerStore((s) => s.profile);
-  const applyForJob = useWorkerStore((s) => s.applyForJob);
+  const workerId = useAuthStore((s) => s.workerId) || 1;
+  const [job, setJob] = useState<any>({
+    job_id: jobId,
+    title: 'Commercial Wiring & Setup',
+    wage: 1200,
+    location: 'Okhla Phase 3, New Delhi'
+  });
 
-  const [proposedWage, setProposedWage] = useState<number>(job.maxWage);
+  useEffect(() => {
+    async function loadJob() {
+      try {
+        const fetched = await api.getJobById(jobId);
+        if (fetched) setJob(fetched);
+      } catch (err) {
+        console.error('Error fetching job details in apply screen:', err);
+      }
+    }
+    loadJob();
+  }, [jobId]);
+
+  const [proposedWage, setProposedWage] = useState<number>(1200);
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmitApplication = async () => {
+    setIsSubmitting(true);
+    try {
+      await api.applyJob(job.job_id || jobId, workerId);
+      Alert.alert(
+        'Application Submitted! 🎉',
+        'Your application has been registered in the database. The employer will review your profile.',
+        [{ text: 'View Applications', onPress: () => navigation.navigate('WorkerActivity') }]
+      );
+    } catch (err: any) {
+      Alert.alert('Application Notice', err.message || 'Failed to submit application');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const wagePresets = [
     job.minWage,
@@ -47,22 +79,8 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
     Math.round(job.maxWage * 1.1),
   ];
 
-  const handleApply = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      applyForJob(job.id, proposedWage, note);
-      Alert.alert(
-        'Application Sent',
-        `Your daily wage proposal of ${formatWage(proposedWage)} has been submitted to ${job.employer.businessName}. You'll receive real-time notifications on status updates.`,
-        [
-          {
-            text: 'View Activity',
-            onPress: () => navigation.navigate('MainApp', { initialMode: 'worker' }),
-          },
-        ]
-      );
-    }, 600);
+  const handleApply = async () => {
+    await handleSubmitApplication();
   };
 
   return (

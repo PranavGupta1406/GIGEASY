@@ -1,7 +1,7 @@
 // Worker Skills Selection Screen — Visual Skill Tiles with Vector Icons
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import {
   Shadow,
 } from '../../../constants';
 import { GigEasyButton } from '../../../components';
-import { MOCK_SKILLS, CURRENT_WORKER } from '../../../data/mockData';
+import { api } from '../../../services/api';
 import { useOnboardingStore, useWorkerStore, useAuthStore } from '../../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerSkills'>;
@@ -67,17 +67,34 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
   const setProfile = useWorkerStore((s) => s.setProfile);
   const setOnboarded = useAuthStore((s) => s.setOnboarded);
 
+  const [skillsList, setSkillsList] = useState<any[]>([
+    { skill_id: 1, skill_name: 'Electrician' },
+    { skill_id: 2, skill_name: 'Carpenter' },
+    { skill_id: 3, skill_name: 'Plumber' },
+    { skill_id: 4, skill_name: 'Painter' },
+    { skill_id: 5, skill_name: 'Welder' },
+    { skill_id: 6, skill_name: 'Mason' },
+    { skill_id: 7, skill_name: 'Helper' },
+    { skill_id: 8, skill_name: 'Driver' }
+  ]);
+
+  useEffect(() => {
+    async function fetchDbSkills() {
+      try {
+        const fetched = await api.getSkills();
+        if (fetched && Array.isArray(fetched)) setSkillsList(fetched);
+      } catch (err) {
+        console.error('Error loading skills:', err);
+      }
+    }
+    fetchDbSkills();
+  }, []);
+
   const handleNext = () => {
     if (selectedSkillIds.length === 0) {
       Alert.alert('Skill Required', 'Please select at least one skill you can perform.');
       return;
     }
-    const selectedSkills = MOCK_SKILLS.filter((s) => selectedSkillIds.includes(s.id));
-    setProfile({
-      ...CURRENT_WORKER,
-      name: workerName.trim() || CURRENT_WORKER.name,
-      skills: selectedSkills.length > 0 ? selectedSkills : CURRENT_WORKER.skills,
-    });
     setOnboarded();
     navigation.replace('MainApp', { initialMode: 'worker' });
   };
@@ -112,9 +129,9 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.skillsGrid}
       >
-        {MOCK_SKILLS.map((skill) => {
-          const isSelected = selectedSkillIds.includes(skill.id);
-          const iconName = getSkillIcon(skill.category);
+        {skillsList.map((skill) => {
+          const isSelected = selectedSkillIds.includes(String(skill.skill_id || skill.id));
+          const iconName = getSkillIcon(skill.skill_name || 'General');
 
           return (
             <TouchableOpacity

@@ -1,7 +1,7 @@
 // Post Job Wizard Screen — Visual Skill Selector, Headcount Stepper & Wage Range
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,58 +25,73 @@ import {
   Shadow,
 } from '../../constants';
 import { GigEasyButton } from '../../components';
-import { MOCK_SKILLS, formatWage } from '../../data/mockData';
+import { api } from '../../services/api';
 import { useEmployerStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostJob'>;
 
 export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
   const [title, setTitle] = useState('');
-  const [selectedSkillId, setSelectedSkillId] = useState(MOCK_SKILLS[0].id);
-  const [workersRequired, setWorkersRequired] = useState(5);
-  const [minWage, setMinWage] = useState(850);
-  const [maxWage, setMaxWage] = useState(1000);
-  const [address, setAddress] = useState('Sector 62, Noida');
+  const [skillRequired, setSkillRequired] = useState('Electrician');
+  const [skillsList, setSkillsList] = useState<any[]>([]);
+  const [workersRequired, setWorkersRequired] = useState(2);
+  const [wage, setWage] = useState(1200);
+  const [address, setAddress] = useState('Okhla Phase 3, New Delhi');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const postJob = useEmployerStore((s) => s.postJob);
+  useEffect(() => {
+    async function loadSkills() {
+      try {
+        const list = await api.getSkills();
+        if (list && Array.isArray(list)) setSkillsList(list);
+      } catch (err) {
+        console.error('Error fetching skills:', err);
+      }
+    }
+    loadSkills();
+  }, []);
 
-  const handlePublish = () => {
+  const handlePost = async () => {
     if (!title.trim()) {
-      Alert.alert('Gig Title Required', 'Please enter a title for this gig.');
+      Alert.alert('Required Field', 'Please enter a job title');
       return;
     }
-
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      postJob({
+    try {
+      await api.createJob({
+        employer_id: 1,
         title: title.trim(),
-        description: description.trim() || 'Daily shift support required.',
-        skillRequired: MOCK_SKILLS.find((s) => s.id === selectedSkillId) ?? MOCK_SKILLS[0],
-        location: {
-          lat: 28.6139,
-          lng: 77.209,
-          address,
-          city: 'Noida',
-          state: 'Uttar Pradesh',
-        },
-        startDate: '2026-08-15',
-        startTime: '08:00 AM',
-        endTime: '05:00 PM',
-        workersRequired,
-        minWage,
-        maxWage,
-        requirements: ['Punctual arrival', 'Geofence check-in compliance'],
+        description: description.trim() || 'Work requirement in local area.',
+        skill_required: skillRequired,
+        wage: parseFloat(wage as any) || 1000,
+        job_date: '2026-08-25',
+        start_time: '09:00',
+        end_time: '18:00',
+        location: address,
+        latitude: 28.5355,
+        longitude: 77.2631,
+        workers_required: workersRequired,
       });
-
       Alert.alert(
-        'Gig Published & Dispatched',
-        `AI Matching Engine is now dispatching your gig to verified workers within 10 km.`,
-        [{ text: 'View Dashboard', onPress: () => navigation.goBack() }]
+        'Gig Posted Successfully! 🚀',
+        'Your job is now live in the PostgreSQL database and broadcasted to local workers.',
+        [
+          {
+            text: 'Go to Dashboard',
+            onPress: () => navigation.navigate('MainApp', { initialMode: 'employer' }),
+          },
+        ]
       );
-    }, 600);
+    } catch (err: any) {
+      Alert.alert('Post Job Failed', err.message || 'Failed to create job');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    await handlePost();
   };
 
   return (
@@ -120,13 +135,14 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.skillsScroll}
           >
-            {MOCK_SKILLS.slice(0, 8).map((skill) => {
-              const isSelected = selectedSkillId === skill.id;
+            {skillsList.slice(0, 8).map((skill) => {
+              const sName = skill.skill_name || skill.name;
+              const isSelected = skillRequired === sName;
 
               return (
                 <TouchableOpacity
-                  key={skill.id}
-                  onPress={() => setSelectedSkillId(skill.id)}
+                  key={skill.skill_id || skill.id}
+                  onPress={() => setSkillRequired(sName)}
                   style={[
                     styles.skillChip,
                     isSelected && styles.skillChipSelected,

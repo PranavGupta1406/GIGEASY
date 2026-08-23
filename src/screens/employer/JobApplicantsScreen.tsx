@@ -1,7 +1,7 @@
 // Job Applicants Screen — Match Ranking & Counter-Offer Terminal
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,23 +33,40 @@ import {
   GigEasyMatchBadge,
   GigEasyButton,
 } from '../../components';
-import {
-  MOCK_JOBS,
-  MOCK_APPLICATIONS,
-  formatWage,
-} from '../../data/mockData';
-import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
+import { api } from '../../services/api';
 import { useEmployerStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApplicants'>;
 
 export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
-  const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-  const applicants = MOCK_APPLICATIONS.filter((a) => a.jobId === jobId);
+  const [job, setJob] = useState<any>({
+    job_id: jobId,
+    title: 'Commercial Wiring & Setup',
+    wage: 1200,
+    location: 'Okhla Phase 3, New Delhi'
+  });
+  const [applications, setApplications] = useState<any[]>([]);
+
+  const loadApplicants = async () => {
+    try {
+      const [fetchedJob, fetchedApps] = await Promise.all([
+        api.getJobById(jobId).catch(() => null),
+        api.getApplications({ job_id: jobId })
+      ]);
+      if (fetchedJob) setJob(fetchedJob);
+      if (fetchedApps && Array.isArray(fetchedApps)) setApplications(fetchedApps);
+    } catch (err) {
+      console.error('Error fetching applicants:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadApplicants();
+  }, [jobId]);
 
   const [counterModalVisible, setCounterModalVisible] = useState(false);
-  const [selectedApplicant, setSelectedApplicant] = useState<typeof applicants[0] | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null);
   const [counterWage, setCounterWage] = useState('');
   const [counterMessage, setCounterMessage] = useState('');
 

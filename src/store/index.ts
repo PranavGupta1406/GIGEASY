@@ -1,8 +1,8 @@
-// GigEasy Zustand Stores — Global State Management
+// GigEasy Zustand Stores — 100% Real Database State Management
 
 import { create } from 'zustand';
 import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication } from '../types';
-import { MOCK_JOBS, MOCK_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
+import { api } from '../services/api';
 
 // ─── Auth Store ───────────────────────────────────────────────────────────────
 
@@ -11,23 +11,29 @@ interface AuthState {
   phoneNumber: string;
   role: UserRole | null;
   userId: string | null;
+  workerId: number;
+  employerId: number;
   isOnboarded: boolean;
   setPhoneNumber: (phone: string) => void;
   setAuthenticated: (userId: string, role: UserRole) => void;
+  setRoleIds: (workerId: number, employerId: number) => void;
   setOnboarded: () => void;
   switchRole: (role: UserRole) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: false,
-  phoneNumber: '',
-  role: null,
-  userId: null,
-  isOnboarded: false,
+  isAuthenticated: true, // Auto active for local dev session
+  phoneNumber: '+919876543210',
+  role: 'worker',
+  userId: '1',
+  workerId: 1,
+  employerId: 1,
+  isOnboarded: true,
   setPhoneNumber: (phone) => set({ phoneNumber: phone }),
   setAuthenticated: (userId, role) =>
     set({ isAuthenticated: true, userId, role }),
+  setRoleIds: (workerId, employerId) => set({ workerId, employerId }),
   setOnboarded: () => set({ isOnboarded: true }),
   switchRole: (role) => set({ role }),
   logout: () =>
@@ -46,40 +52,74 @@ interface WorkerState {
   profile: WorkerProfile | null;
   isAvailable: boolean;
   applications: JobApplication[];
-  setProfile: (profile: WorkerProfile) => void;
+  earningsSummary: any | null;
+  loading: boolean;
+  fetchProfile: (workerId?: number) => Promise<void>;
+  fetchApplications: (workerId?: number) => Promise<void>;
+  fetchEarnings: (workerId?: number) => Promise<void>;
   setAvailability: (available: boolean) => void;
-  updateProfile: (updates: Partial<WorkerProfile>) => void;
-  applyForJob: (jobId: string, proposedWage: number, note?: string) => void;
+  updateProfile: (updates: Partial<WorkerProfile>) => Promise<void>;
+  applyForJob: (jobId: number | string, workerId?: number) => Promise<void>;
 }
 
-export const useWorkerStore = create<WorkerState>((set) => ({
+export const useWorkerStore = create<WorkerState>((set, get) => ({
   profile: null,
   isAvailable: true,
   applications: [],
-  setProfile: (profile) => set({ profile }),
+  earningsSummary: null,
+  loading: false,
+
+  fetchProfile: async (workerId = 1) => {
+    set({ loading: true });
+    try {
+      const data = await api.getWorkerProfile(workerId);
+      set({ profile: data, loading: false });
+    } catch (err) {
+      console.error('Error fetching worker profile:', err);
+      set({ loading: false });
+    }
+  },
+
+  fetchApplications: async (workerId = 1) => {
+    try {
+      const apps = await api.getApplications({ worker_id: workerId });
+      set({ applications: apps as any[] });
+    } catch (err) {
+      console.error('Error fetching worker applications:', err);
+    }
+  },
+
+  fetchEarnings: async (workerId = 1) => {
+    try {
+      const summary = await api.getEarningsSummary(workerId);
+      set({ earningsSummary: summary });
+    } catch (err) {
+      console.error('Error fetching earnings summary:', err);
+    }
+  },
+
   setAvailability: (available) => set({ isAvailable: available }),
-  updateProfile: (updates) =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    })),
-  applyForJob: (jobId, proposedWage, note) =>
-    set((state) => {
-      const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-      const newApp: JobApplication = {
-        id: `app_${Date.now()}`,
-        jobId,
-        job,
-        workerId: state.profile?.id ?? 'w1',
-        worker: state.profile ?? CURRENT_WORKER,
-        proposedWage,
-        status: 'APPLIED',
-        note,
-        negotiations: [],
-        appliedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return { applications: [newApp, ...state.applications] };
-    }),
+
+  updateProfile: async (updates) => {
+    const current = get().profile;
+    const workerId = current?.worker_id || current?.id || 1;
+    try {
+      const updated = await api.updateWorkerProfile(workerId, updates);
+      set({ profile: updated });
+    } catch (err) {
+      console.error('Error updating worker profile:', err);
+    }
+  },
+
+  applyForJob: async (jobId, workerId = 1) => {
+    try {
+      await api.applyJob(jobId, workerId);
+      await get().fetchApplications(workerId);
+    } catch (err) {
+      console.error('Error applying for job:', err);
+      throw err;
+    }
+  },
 }));
 
 // ─── Employer Store ───────────────────────────────────────────────────────────
@@ -88,81 +128,138 @@ interface EmployerState {
   profile: EmployerProfile | null;
   jobs: Job[];
   applications: JobApplication[];
-  setProfile: (profile: EmployerProfile) => void;
-  updateProfile: (updates: Partial<EmployerProfile>) => void;
-  postJob: (jobData: Partial<Job>) => void;
-  acceptApplicant: (appId: string) => void;
-  counterOffer: (appId: string, wage: number, message?: string) => void;
+  loading: boolean;
+  fetchProfile: (employerId?: number) => Promise<void>;
+  fetchJobs: (employerId?: number) => Promise<void>;
+  fetchApplications: (jobId?: number) => Promise<void>;
+  updateProfile: (updates: Partial<EmployerProfile>) => Promise<void>;
+  postJob: (jobData: any) => Promise<any>;
+  selectWorker: (jobId: number, workerId: number, employerId?: number) => Promise<void>;
+  completeJob: (bookingId: number, employerId?: number) => Promise<void>;
 }
 
-export const useEmployerStore = create<EmployerState>((set) => ({
+export const useEmployerStore = create<EmployerState>((set, get) => ({
   profile: null,
-  jobs: MOCK_JOBS,
-  applications: MOCK_APPLICATIONS,
-  setProfile: (profile) => set({ profile }),
-  updateProfile: (updates) =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    })),
-  postJob: (jobData) =>
-    set((state) => {
-      const newJob: Job = {
-        id: `j_${Date.now()}`,
-        employerId: state.profile?.id ?? 'e1',
-        employer: state.profile ?? ({} as any),
-        title: jobData.title ?? 'General Shift',
-        description: jobData.description ?? '',
-        skillRequired: jobData.skillRequired ?? MOCK_JOBS[0].skillRequired,
-        location: jobData.location ?? MOCK_JOBS[0].location,
-        startDate: jobData.startDate ?? '2026-08-15',
-        startTime: jobData.startTime ?? '08:00 AM',
-        endTime: jobData.endTime ?? '05:00 PM',
-        workersRequired: jobData.workersRequired ?? 5,
-        workersHired: 0,
-        minWage: jobData.minWage ?? 800,
-        maxWage: jobData.maxWage ?? 1000,
-        requirements: jobData.requirements ?? [],
-        status: 'HIRING',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return { jobs: [newJob, ...state.jobs] };
-    }),
-  acceptApplicant: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId ? { ...a, status: 'ACCEPTED' as const } : a
-      ),
-    })),
-  counterOffer: (appId, wage, message) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? {
-              ...a,
-              status: 'NEGOTIATING' as const,
-              proposedWage: wage,
-            }
-          : a
-      ),
-    })),
+  jobs: [],
+  applications: [],
+  loading: false,
+
+  fetchProfile: async (employerId = 1) => {
+    set({ loading: true });
+    try {
+      const data = await api.getEmployerProfile(employerId);
+      set({ profile: data, loading: false });
+    } catch (err) {
+      console.error('Error fetching employer profile:', err);
+      set({ loading: false });
+    }
+  },
+
+  fetchJobs: async (employerId = 1) => {
+    try {
+      const jobsList = await api.getJobs({ employer_id: employerId });
+      set({ jobs: jobsList as any[] });
+    } catch (err) {
+      console.error('Error fetching employer jobs:', err);
+    }
+  },
+
+  fetchApplications: async (jobId) => {
+    try {
+      const apps = await api.getApplications(jobId ? { job_id: jobId } : {});
+      set({ applications: apps as any[] });
+    } catch (err) {
+      console.error('Error fetching employer applications:', err);
+    }
+  },
+
+  updateProfile: async (updates) => {
+    const empId = get().profile?.employer_id || 1;
+    try {
+      const updated = await api.updateEmployerProfile(empId, updates);
+      set({ profile: updated });
+    } catch (err) {
+      console.error('Error updating employer profile:', err);
+    }
+  },
+
+  postJob: async (jobData) => {
+    try {
+      const created = await api.createJob(jobData);
+      await get().fetchJobs(jobData.employer_id || 1);
+      return created;
+    } catch (err) {
+      console.error('Error posting job:', err);
+      throw err;
+    }
+  },
+
+  selectWorker: async (jobId, workerId, employerId = 1) => {
+    try {
+      await api.selectWorker(jobId, workerId, employerId);
+      await get().fetchJobs(employerId);
+      await get().fetchApplications(jobId);
+    } catch (err) {
+      console.error('Error selecting worker:', err);
+      throw err;
+    }
+  },
+
+  completeJob: async (bookingId, employerId = 1) => {
+    try {
+      await api.completeBooking(bookingId);
+      await get().fetchJobs(employerId);
+    } catch (err) {
+      console.error('Error completing job:', err);
+      throw err;
+    }
+  },
 }));
 
 // ─── Jobs Store ───────────────────────────────────────────────────────────────
 
 interface JobsState {
+  jobs: Job[];
+  loading: boolean;
   filters: JobFilters;
   selectedJob: Job | null;
+  fetchJobs: (filters?: Record<string, any>) => Promise<void>;
+  fetchNearbyJobs: (lat: number, lng: number, radius?: number) => Promise<void>;
   setFilters: (filters: Partial<JobFilters>) => void;
   clearFilters: () => void;
   setSelectedJob: (job: Job | null) => void;
 }
 
-export const useJobsStore = create<JobsState>((set) => ({
+export const useJobsStore = create<JobsState>((set, get) => ({
+  jobs: [],
+  loading: false,
   filters: {
     sortBy: 'recommended',
   },
   selectedJob: null,
+
+  fetchJobs: async (filters = {}) => {
+    set({ loading: true });
+    try {
+      const jobsList = await api.getJobs(filters);
+      set({ jobs: jobsList as any[], loading: false });
+    } catch (err) {
+      console.error('Error fetching jobs:', err);
+      set({ loading: false });
+    }
+  },
+
+  fetchNearbyJobs: async (lat, lng, radius = 20) => {
+    set({ loading: true });
+    try {
+      const nearby = await api.getNearbyJobs(lat, lng, radius);
+      set({ jobs: nearby as any[], loading: false });
+    } catch (err) {
+      console.error('Error fetching nearby jobs:', err);
+      set({ loading: false });
+    }
+  },
+
   setFilters: (filters) =>
     set((state) => ({ filters: { ...state.filters, ...filters } })),
   clearFilters: () => set({ filters: { sortBy: 'recommended' } }),

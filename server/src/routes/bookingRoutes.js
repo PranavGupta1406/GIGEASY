@@ -5,6 +5,7 @@ const { validate } = require('../middleware/validation');
 
 const router = express.Router();
 
+router.get('/', bookingController.getBookings);
 router.get('/:id', bookingController.getBooking);
 router.post(
   '/',

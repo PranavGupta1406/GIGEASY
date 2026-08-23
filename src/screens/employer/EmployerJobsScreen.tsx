@@ -1,7 +1,7 @@
 // Employer Jobs Screen — Manage posted gigs with progress bars
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import { CURRENT_EMPLOYER, MOCK_JOBS, formatWage, formatDate } from '../../data/mockData';
+import { api } from '../../services/api';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
@@ -22,8 +22,19 @@ type FilterTab = 'all' | 'hiring' | 'full';
 
 export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const employer = CURRENT_EMPLOYER;
-  const employerJobs = MOCK_JOBS.filter((j) => j.employerId === employer.id);
+  const [employerJobs, setEmployerJobs] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadEmployerJobs() {
+      try {
+        const jobsList = await api.getJobs({ employer_id: 1 });
+        if (jobsList && Array.isArray(jobsList)) setEmployerJobs(jobsList);
+      } catch (err) {
+        console.error('Error fetching employer jobs:', err);
+      }
+    }
+    loadEmployerJobs();
+  }, []);
 
   const filteredJobs = employerJobs.filter((job) => {
     if (activeTab === 'hiring') return job.workersHired < job.workersRequired;

@@ -1,7 +1,7 @@
 // Worker Jobs Discovery Screen — Premium marketplace visual feed
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,7 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import { MOCK_JOBS, CURRENT_WORKER, formatWage, formatDate } from '../../data/mockData';
-import { rankJobsForWorker } from '../../services/matching/matchingEngine';
+import { api } from '../../services/api';
 import { GigEasyEmptyState } from '../../components';
 import { Job } from '../../types';
 import { useWorkerStore } from '../../store';
@@ -297,7 +296,24 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
     return ['My Skills', ...uniqueWorkerCats, 'All Marketplace', ...otherCats];
   }, [worker.skills]);
 
-  const rankedJobs = useMemo(() => rankJobsForWorker(MOCK_JOBS, worker), [worker]);
+  const [jobsList, setJobsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadJobs() {
+      try {
+        const fetched = await api.getJobs();
+        if (fetched && Array.isArray(fetched)) setJobsList(fetched);
+      } catch (err) {
+        console.error('Error fetching jobs:', err);
+      }
+    }
+    loadJobs();
+  }, []);
+
+  const rankedJobs = useMemo(() => {
+    // Basic formatting placeholder since real matching engine depends on mock models
+    return jobsList.map(job => ({ job, score: 90 }));
+  }, [jobsList, worker]);
 
   const filtered = useMemo(() => {
     return rankedJobs.filter(({ job }) => {
