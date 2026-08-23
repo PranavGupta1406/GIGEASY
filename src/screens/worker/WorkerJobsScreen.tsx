@@ -66,15 +66,20 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
 
   const filtered = useMemo(() => {
     return MOCK_JOBS.filter((job) => {
+      const title = job?.title || '';
+      const city = job?.location?.city || '';
+      const businessName = job?.employer?.businessName || '';
+      const jobCat = job?.skillRequired?.category || '';
+
       const matchSearch =
         search.length === 0 ||
-        job.title.toLowerCase().includes(search.toLowerCase()) ||
-        job.location.city.toLowerCase().includes(search.toLowerCase()) ||
-        job.employer.businessName.toLowerCase().includes(search.toLowerCase());
+        title.toLowerCase().includes(search.toLowerCase()) ||
+        city.toLowerCase().includes(search.toLowerCase()) ||
+        businessName.toLowerCase().includes(search.toLowerCase());
       const matchCat =
         selectedCat === 'All' ||
-        job.skillRequired.category.toLowerCase() === selectedCat.toLowerCase();
-      const matchWage = job.maxWage >= selectedWageMin;
+        jobCat.toLowerCase() === selectedCat.toLowerCase();
+      const matchWage = (job?.maxWage ?? 0) >= selectedWageMin;
       return matchSearch && matchCat && matchWage;
     });
   }, [search, selectedCat, selectedWageMin]);

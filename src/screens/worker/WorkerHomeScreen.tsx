@@ -79,10 +79,11 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
 
   const filteredJobs = useMemo(() => {
     return MOCK_JOBS.filter((job) => {
+      const jobCat = job?.skillRequired?.category || '';
       const matchCat =
         selectedCategory === 'All' ||
-        job.skillRequired.category.toLowerCase() === selectedCategory.toLowerCase();
-      const matchWage = job.maxWage >= selectedWageMin;
+        jobCat.toLowerCase() === selectedCategory.toLowerCase();
+      const matchWage = (job?.maxWage ?? 0) >= selectedWageMin;
       return matchCat && matchWage;
     });
   }, [selectedCategory, selectedWageMin]);

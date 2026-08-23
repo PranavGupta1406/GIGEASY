@@ -18,8 +18,10 @@ import {
 
 import { RootNavigator } from './src/navigation/RootNavigator';
 
-// Keep the splash screen visible while fonts are loaded
-SplashScreen.preventAutoHideAsync().catch(() => {});
+// Keep the splash screen visible while fonts are loaded (native only)
+if (Platform.OS !== 'web') {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+}
 
 export default function App() {
   const { width } = useWindowDimensions();
@@ -73,7 +75,7 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && Platform.OS !== 'web') {
     return null;
   }
 
