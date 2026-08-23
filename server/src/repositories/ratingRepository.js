@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 class RatingRepository {
-  async add({ job_id, worker_id, employer_id, rating, review }) {
+  async add({ booking_id, worker_id, employer_id, rating, review }) {
     if (rating < 1 || rating > 5) {
       throw new Error('Rating must be between 1 and 5');
     }
@@ -12,10 +12,10 @@ class RatingRepository {
 
       // 1. Insert rating
       const res = await client.query(
-        `INSERT INTO ratings (job_id, worker_id, employer_id, rating, review, created_at)
+        `INSERT INTO ratings (booking_id, worker_id, employer_id, rating, review, created_at)
          VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
          RETURNING *`,
-        [job_id, worker_id, employer_id, rating, review]
+        [booking_id, worker_id, employer_id, rating, review]
       );
 
       // 2. Recalculate average rating for worker
@@ -42,12 +42,12 @@ class RatingRepository {
     }
   }
 
-  async findByWorkerOrJob({ worker_id, job_id }) {
+  async findByWorkerOrJob({ worker_id, booking_id }) {
     let sql = `
       SELECT r.*, e.company_name, j.title AS job_title
       FROM ratings r
       JOIN employers e ON r.employer_id = e.employer_id
-      JOIN jobs j ON r.job_id = j.job_id
+      JOIN jobs j ON r.booking_id = j.booking_id
       WHERE 1=1
     `;
     const params = [];
@@ -56,9 +56,9 @@ class RatingRepository {
       params.push(worker_id);
       sql += ` AND r.worker_id = $${params.length}`;
     }
-    if (job_id) {
-      params.push(job_id);
-      sql += ` AND r.job_id = $${params.length}`;
+    if (booking_id) {
+      params.push(booking_id);
+      sql += ` AND r.booking_id = $${params.length}`;
     }
 
     sql += ` ORDER BY r.created_at DESC`;

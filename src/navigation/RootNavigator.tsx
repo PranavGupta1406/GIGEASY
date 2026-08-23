@@ -1,7 +1,3 @@
-// GigEasy Navigation — Single unified app shell with mode-aware content
-// Flow: Welcome → Role → Phone → OTP → Onboarding → MainApp
-// One brand. One color. Two perspectives: Find Work | Hire Workers.
-
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -30,18 +26,21 @@ import { WorkerProfileScreen } from '../screens/worker/WorkerProfileScreen';
 // Employer onboarding
 import { EmployerNameScreen } from '../screens/employer/onboarding/EmployerNameScreen';
 
-// Employer main
-import { EmployerDashboardScreen } from '../screens/employer/EmployerDashboardScreen';
-import { EmployerJobsScreen } from '../screens/employer/EmployerJobsScreen';
-import { EmployerWorkersScreen } from '../screens/employer/EmployerWorkersScreen';
+// Employer main (Marketplace)
+import { EmployerMarketplaceScreen } from '../screens/employer/EmployerMarketplaceScreen';
+import { EmployerOrderHistoryScreen } from '../screens/employer/EmployerOrderHistoryScreen';
 import { EmployerProfileScreen } from '../screens/employer/EmployerProfileScreen';
 
 // Shared
 import { JobDetailScreen } from '../screens/jobs/JobDetailScreen';
 import { JobApplyScreen } from '../screens/jobs/JobApplyScreen';
-import { JobApplicantsScreen } from '../screens/employer/JobApplicantsScreen';
 import { WorkerDetailScreen } from '../screens/employer/WorkerDetailScreen';
-import { PostJobScreen } from '../screens/employer/PostJobScreen';
+
+// New Employer Order Flow
+import { CategoryServicesScreen } from '../screens/employer/CategoryServicesScreen';
+import { ServiceConfigScreen } from '../screens/employer/ServiceConfigScreen';
+import { EmployerCartScreen } from '../screens/employer/EmployerCartScreen';
+import { ActiveOrderTrackingScreen } from '../screens/employer/ActiveOrderTrackingScreen';
 
 // Shell components
 import { ModeSwitcher } from '../components/ModeSwitcher';
@@ -52,21 +51,18 @@ export type RootStackParamList = {
   Role: undefined;
   Phone: undefined;
   OTP: { phoneNumber: string };
-  // Worker onboarding
   WorkerName: undefined;
   WorkerSkills: undefined;
   WorkerWage: undefined;
-  // Employer onboarding
   EmployerName: undefined;
-  // Main app shell
   MainApp: { initialMode?: 'worker' | 'employer' };
-  // Shared push screens
   JobDetail: { jobId: string };
   JobApply: { jobId: string };
-  JobApplicants: { jobId: string };
   WorkerDetail: { workerId: string };
-  PostJob: undefined;
-  // Legacy routes
+  CategoryServices: { categoryId: string };
+  ServiceConfig: { serviceId: string };
+  EmployerCart: undefined;
+  ActiveOrderTracking: { orderId: string };
   Splash: undefined;
   WorkerTabs: { initialMode?: 'worker' | 'employer' } | undefined;
   EmployerTabs: { initialMode?: 'worker' | 'employer' } | undefined;
@@ -76,16 +72,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 type Mode = 'worker' | 'employer';
 type WorkerTab = 'Home' | 'Jobs' | 'Activity' | 'Profile';
-type EmployerTab = 'Dashboard' | 'Jobs' | 'Workers' | 'Profile';
+type EmployerTab = 'Dashboard' | 'History' | 'Cart' | 'Profile';
 
-// Brand constants
 const BRAND = {
   navy: '#1A68D5',
   background: '#F8FAFC',
   border: '#E2E8F0',
 };
-
-// ─── Main App Shell ───────────────────────────────────────────────────────────
 
 function MainAppScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -98,16 +91,8 @@ function MainAppScreen({ route, navigation }: any) {
   const handleModeSwitch = (newMode: Mode) => {
     if (newMode === mode) return;
     Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 110,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 110, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
     ]).start();
     setMode(newMode);
   };
@@ -116,11 +101,26 @@ function MainAppScreen({ route, navigation }: any) {
     if (mode === 'worker') {
       setWorkerTab(tabKey as WorkerTab);
     } else {
-      setEmployerTab(tabKey as EmployerTab);
+      // Map frontend tab names to actual tabs
+      let newTab: EmployerTab = tabKey as EmployerTab;
+      if (tabKey === 'Jobs') newTab = 'History'; // Remap old bottom nav strings
+      if (tabKey === 'Workers') newTab = 'Cart'; 
+      setEmployerTab(newTab);
+      
+      // If clicking cart, we can also push the cart screen directly instead of embedding in shell
+      if (newTab === 'Cart') {
+        navigation.navigate('EmployerCart');
+        setEmployerTab('Dashboard'); // reset tab back visually
+      }
     }
   };
 
-  const activeTab = mode === 'worker' ? workerTab : employerTab;
+  const activeTab = mode === 'worker' ? workerTab : (
+    // Map back for the bottom nav UI
+    employerTab === 'History' ? 'Jobs' : 
+    employerTab === 'Cart' ? 'Workers' : 
+    employerTab
+  );
 
   const renderContent = () => {
     if (mode === 'worker') {
@@ -133,18 +133,16 @@ function MainAppScreen({ route, navigation }: any) {
       }
     } else {
       switch (employerTab) {
-        case 'Dashboard': return <EmployerDashboardScreen shellNavigation={navigation} />;
-        case 'Jobs': return <EmployerJobsScreen shellNavigation={navigation} />;
-        case 'Workers': return <EmployerWorkersScreen shellNavigation={navigation} />;
+        case 'Dashboard': return <EmployerMarketplaceScreen shellNavigation={navigation} />;
+        case 'History': return <EmployerOrderHistoryScreen shellNavigation={navigation} />;
         case 'Profile': return <EmployerProfileScreen shellNavigation={navigation} onSwitchMode={() => handleModeSwitch('worker')} />;
-        default: return <EmployerDashboardScreen shellNavigation={navigation} />;
+        default: return <EmployerMarketplaceScreen shellNavigation={navigation} />;
       }
     }
   };
 
   return (
     <View style={styles.shell}>
-      {/* Top bar: Logo + ModeSwitcher */}
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 14) }]}>
         <View style={styles.logoArea}>
           <Text style={styles.wordmark}>GigEasy</Text>
@@ -152,119 +150,58 @@ function MainAppScreen({ route, navigation }: any) {
         <ModeSwitcher activeMode={mode} onSwitch={handleModeSwitch} />
         <View style={styles.topRight} />
       </View>
-
       <View style={styles.topBarBorder} />
-
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {renderContent()}
       </Animated.View>
-
-      <BottomNav
-        mode={mode}
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-      />
+      <BottomNav mode={mode} activeTab={activeTab as any} onTabPress={handleTabPress} />
     </View>
   );
 }
-
-// ─── Root Navigator ───────────────────────────────────────────────────────────
 
 export function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Welcome"
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
-          contentStyle: { backgroundColor: BRAND.background },
-        }}
+        screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: BRAND.background } }}
       >
-        {/* Auth — new order: Welcome → Role → Phone → OTP */}
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Role" component={RoleScreen} />
         <Stack.Screen name="Phone" component={PhoneScreen} />
         <Stack.Screen name="OTP" component={OTPScreen} />
-
-        {/* Legacy splash redirect */}
         <Stack.Screen name="Splash" component={SplashScreen} />
-
-        {/* Worker Onboarding */}
+        
         <Stack.Screen name="WorkerName" component={WorkerNameScreen} />
         <Stack.Screen name="WorkerSkills" component={WorkerSkillsScreen} />
         <Stack.Screen name="WorkerWage" component={WorkerWageScreen} />
-
-        {/* Employer Onboarding */}
+        
         <Stack.Screen name="EmployerName" component={EmployerNameScreen} />
+        
+        <Stack.Screen name="MainApp" component={MainAppScreen} options={{ animation: 'fade' }} />
+        <Stack.Screen name="WorkerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
+        <Stack.Screen name="EmployerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
 
-        {/* Main App Shell */}
-        <Stack.Screen
-          name="MainApp"
-          component={MainAppScreen}
-          options={{ animation: 'fade' }}
-        />
+        {/* New Employer Marketplace Screens */}
+        <Stack.Screen name="CategoryServices" component={CategoryServicesScreen} />
+        <Stack.Screen name="ServiceConfig" component={ServiceConfigScreen} />
+        <Stack.Screen name="EmployerCart" component={EmployerCartScreen} options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="ActiveOrderTracking" component={ActiveOrderTrackingScreen} options={{ animation: 'slide_from_bottom' }} />
 
-        {/* Legacy routes */}
-        <Stack.Screen
-          name="WorkerTabs"
-          component={MainAppScreen}
-          options={{ animation: 'fade' }}
-        />
-        <Stack.Screen
-          name="EmployerTabs"
-          component={MainAppScreen}
-          options={{ animation: 'fade' }}
-        />
-
-        {/* Shared Push Screens */}
-        <Stack.Screen
-          name="JobDetail"
-          component={JobDetailScreen}
-          options={{ animation: 'slide_from_bottom' }}
-        />
+        <Stack.Screen name="JobDetail" component={JobDetailScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="JobApply" component={JobApplyScreen} />
-        <Stack.Screen name="JobApplicants" component={JobApplicantsScreen} />
         <Stack.Screen name="WorkerDetail" component={WorkerDetailScreen} />
-        <Stack.Screen name="PostJob" component={PostJobScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
-    flex: 1,
-    backgroundColor: BRAND.background,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
-    paddingBottom: 11,
-  },
-  logoArea: {
-    flex: 1,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  wordmark: {
-    fontFamily: FontFamily.bold,
-    fontSize: 17,
-    color: BRAND.navy,
-    letterSpacing: -0.5,
-  },
-  topRight: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  topBarBorder: {
-    height: 1,
-    backgroundColor: BRAND.border,
-  },
-  content: {
-    flex: 1,
-  },
+  shell: { flex: 1, backgroundColor: BRAND.background },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', paddingHorizontal: 18, paddingBottom: 11 },
+  logoArea: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  wordmark: { fontFamily: FontFamily.bold, fontSize: 17, color: BRAND.navy, letterSpacing: -0.5 },
+  topRight: { flex: 1, alignItems: 'flex-end' },
+  topBarBorder: { height: 1, backgroundColor: BRAND.border },
+  content: { flex: 1 },
 });

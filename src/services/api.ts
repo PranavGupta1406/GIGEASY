@@ -26,76 +26,51 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
-  // ─── Skills ─────────────────────────────────────────────────────────
-  async getSkills() {
-    return request<any[]>('/skills');
+  // ─── Marketplace Services ───────────────────────────────────────────
+  async getCategories() {
+    return request<any[]>('/services/categories');
   },
-  async addSkill(skill_name: string) {
-    return request<any>('/skills', {
-      method: 'POST',
-      body: JSON.stringify({ skill_name }),
-    });
+  async getServicesByCategory(categoryId: string | number) {
+    return request<any[]>(`/services?category_id=${categoryId}`);
+  },
+  async getAllServices() {
+    return request<any[]>('/services');
   },
 
-  // ─── Jobs ───────────────────────────────────────────────────────────
-  async getJobs(params?: Record<string, any>) {
-    const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return request<any[]>(`/jobs${query}`);
+  // ─── Cart ───────────────────────────────────────────────────────────
+  async getCart() {
+    return request<any>('/cart');
   },
-  async getJobById(id: string | number) {
-    return request<any>(`/jobs/${id}`);
-  },
-  async getNearbyJobs(lat: number, lng: number, radius = 20) {
-    return request<any[]>(`/jobs/nearby?latitude=${lat}&longitude=${lng}&radius=${radius}`);
-  },
-  async createJob(jobData: any) {
-    return request<any>('/jobs', {
+  async addCartItem(itemData: any) {
+    return request<any>('/cart/items', {
       method: 'POST',
-      body: JSON.stringify(jobData),
+      body: JSON.stringify(itemData),
     });
   },
-  async updateJob(id: string | number, updates: any) {
-    return request<any>(`/jobs/${id}`, {
+  async updateCartItem(itemId: string | number, updates: any) {
+    return request<any>(`/cart/items/${itemId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   },
-  async deleteJob(id: string | number) {
-    return request<any>(`/jobs/${id}`, {
+  async removeCartItem(itemId: string | number) {
+    return request<any>(`/cart/items/${itemId}`, {
       method: 'DELETE',
     });
   },
 
-  // ─── Applications ───────────────────────────────────────────────────
-  async getApplications(params?: { job_id?: any; worker_id?: any }) {
-    const query = params ? '?' + new URLSearchParams(params as any).toString() : '';
-    return request<any[]>(`/applications${query}`);
-  },
-  async applyJob(job_id: number | string, worker_id: number | string) {
-    return request<any>('/applications', {
+  // ─── Orders ─────────────────────────────────────────────────────────
+  async checkoutCart(orderData: any) {
+    return request<any>('/orders/checkout', {
       method: 'POST',
-      body: JSON.stringify({ job_id: Number(job_id), worker_id: Number(worker_id) }),
+      body: JSON.stringify(orderData),
     });
   },
-  async selectWorker(job_id: number | string, worker_id: number | string, employer_id: number | string) {
-    return request<any>('/applications/select-worker', {
-      method: 'POST',
-      body: JSON.stringify({
-        job_id: Number(job_id),
-        worker_id: Number(worker_id),
-        employer_id: Number(employer_id),
-      }),
-    });
+  async getActiveOrders() {
+    return request<any[]>('/orders/active');
   },
-  async acceptApplication(application_id: number | string) {
-    return request<any>(`/applications/${application_id}/accept`, {
-      method: 'PUT',
-    });
-  },
-  async rejectApplication(application_id: number | string) {
-    return request<any>(`/applications/${application_id}/reject`, {
-      method: 'PUT',
-    });
+  async getOrderHistory() {
+    return request<any[]>('/orders/history');
   },
 
   // ─── Bookings ───────────────────────────────────────────────────────

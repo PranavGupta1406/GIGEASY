@@ -52,7 +52,7 @@ class EarningRepository {
     const sql = `
       SELECT e.*, j.title AS job_title, j.location AS job_location, emp.company_name
       FROM earnings e
-      JOIN jobs j ON e.job_id = j.job_id
+      JOIN jobs j ON e.booking_id = j.booking_id
       JOIN employers emp ON j.employer_id = emp.employer_id
       WHERE e.worker_id = $1
       ORDER BY e.payment_date DESC
@@ -61,12 +61,12 @@ class EarningRepository {
     return res.rows;
   }
 
-  async create({ worker_id, job_id, amount, payment_status }) {
+  async create({ worker_id, booking_id, amount, payment_status }) {
     const res = await db.query(
-      `INSERT INTO earnings (worker_id, job_id, amount, payment_status, payment_date)
+      `INSERT INTO earnings (worker_id, booking_id, amount, payment_status, payment_date)
        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
        RETURNING *`,
-      [worker_id, job_id, amount, payment_status || 'PAID']
+      [worker_id, booking_id, amount, payment_status || 'PAID']
     );
     return res.rows[0];
   }
