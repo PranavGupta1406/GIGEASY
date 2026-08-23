@@ -1,7 +1,7 @@
 // Worker Home Screen — Flagship map experience + earnings hero + horizontal job discovery
 // Location + Opportunities + Earnings + Availability
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,38 +9,72 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Animated,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, Spacing, BorderRadius, Colors, Shadow } from '../../constants';
+import { api } from '../../services/api';
 import { MOCK_JOBS, CURRENT_WORKER, formatWage } from '../../data/mockData';
-import { useWorkerStore, useAuthStore } from '../../store';
 import { rankJobsForWorker } from '../../services/matching/matchingEngine';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
+
+import { useWorkerStore } from '../../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
+// Map pins derived directly from MOCK_JOBS real GPS coordinates
 const MAP_JOB_PINS = [
-  { id: 'j1', wage: '₹1,000', title: 'Warehouse Loading', top: '30%', left: '62%' },
-  { id: 'j2', wage: '₹1,500', title: 'Industrial Electrician', top: '56%', left: '18%' },
-  { id: 'j3', wage: '₹850', title: 'Site Helper', top: '22%', left: '26%' },
-  { id: 'j4', wage: '₹1,200', title: 'Event Setup', top: '68%', left: '72%' },
+  { id: 'j1', wage: '₹1,000', title: 'Warehouse Loading Helper',   lat: 28.6139, lng: 77.2090 },  // Noida Sector 62
+  { id: 'j2', wage: '₹850',  title: 'Construction Site Helper',   lat: 28.5355, lng: 77.3910 },  // Ghaziabad Vasundhara
+  { id: 'j3', wage: '₹1,200', title: 'Event Setup Crew',           lat: 28.6304, lng: 77.2177 },  // Connaught Place, Delhi
+  { id: 'j4', wage: '₹1,500', title: 'Industrial Electrician',     lat: 28.6139, lng: 77.2090 },  // Noida Sector 63
 ];
 
 export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [isAvailable, setIsAvailable] = useState(true);
   const [selectedPinId, setSelectedPinId] = useState('j1');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('MY SKILLS');
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const drawerAnim = useRef(new Animated.Value(0)).current;
 
-  const storeProfile = useWorkerStore((s) => s.profile);
-  const authName = useAuthStore((s) => s.name);
-  const worker = storeProfile ?? {
-    ...CURRENT_WORKER,
-    name: authName || CURRENT_WORKER.name,
-  };
+  const [dbJobs, setDbJobs] = useState<any[]>([]);
+  const [earningsSummary, setEarningsSummary] = useState<any>({ today_earnings: 1200, weekly_earnings: 4500, monthly_earnings: 18000 });
+  const [dbWorker, setDbWorker] = useState<any>(null);
+
+  const profile = useWorkerStore((s) => s.profile);
+  const worker = profile ?? CURRENT_WORKER;
   const rankedJobs = useMemo(() => rankJobsForWorker(MOCK_JOBS, worker), [worker]);
+
+  const openFilterDrawer = () => {
+    setFilterDrawerOpen(true);
+    Animated.spring(drawerAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }).start();
+  };
+  const closeFilterDrawer = () => {
+    Animated.timing(drawerAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() =>
+      setFilterDrawerOpen(false)
+    );
+  };
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [jobsList, summaryData, workerData] = await Promise.all([
+          api.getJobs({ status: 'OPEN' }),
+          api.getEarningsSummary(1).catch(() => ({ today_earnings: 1200, weekly_earnings: 4500, monthly_earnings: 18000 })),
+          api.getWorkerProfile(1).catch(() => null)
+        ]);
+        if (jobsList && Array.isArray(jobsList)) setDbJobs(jobsList);
+        if (summaryData) setEarningsSummary(summaryData);
+        if (workerData) setDbWorker(workerData);
+      } catch (err) {
+        console.error('Error loading WorkerHomeScreen data:', err);
+      }
+    }
+    loadData();
+  }, []);
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -49,33 +83,47 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
     return 'Good evening';
   })();
 
+  // Extract worker's selected skill categories (e.g. ['WAREHOUSE', 'ELECTRICAL', 'PLUMBING'])
+  const workerSkillCategories = useMemo(() => {
+    return Array.from(
+      new Set(worker.skills.map((s) => s.category.toUpperCase()))
+    );
+  }, [worker.skills]);
+
+  // Dynamically built categories based on worker's skills
+  const categories = useMemo(() => {
+    return ['MY SKILLS', ...workerSkillCategories];
+  }, [workerSkillCategories]);
+
   const filteredJobs = useMemo(() => {
-    if (selectedCategory === 'ALL') return rankedJobs;
+    if (selectedCategory === 'MY SKILLS') {
+      const catSet = new Set(workerSkillCategories);
+      const matched = rankedJobs.filter(
+        (item) =>
+          catSet.has(item.job.skillRequired.category.toUpperCase()) ||
+          worker.skills.some((s) => s.id === item.job.skillRequired.id)
+      );
+      return matched.length > 0 ? matched : rankedJobs;
+    }
+    if (selectedCategory === 'ALL MARKETPLACE' || selectedCategory === 'ALL') {
+      return rankedJobs;
+    }
     return rankedJobs.filter(
       (item) => item.job.skillRequired.category.toUpperCase() === selectedCategory
     );
-  }, [rankedJobs, selectedCategory]);
+  }, [rankedJobs, selectedCategory, workerSkillCategories, worker.skills]);
+
+  const filteredPins = useMemo(() => {
+    const validJobIds = new Set(filteredJobs.map((j) => j.job.id));
+    const matching = MAP_JOB_PINS.filter((pin) => validJobIds.has(pin.id));
+    return matching.length > 0 ? matching : MAP_JOB_PINS;
+  }, [filteredJobs]);
 
   const nearJobs = filteredJobs.slice(0, 4);
   const bestPaying = [...filteredJobs].sort((a, b) => b.job.maxWage - a.job.maxWage).slice(0, 4);
 
-  const mapMarkers = useMemo(() => {
-    return rankedJobs.slice(0, 6).map((item, idx) => ({
-      id: item.job.id,
-      wage: formatWage(item.job.maxWage),
-      title: item.job.title,
-      category: item.job.skillRequired.category,
-      lat: item.job.location?.lat ?? (28.6139 + (idx % 2 === 0 ? 0.015 : -0.015)),
-      lng: item.job.location?.lng ?? (77.209 + (idx % 3 === 0 ? 0.018 : -0.012)),
-      distance: `${(item.job.distanceKm ?? 2.5).toFixed(1)} km`,
-      top: idx === 0 ? '30%' : idx === 1 ? '56%' : idx === 2 ? '22%' : '68%',
-      left: idx === 0 ? '62%' : idx === 1 ? '18%' : idx === 2 ? '26%' : '72%',
-    }));
-  }, [rankedJobs]);
-
-  const categories = ['ALL', 'WAREHOUSE', 'ELECTRICAL', 'CONSTRUCTION', 'HOSPITALITY', 'DELIVERY'];
-
   return (
+    <View style={styles.screenWrapper}>
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
@@ -89,7 +137,7 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
           </Text>
           <View style={styles.locationRow}>
             <Feather name="map-pin" size={11} color="#0D3B3F" />
-            <Text style={styles.locationText}>{worker.location?.city || 'Noida'}</Text>
+            <Text style={styles.locationText}>{worker.location.city}</Text>
             <View style={styles.dotDivider} />
             <View style={[styles.availDot, { backgroundColor: isAvailable ? '#10B981' : '#8E99A8' }]} />
             <Text style={styles.availText}>{isAvailable ? 'Available' : 'Unavailable'}</Text>
@@ -99,56 +147,18 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
         <Switch
           value={isAvailable}
           onValueChange={setIsAvailable}
-          trackColor={{ false: '#E8E6E0', true: '#C8F135' }}
-          thumbColor={isAvailable ? '#090D14' : '#FFFFFF'}
+          trackColor={{ false: '#E8E6E0', true: '#D4F63D' }}
+          thumbColor={isAvailable ? '#0D3B3F' : '#8E99A8'}
           style={styles.switch}
         />
       </View>
 
-      {/* ─── 2. Earnings Hero Card ─── */}
-      <View style={styles.earningsCard}>
-        <View style={styles.earningsTopRow}>
-          <View>
-            <Text style={styles.earningsLabel}>EARNED THIS MONTH</Text>
-            <Text style={styles.earningsAmount}>₹4,850</Text>
-          </View>
-          <View style={styles.earningsBadge}>
-            <Feather name="trending-up" size={12} color="#C8F135" />
-            <Text style={styles.earningsBadgeText}>+18% vs last month</Text>
-          </View>
-        </View>
-
-        <View style={styles.earningsDivider} />
-
-        <View style={styles.earningsMetaRow}>
-          <View style={styles.metaItem}>
-            <Feather name="briefcase" size={12} color="#8E99A8" />
-            <Text style={styles.metaValue}>{worker.completedJobs}</Text>
-            <Text style={styles.metaLabel}>gigs done</Text>
-          </View>
-          <View style={styles.metaSeparator} />
-          <View style={styles.metaItem}>
-            <Feather name="star" size={12} color="#C8F135" />
-            <Text style={styles.metaValue}>{worker.rating.toFixed(1)}</Text>
-            <Text style={styles.metaLabel}>rating</Text>
-          </View>
-          <View style={styles.metaSeparator} />
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="shield-check" size={13} color="#10B981" />
-            <Text style={[styles.metaValue, { color: '#10B981' }]}>{worker.trustScore}%</Text>
-            <Text style={styles.metaLabel}>trust score</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ─── 3. Work Near You Map Visual ─── */}
+      {/* ─── 2. Work Near You Map Visual (moved up) ─── */}
       <View style={styles.mapSection}>
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.sectionTitle}>Work near you</Text>
-            <Text style={styles.sectionSub}>
-              {rankedJobs.length} live opportunities within {worker.preferredRadius} km
-            </Text>
+            <Text style={styles.sectionSub}>{rankedJobs.length} live opportunities within {worker.preferredRadius} km</Text>
           </View>
           <TouchableOpacity
             onPress={() => shellNavigation.navigate('JobDetail', { jobId: selectedPinId })}
@@ -160,172 +170,262 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
         </View>
 
         <InteractiveMapVisual
-          markers={mapMarkers}
+          markers={filteredPins}
           selectedMarkerId={selectedPinId}
-          userCoordinates={
-            worker.location?.lat && worker.location?.lng
-              ? { lat: worker.location.lat, lng: worker.location.lng }
-              : { lat: 28.6139, lng: 77.209 }
-          }
           onSelectMarker={(id) => {
             setSelectedPinId(id);
             shellNavigation.navigate('JobDetail', { jobId: id });
           }}
-          height={230}
-          locationCity={worker.location?.city || 'Noida'}
-          radiusKm={worker.preferredRadius || 15}
+          height={210}
+          centerLat={28.58}
+          centerLng={77.30}
+          zoom={11}
+          locationCity={worker.location.city}
+          radiusKm={worker.preferredRadius}
         />
       </View>
 
-      {/* ─── 4. Quick Category Filter Pills ─── */}
-      <View style={styles.categorySection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
+      {/* ─── 4. Filter Header Row with Hamburger ─── */}
+      <View style={styles.filterHeaderRow}>
+        <View>
+          <Text style={styles.filterHeaderTitle}>
+            {selectedCategory === 'MY SKILLS'
+              ? 'Gigs Matched to Your Skills'
+              : selectedCategory === 'ALL MARKETPLACE'
+              ? 'All Marketplace Gigs'
+              : `${selectedCategory} Gigs`}
+          </Text>
+          <Text style={styles.filterHeaderSub}>
+            {filteredJobs.length} {filteredJobs.length === 1 ? 'position' : 'positions'} available
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={openFilterDrawer}
+          style={styles.hamburgerBtn}
+          activeOpacity={0.75}
         >
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
-                activeOpacity={0.8}
-                style={[
-                  styles.categoryPill,
-                  isSelected && styles.categoryPillActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.categoryPillText,
-                    isSelected && styles.categoryPillTextActive,
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+          <View style={styles.hamburgerLine} />
+          <View style={[styles.hamburgerLine, { width: 14 }]} />
+          <View style={styles.hamburgerLine} />
+          {selectedCategory !== 'MY SKILLS' && <View style={styles.hamburgerActiveDot} />}
+        </TouchableOpacity>
       </View>
 
-      {/* ─── 5. Near You — Horizontal Discovery ─── */}
-      <View style={styles.discoverySection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Urgent Today</Text>
+      {/* ─── Category Filter Drawer (in-app overlay) ─── */}
+      {filterDrawerOpen && (
+        <TouchableOpacity
+          style={styles.drawerBackdrop}
+          activeOpacity={1}
+          onPress={closeFilterDrawer}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <Animated.View
+              style={[
+                styles.drawerSheet,
+                {
+                  transform: [{
+                    translateY: drawerAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [400, 0],
+                    }),
+                  }],
+                },
+              ]}
+            >
+              <View style={styles.drawerHandle} />
+              <View style={styles.drawerHeader}>
+                <Text style={styles.drawerTitle}>Filter Gigs</Text>
+                {selectedCategory !== 'MY SKILLS' && (
+                  <TouchableOpacity
+                    onPress={() => { setSelectedCategory('MY SKILLS'); closeFilterDrawer(); }}
+                    style={styles.drawerResetBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.drawerResetText}>Reset</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.drawerCategoryGrid}>
+                {categories.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  const count =
+                    cat === 'MY SKILLS'
+                      ? rankedJobs.filter((item) =>
+                          new Set(workerSkillCategories).has(item.job.skillRequired.category.toUpperCase())
+                        ).length
+                      : cat === 'ALL MARKETPLACE' || cat === 'ALL'
+                      ? rankedJobs.length
+                      : rankedJobs.filter(
+                          (j) => j.job.skillRequired.category.toUpperCase() === cat
+                        ).length;
+
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      onPress={() => { setSelectedCategory(cat); closeFilterDrawer(); }}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.drawerCatPill,
+                        isSelected && styles.drawerCatPillActive,
+                      ]}
+                    >
+                      <Text style={[styles.drawerCatText, isSelected && styles.drawerCatTextActive]}>
+                        {cat}
+                      </Text>
+                      {count > 0 && (
+                        <View style={[styles.drawerCatBadge, isSelected && styles.drawerCatBadgeActive]}>
+                          <Text style={[styles.drawerCatBadgeText, isSelected && styles.drawerCatBadgeTextActive]}>
+                            {count}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </Animated.View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
+
+      {/* ─── 5. Empty Filter State or Filtered Job Discovery ─── */}
+      {filteredJobs.length === 0 ? (
+        <View style={styles.emptyCategoryCard}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="search" size={22} color="#0D3B3F" />
+          </View>
+          <Text style={styles.emptyCategoryTitle}>
+            No live {selectedCategory.toLowerCase()} gigs right now
+          </Text>
+          <Text style={styles.emptyCategorySub}>
+            There are currently no open positions in {selectedCategory.toLowerCase()} within {worker.preferredRadius} km.
+          </Text>
           <TouchableOpacity
-            onPress={() => shellNavigation.navigate('JobDetail', { jobId: nearJobs[0]?.job.id ?? 'j1' })}
-            activeOpacity={0.7}
+            onPress={() => setSelectedCategory('ALL')}
+            style={styles.emptyResetBtn}
+            activeOpacity={0.8}
           >
-            <Text style={styles.seeAll}>See all ({nearJobs.length})</Text>
+            <Text style={styles.emptyResetBtnText}>
+              Show All {rankedJobs.length} Available Gigs →
+            </Text>
           </TouchableOpacity>
         </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.hScrollContent}
-        >
-          {nearJobs.map(({ job, match }) => (
-            <TouchableOpacity
-              key={job.id}
-              style={styles.horizontalJobCard}
-              onPress={() => shellNavigation.navigate('JobDetail', { jobId: job.id })}
-              activeOpacity={0.88}
+      ) : (
+        <>
+          {/* ─── 5. Near You — Horizontal Discovery ─── */}
+          <View style={styles.discoverySection}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hScrollContent}
             >
-              <View style={styles.hCardHeader}>
-                <View style={styles.hCategoryBadge}>
-                  <Text style={styles.hCardCategory}>{job.skillRequired.category.toUpperCase()}</Text>
-                </View>
-                <View style={styles.matchScoreBadge}>
-                  <Text style={styles.matchScoreText}>{match.totalScore}% Match</Text>
-                </View>
+              {nearJobs.map(({ job, match }) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.horizontalJobCard}
+                  onPress={() => shellNavigation.navigate('JobDetail', { jobId: job.id })}
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.hCardHeader}>
+                    <View style={styles.hCategoryBadge}>
+                      <Text style={styles.hCardCategory}>{job.skillRequired.category.toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.matchScoreBadge}>
+                      <Text style={styles.matchScoreText}>{match.totalScore}% Match</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.hCardWage}>
+                    {formatWage(job.maxWage)}
+                    <Text style={styles.hCardWageUnit}>/day</Text>
+                  </Text>
+
+                  <Text style={styles.hCardTitle} numberOfLines={2}>{job.title}</Text>
+
+                  <View style={styles.hCardMeta}>
+                    <Feather name="map-pin" size={10} color="#5A6578" />
+                    <Text style={styles.hCardMetaText}>{job.distanceKm} km · {job.location.city}</Text>
+                  </View>
+
+                  <View style={styles.hCardFooter}>
+                    <View style={styles.verifiedRow}>
+                      <MaterialCommunityIcons name="check-decagram" size={12} color="#0D3B3F" />
+                      <Text style={styles.verifiedText}>Verified</Text>
+                    </View>
+                    <Text style={styles.shiftText}>{job.startTime}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* ─── 6. Best Paying Gigs — Dark Luxury Cards ─── */}
+          <View style={styles.discoverySection}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>High Paying Near You</Text>
+                <Text style={styles.sectionSub}>Sorted by highest daily earnings</Text>
               </View>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={styles.seeAll}>Highest Rate</Text>
+              </TouchableOpacity>
+            </View>
 
-              <Text style={styles.hCardWage}>
-                {formatWage(job.maxWage)}
-                <Text style={styles.hCardWageUnit}>/day</Text>
-              </Text>
-
-              <Text style={styles.hCardTitle} numberOfLines={2}>{job.title}</Text>
-
-              <View style={styles.hCardMeta}>
-                <Feather name="map-pin" size={10} color="#5A6578" />
-                <Text style={styles.hCardMetaText}>{job.distanceKm} km · {job.location.city}</Text>
-              </View>
-
-              <View style={styles.hCardFooter}>
-                <View style={styles.verifiedRow}>
-                  <MaterialCommunityIcons name="check-decagram" size={12} color="#0D3B3F" />
-                  <Text style={styles.verifiedText}>Verified</Text>
-                </View>
-                <Text style={styles.shiftText}>{job.startTime}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* ─── 6. Best Paying Gigs — Dark Luxury Cards ─── */}
-      <View style={styles.discoverySection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>High Paying Near You</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.seeAll}>Highest Rate</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.hScrollContent}
-        >
-          {bestPaying.map(({ job }) => (
-            <TouchableOpacity
-              key={job.id}
-              style={[styles.horizontalJobCard, styles.darkCard]}
-              onPress={() => shellNavigation.navigate('JobDetail', { jobId: job.id })}
-              activeOpacity={0.88}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hScrollContent}
             >
-              <View style={styles.hCardHeader}>
-                <View style={styles.hCategoryBadgeDark}>
-                  <Text style={styles.hCardCategoryDark}>{job.skillRequired.category.toUpperCase()}</Text>
-                </View>
-                <View style={styles.instantBadge}>
-                  <Text style={styles.instantBadgeText}>Daily Cash</Text>
-                </View>
-              </View>
+              {bestPaying.map(({ job }) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={[styles.horizontalJobCard, styles.darkCard]}
+                  onPress={() => shellNavigation.navigate('JobDetail', { jobId: job.id })}
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.hCardHeader}>
+                    <View style={styles.hCategoryBadgeDark}>
+                      <Text style={styles.hCardCategoryDark}>{job.skillRequired.category.toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.instantBadge}>
+                      <Text style={styles.instantBadgeText}>Daily Cash</Text>
+                    </View>
+                  </View>
 
-              <Text style={styles.hCardWageDark}>
-                {formatWage(job.maxWage)}
-                <Text style={styles.hCardWageUnitDark}>/day</Text>
-              </Text>
+                  <Text style={styles.hCardWageDark}>
+                    {formatWage(job.maxWage)}
+                    <Text style={styles.hCardWageUnitDark}>/day</Text>
+                  </Text>
 
-              <Text style={styles.hCardTitleDark} numberOfLines={2}>{job.title}</Text>
+                  <Text style={styles.hCardTitleDark} numberOfLines={2}>{job.title}</Text>
 
-              <View style={styles.hCardMeta}>
-                <Feather name="map-pin" size={10} color="rgba(255,255,255,0.4)" />
-                <Text style={styles.hCardMetaTextDark}>{job.distanceKm} km · {job.location.city}</Text>
-              </View>
+                  <View style={styles.hCardMeta}>
+                    <Feather name="map-pin" size={10} color="rgba(255,255,255,0.4)" />
+                    <Text style={styles.hCardMetaTextDark}>{job.distanceKm} km · {job.location.city}</Text>
+                  </View>
 
-              <View style={styles.hCardFooterDark}>
-                <Text style={styles.employerNameDark} numberOfLines={1}>
-                  {job.employer.businessName}
-                </Text>
-                <Feather name="arrow-up-right" size={13} color="#C8F135" />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+                  <View style={styles.hCardFooterDark}>
+                    <Text style={styles.employerNameDark} numberOfLines={1}>
+                      {job.employer.businessName}
+                    </Text>
+                    <Feather name="arrow-up-right" size={13} color="#C8F135" />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </>
+      )}
 
       <View style={styles.bottomPad} />
     </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenWrapper: { flex: 1, position: 'relative' },
   container: { flex: 1, backgroundColor: '#F8F7F4' },
   scrollContent: { paddingBottom: 24 },
 
@@ -487,35 +587,197 @@ const styles = StyleSheet.create({
     color: '#0D3B3F',
   },
 
-  // Category Pills
-  categorySection: {
-    marginTop: 16,
-  },
-  categoryScroll: {
+  // Filter Header Row
+  filterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  filterHeaderTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#090D14',
+    letterSpacing: -0.3,
+  },
+  filterHeaderSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#5A6578',
+    marginTop: 1,
+  },
+
+  // Hamburger button
+  hamburgerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#0D3B3F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    position: 'relative',
+  },
+  hamburgerLine: {
+    width: 18,
+    height: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  hamburgerActiveDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#C8F135',
+    borderWidth: 1.5,
+    borderColor: '#0D3B3F',
+  },
+
+  // Drawer / Bottom Sheet
+  drawerBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(9,13,20,0.55)',
+    justifyContent: 'flex-end',
+    zIndex: 999,
+  },
+  drawerSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 36,
+    paddingTop: 10,
+    ...Shadow.md,
+  },
+  drawerHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#E8E6E0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  drawerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: '#090D14',
+    letterSpacing: -0.4,
+  },
+  drawerResetBtn: {
+    backgroundColor: '#F2F0EB',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  drawerResetText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: '#0D3B3F',
+  },
+  drawerCategoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  categoryPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  drawerCatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F2F0EB',
     borderWidth: 1,
     borderColor: '#E8E6E0',
   },
-  categoryPillActive: {
+  drawerCatPillActive: {
     backgroundColor: '#0D3B3F',
     borderColor: '#0D3B3F',
   },
-  categoryPillText: {
+  drawerCatText: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 10,
+    fontSize: 12,
     color: '#5A6578',
-    letterSpacing: 0.4,
   },
-  categoryPillTextActive: {
+  drawerCatTextActive: {
     color: '#FFFFFF',
     fontFamily: FontFamily.bold,
+  },
+  drawerCatBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  drawerCatBadgeActive: {
+    backgroundColor: 'rgba(200,241,53,0.2)',
+  },
+  drawerCatBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: '#090D14',
+  },
+  drawerCatBadgeTextActive: {
+    color: '#C8F135',
+  },
+
+
+  emptyCategoryCard: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 22,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8E6E0',
+    ...Shadow.xs,
+  },
+  emptyIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E8F3F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emptyCategoryTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 15,
+    color: '#090D14',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  emptyCategorySub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: '#5A6578',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  emptyResetBtn: {
+    backgroundColor: '#0D3B3F',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.full,
+  },
+  emptyResetBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: '#C8F135',
   },
 
   // Discovery

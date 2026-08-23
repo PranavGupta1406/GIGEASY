@@ -1,7 +1,7 @@
 // Employer Workers Screen — Worker discovery directory
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import { MOCK_WORKERS, formatWage } from '../../data/mockData';
+import { api } from '../../services/api';
+import { formatWage } from '../../data/mockData';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
@@ -22,14 +23,26 @@ interface Props { shellNavigation: NavProp; }
 export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [search, setSearch] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [workersList, setWorkersList] = useState<any[]>([]);
 
-  const filtered = MOCK_WORKERS.filter((w) => {
+  useEffect(() => {
+    async function loadWorkers() {
+      try {
+        const list = await api.searchWorkers();
+        if (list && Array.isArray(list)) setWorkersList(list);
+      } catch (err) {
+        console.error('Error searching workers:', err);
+      }
+    }
+    loadWorkers();
+  }, []);
+
+  const filtered = workersList.filter((w) => {
     const matchSearch =
       search.length === 0 ||
-      w.name.toLowerCase().includes(search.toLowerCase()) ||
-      w.skills.some((s) => s.name.toLowerCase().includes(search.toLowerCase())) ||
-      w.location.city.toLowerCase().includes(search.toLowerCase());
-    const matchVerified = !verifiedOnly || w.verificationStatus === 'verified';
+      (w.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (w.location || '').toLowerCase().includes(search.toLowerCase());
+    const matchVerified = !verifiedOnly || w.verified;
     return matchSearch && matchVerified;
   });
 
@@ -83,7 +96,7 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
           >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {worker.name.split(' ').map(n => n[0]).join('')}
+                {worker.name.split(' ').map((n: string) => n[0]).join('')}
               </Text>
             </View>
             <View style={styles.workerInfo}>
@@ -99,7 +112,7 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
                 </View>
               </View>
               <Text style={styles.workerSkills} numberOfLines={1}>
-                {worker.skills.map(s => s.name).join(' · ')}
+                {worker.skills.map((s: any) => s.name).join(' · ')}
               </Text>
               <View style={styles.workerMeta}>
                 <Feather name="map-pin" size={10} color="#5A6578" />

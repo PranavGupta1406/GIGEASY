@@ -1,7 +1,7 @@
 // Worker Profile Screen — Digital Work Identity + Trust Score Breakdown
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,9 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
+import { api } from '../../services/api';
+import { useAuthStore, useWorkerStore } from '../../store';
 import { CURRENT_WORKER, formatWage } from '../../data/mockData';
-import { useWorkerStore, useAuthStore } from '../../store';
-import { signOutUser } from '../../services/firebase';
-import { Skill } from '../../types';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props {
@@ -26,20 +25,36 @@ interface Props {
 }
 
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
-  const storeProfile = useWorkerStore((s) => s.profile);
-  const authName = useAuthStore((s) => s.name);
-  const authEmail = useAuthStore((s) => s.email);
-  const authPhone = useAuthStore((s) => s.phoneNumber);
-  const authUserId = useAuthStore((s) => s.userId);
-  const authKyc = useAuthStore((s) => s.kycStatus);
-  const logout = useAuthStore((s) => s.logout);
+  const workerId = useAuthStore((s) => s.workerId) || 1;
+  const [worker, setWorker] = useState<any>({
+    worker_id: 1,
+    full_name: 'Ramesh Kumar',
+    location: 'Connaught Place, New Delhi',
+    experience_years: 5.5,
+    verified: true,
+    skills: ['Electrician', 'Helper'],
+    completed_jobs_count: 5,
+    average_rating: 4.9
+  });
+  const [earningsSummary, setEarningsSummary] = useState<any>({ today_earnings: 1200, weekly_earnings: 4500, monthly_earnings: 18000, total_earnings: 32000 });
 
-  const worker = storeProfile ?? {
-    ...CURRENT_WORKER,
-    name: authName || CURRENT_WORKER.name,
-    phoneNumber: authPhone || CURRENT_WORKER.phoneNumber,
-    verificationStatus: (authKyc as any) || CURRENT_WORKER.verificationStatus,
-  };
+  useEffect(() => {
+    async function loadWorkerData() {
+      try {
+        const [wData, summary] = await Promise.all([
+          api.getWorkerProfile(workerId),
+          api.getEarningsSummary(workerId)
+        ]);
+        if (wData) setWorker(wData);
+        if (summary) setEarningsSummary(summary);
+      } catch (err) {
+        console.error('Error fetching worker profile screen data:', err);
+      }
+    }
+    loadWorkerData();
+  }, [workerId]);
+
+  const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -47,8 +62,7 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: async () => {
-          await signOutUser().catch(() => {});
+        onPress: () => {
           logout();
           shellNavigation.replace('Welcome');
         },
@@ -62,13 +76,6 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
     { label: 'Completion Rate', detail: '47 gigs, zero disputes', pts: 25, max: 25 },
     { label: 'Employer Ratings', detail: 'Average 4.9 / 5.0 rating', pts: 16, max: 20 },
   ];
-
-  const initials = (worker.name || 'Worker')
-    .split(' ')
-    .filter(Boolean)
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase();
 
   return (
     <ScrollView
@@ -89,7 +96,9 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
         {/* Avatar */}
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
+            <Text style={styles.avatarInitials}>
+              {worker.name.split(' ').map((n: string) => n[0]).join('')}
+            </Text>
           </View>
           {worker.verificationStatus === 'verified' && (
             <View style={styles.verifiedDot}>
@@ -99,7 +108,7 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
         </View>
 
         <Text style={styles.workerName}>{worker.name}</Text>
-        <Text style={styles.workerLocation}>{worker.location?.city || 'Noida'}, {worker.location?.state || 'UP'}</Text>
+        <Text style={styles.workerLocation}>{worker.location.city}, {worker.location.state}</Text>
 
         {/* Trust score ring display */}
         <View style={styles.trustScoreCard}>
@@ -111,9 +120,7 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
             </View>
           </View>
           <View style={styles.verifiedBadgeHero}>
-            <Text style={styles.verifiedBadgeText}>
-              {authKyc === 'verified' ? 'KYC VERIFIED' : 'KYC PENDING'}
-            </Text>
+            <Text style={styles.verifiedBadgeText}>AADHAAR VERIFIED</Text>
           </View>
         </View>
 
@@ -141,47 +148,38 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
         </View>
       </View>
 
-      {/* Account Credentials Card */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account Credentials</Text>
-        <View style={styles.credentialsCard}>
-          <View style={styles.credRow}>
-            <View style={styles.credIconWrap}>
-              <Feather name="mail" size={14} color="#0D3B3F" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.credLabel}>EMAIL</Text>
-              <Text style={styles.credValue}>{authEmail || 'worker@gigeasy.app'}</Text>
-            </View>
+      {/* Earnings Hero Card (moved from Home) */}
+      <View style={styles.earningsCard}>
+        <View style={styles.earningsTopRow}>
+          <View>
+            <Text style={styles.earningsLabel}>EARNED THIS MONTH</Text>
+            <Text style={styles.earningsAmount}>₹4,850</Text>
           </View>
-
-          <View style={styles.credDivider} />
-
-          <View style={styles.credRow}>
-            <View style={styles.credIconWrap}>
-              <Feather name="phone" size={14} color="#0D3B3F" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.credLabel}>MOBILE NUMBER</Text>
-              <Text style={styles.credValue}>{authPhone ? `+91 ${authPhone}` : '+91 98765 43210'}</Text>
-            </View>
+          <View style={styles.earningsBadge}>
+            <Feather name="trending-up" size={12} color="#C8F135" />
+            <Text style={styles.earningsBadgeText}>+18% vs last month</Text>
           </View>
+        </View>
 
-          <View style={styles.credDivider} />
+        <View style={styles.earningsDivider} />
 
-          <View style={styles.credRow}>
-            <View style={styles.credIconWrap}>
-              <Feather name="key" size={14} color="#0D3B3F" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.credLabel}>FIREBASE USER ID</Text>
-              <Text style={styles.credValueMono} numberOfLines={1} ellipsizeMode="middle">
-                {authUserId || 'guest_worker_session'}
-              </Text>
-            </View>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>WORKER</Text>
-            </View>
+        <View style={styles.earningsMetaRow}>
+          <View style={styles.metaItem}>
+            <Feather name="briefcase" size={12} color="#8E99A8" />
+            <Text style={styles.metaValue}>{worker.completedJobs}</Text>
+            <Text style={styles.metaLabel}>gigs done</Text>
+          </View>
+          <View style={styles.metaSeparator} />
+          <View style={styles.metaItem}>
+            <Feather name="star" size={12} color="#C8F135" />
+            <Text style={styles.metaValue}>{worker.rating.toFixed(1)}</Text>
+            <Text style={styles.metaLabel}>rating</Text>
+          </View>
+          <View style={styles.metaSeparator} />
+          <View style={styles.metaItem}>
+            <MaterialCommunityIcons name="shield-check" size={13} color="#10B981" />
+            <Text style={[styles.metaValue, { color: '#10B981' }]}>{worker.trustScore}%</Text>
+            <Text style={styles.metaLabel}>trust score</Text>
           </View>
         </View>
       </View>
@@ -190,7 +188,7 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Verified Skills</Text>
         <View style={styles.skillsRow}>
-          {(worker.skills || []).map((skill: Skill) => (
+          {worker.skills.map((skill: any) => (
             <View key={skill.id} style={styles.skillChip}>
               <Feather name="check" size={11} color="#0D3B3F" strokeWidth={2.5} />
               <Text style={styles.skillText}>{skill.name}</Text>
@@ -373,6 +371,82 @@ const styles = StyleSheet.create({
   statLabel: { fontFamily: FontFamily.medium, fontSize: 9, color: '#5A6578', marginTop: 2 },
   statDivider: { width: 1, backgroundColor: '#E8E6E0' },
 
+  // Earnings card
+  earningsCard: {
+    marginTop: 14,
+    marginHorizontal: 16,
+    backgroundColor: '#090D14',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  earningsTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  earningsLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#8E99A8',
+    letterSpacing: 1,
+  },
+  earningsAmount: {
+    fontFamily: FontFamily.extraBold,
+    fontSize: 28,
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    marginTop: 2,
+  },
+  earningsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(200, 241, 53, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  earningsBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: '#C8F135',
+  },
+  earningsDivider: {
+    height: 1,
+    backgroundColor: '#1E293B',
+    marginVertical: 12,
+  },
+  earningsMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  metaItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  metaValue: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  metaLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 10,
+    color: '#8E99A8',
+  },
+  metaSeparator: {
+    width: 1,
+    height: 18,
+    backgroundColor: '#1E293B',
+  },
+
   // Sections
   section: {
     marginTop: 14,
@@ -455,71 +529,11 @@ const styles = StyleSheet.create({
   switchIcon: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: '#090D14',
+    borderRadius: 18,
+    backgroundColor: '#0D3B3F',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  switchTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#090D14' },
-  switchSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578' },
-
-  // Credentials Card
-  credentialsCard: {
-    backgroundColor: '#F8F7F4',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E8E6E0',
-    gap: 8,
-  },
-  credRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  credIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#E8F3F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  credLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    letterSpacing: 0.5,
-    color: '#8E99A8',
-  },
-  credValue: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#090D14',
-    marginTop: 1,
-  },
-  credValueMono: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#5A6578',
-    marginTop: 1,
-  },
-  credDivider: {
-    height: 1,
-    backgroundColor: '#E8E6E0',
-    marginVertical: 2,
-  },
-  roleBadge: {
-    backgroundColor: '#E8F3F4',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#C0DFE2',
-  },
-  roleBadgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#0D3B3F',
-    letterSpacing: 0.5,
-  },
+  switchTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: '#090D14' },
+  switchSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578', marginTop: 1 },
 });

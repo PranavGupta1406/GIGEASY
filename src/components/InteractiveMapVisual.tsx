@@ -1,5 +1,5 @@
-// GigEasy Functional Google Maps & Interactive Radar Visual
-// Multiplatform: Renders interactive Google Maps on Web when available, with sleek Radar fallback
+// GigEasy Signature Interactive Map Visual with Google Maps Integration
+// Clean urban cartography + Live Google Maps Imagery + Radar sweep + Selectable job pins
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -9,16 +9,13 @@ import {
   TouchableOpacity,
   Animated,
   ViewStyle,
-  Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { Colors, FontFamily, FontSize, BorderRadius, Spacing, Shadow } from '../constants';
-import {
-  loadGoogleMapsScript,
-  GIGEASY_MAP_STYLE,
-  getCurrentCoordinates,
-  GOOGLE_MAPS_API_KEY,
-} from '../services/maps/googleMapsLoader';
+import { googleMapsService } from '../services/maps/googleMapsService';
+import { DEFAULT_MAP_COORDINATES } from '../config/maps';
 
 export interface MapJobMarker {
   id: string;
@@ -26,11 +23,13 @@ export interface MapJobMarker {
   title?: string;
   category?: string;
   distance?: string;
+  top?: string | number; // percentage or px
+  left?: string | number; // percentage or px
   lat?: number;
   lng?: number;
-  top?: string | number; // percentage or px fallback
-  left?: string | number; // percentage or px fallback
 }
+
+export type MapViewMode = 'schematic' | 'roadmap' | 'satellite';
 
 interface InteractiveMapVisualProps {
   markers?: MapJobMarker[];
@@ -41,7 +40,12 @@ interface InteractiveMapVisualProps {
   userLabel?: string;
   locationCity?: string;
   radiusKm?: number;
-  userCoordinates?: { lat: number; lng: number };
+  centerLat?: number;
+  centerLng?: number;
+  zoom?: number;
+  initialMode?: MapViewMode;
+  showModeToggle?: boolean;
+  showGoogleMapsButton?: boolean;
   style?: ViewStyle;
 }
 
@@ -49,173 +53,90 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
   markers = [],
   selectedMarkerId,
   onSelectMarker,
-  height = 230,
+  height = 220,
   showRadar = true,
   userLabel = 'YOU',
   locationCity = 'Noida',
   radiusKm = 10,
-  userCoordinates,
+  centerLat = DEFAULT_MAP_COORDINATES.lat,
+  centerLng = DEFAULT_MAP_COORDINATES.lng,
+  zoom = 13,
+  initialMode = 'roadmap',
+  showModeToggle = true,
+  showGoogleMapsButton = true,
   style,
 }) => {
-  const [mapMode, setMapMode] = useState<'google' | 'radar'>('google');
-  const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
-  const [activeCoords, setActiveCoords] = useState<{ lat: number; lng: number }>(
-    userCoordinates || { lat: 28.6139, lng: 77.209 }
-  );
-  const [selectedJob, setSelectedJob] = useState<MapJobMarker | null>(null);
+  const [viewMode, setViewMode] = useState<MapViewMode>(initialMode);
+  const [imageLoading, setImageLoading] = useState<boolean>(true);
+  const [imageError, setImageError] = useState<boolean>(false);
 
-  const mapDivRef = useRef<HTMLDivElement | null>(null);
-  const googleMapInstance = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const circleRef = useRef<any>(null);
-
-  // Radar Animation values
   const pulseAnim1 = useRef(new Animated.Value(0)).current;
   const pulseAnim2 = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
-  // Initialize coordinates
-  useEffect(() => {
-    if (userCoordinates) {
-      setActiveCoords(userCoordinates);
-    } else if (Platform.OS === 'web') {
-      getCurrentCoordinates().then((coords) => {
-        setActiveCoords(coords);
-      });
-    }
-  }, [userCoordinates]);
+  /**
+   * Converts a real lat/lng to overlay top/left percentages (0–100)
+   * based on the Mercator projection used by Google Maps Static API.
+   * zoom=13 → ~156m/px at lat 28.6 → map spans ~600px * 156m = 93.6km wide.
+   */
+  const latLngToOverlayPercent = (lat: number, lng: number): { top: string; left: string } => {
+    // Tile size in degrees at this zoom level
+    const tilesAtZoom = Math.pow(2, zoom);
+    const degreesPerTileX = 360 / tilesAtZoom;
+    const degreesPerTileY = 360 / tilesAtZoom; // approx — Mercator
 
-  // Load Google Maps on Web
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      setMapMode('radar');
-      return;
-    }
+    // Delta from center
+    const dLng = lng - centerLng;
 
-    let isMounted = true;
-    loadGoogleMapsScript()
-      .then(() => {
-        if (isMounted) {
-          setIsGoogleMapsReady(true);
-        }
-      })
-      .catch((err) => {
-        console.warn('Google Maps script unavailable, using radar view fallback:', err.message);
-        if (isMounted) {
-          setMapMode('radar');
-        }
-      });
-
-    return () => {
-      isMounted = false;
+    // Mercator latitude to Y
+    const toMercY = (latDeg: number) => {
+      const latRad = (latDeg * Math.PI) / 180;
+      return Math.log(Math.tan(Math.PI / 4 + latRad / 2));
     };
-  }, []);
+    const dMercY = toMercY(centerLat) - toMercY(lat); // positive = below center
 
-  // Initialize and update Google Map instance
+    // Convert delta to fraction of the visible tile span
+    // The static map image covers (width / 256) * degreesPerTile degrees
+    // We use 1.0 tile width/height as visible span
+    const fracX = 0.5 + dLng / degreesPerTileX;
+    const fracY = 0.5 + (dMercY / (degreesPerTileY * (Math.PI / 180)));
+
+    // Clamp to 5%–90% so pins don't go off-edge
+    const left = `${Math.min(90, Math.max(5, fracX * 100)).toFixed(1)}%`;
+    const top = `${Math.min(88, Math.max(5, fracY * 100)).toFixed(1)}%`;
+    return { top, left };
+  };
+
+  // Generate Google Maps Static URL with markers
+  const googleMapMarkers = markers
+    .filter((m) => m.lat && m.lng)
+    .map((m) => ({
+      lat: m.lat!,
+      lng: m.lng!,
+      color: m.id === selectedMarkerId ? '0xC8F135' : '0x0D3B3F',
+      size: 'mid' as const,
+    }));
+
+  const googleMapUrl = googleMapsService.getStaticMapUrl({
+    centerLat,
+    centerLng,
+    zoom,
+    width: 600,
+    height: Math.round(height * 1.5),
+    scale: 2,
+    mapType: viewMode === 'satellite' ? 'satellite' : 'roadmap',
+    theme: viewMode === 'satellite' ? undefined : 'silver',
+    markers: googleMapMarkers.length > 0 ? googleMapMarkers : undefined,
+  });
+
   useEffect(() => {
-    if (Platform.OS !== 'web' || !isGoogleMapsReady || !mapDivRef.current || mapMode !== 'google') {
-      return;
-    }
+    setImageLoading(true);
 
-    const google = (window as any).google;
-    if (!google?.maps) return;
+    setImageError(false);
+  }, [viewMode, centerLat, centerLng, zoom]);
 
-    // Create or reuse map instance
-    if (!googleMapInstance.current) {
-      googleMapInstance.current = new google.maps.Map(mapDivRef.current, {
-        center: activeCoords,
-        zoom: 13,
-        styles: GIGEASY_MAP_STYLE,
-        disableDefaultUI: true,
-        zoomControl: false,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        gestureHandling: 'greedy',
-      });
-    } else {
-      googleMapInstance.current.setCenter(activeCoords);
-    }
-
-    const map = googleMapInstance.current;
-
-    // Clear old markers
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
-
-    // Draw Operating Radius Circle
-    if (circleRef.current) {
-      circleRef.current.setMap(null);
-    }
-    circleRef.current = new google.maps.Circle({
-      strokeColor: '#0D3B3F',
-      strokeOpacity: 0.5,
-      strokeWeight: 1.5,
-      fillColor: '#0D3B3F',
-      fillOpacity: 0.05,
-      map,
-      center: activeCoords,
-      radius: radiusKm * 1000,
-    });
-
-    // 1. Plot User Marker
-    const userMarker = new google.maps.Marker({
-      position: activeCoords,
-      map,
-      title: 'Your Location',
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 8,
-        fillColor: '#090D14',
-        fillOpacity: 1,
-        strokeColor: '#C8F135',
-        strokeWeight: 3,
-      },
-    });
-    markersRef.current.push(userMarker);
-
-    // 2. Plot Job Markers
-    markers.forEach((marker, index) => {
-      const lat = marker.lat ?? activeCoords.lat + (index % 2 === 0 ? 0.012 : -0.014) * (index + 1);
-      const lng = marker.lng ?? activeCoords.lng + (index % 3 === 0 ? 0.015 : -0.011) * (index + 1);
-      const displayWage = typeof marker.wage === 'number' ? `₹${marker.wage.toLocaleString('en-IN')}` : marker.wage;
-      const isSelected = marker.id === selectedMarkerId;
-
-      const jobMarker = new google.maps.Marker({
-        position: { lat, lng },
-        map,
-        title: marker.title || `Gig ${displayWage}`,
-        label: {
-          text: displayWage,
-          color: isSelected ? '#C8F135' : '#090D14',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          className: 'gigeasy-map-marker-label',
-        },
-        icon: {
-          path: 'M -28,-14 L 28,-14 A 12,12 0 0,1 28,10 L 6,10 L 0,16 L -6,10 L -28,10 A 12,12 0 0,1 -28,-14 Z',
-          fillColor: isSelected ? '#090D14' : '#FFFFFF',
-          fillOpacity: 0.96,
-          strokeColor: isSelected ? '#C8F135' : '#D4D1C8',
-          strokeWeight: 1.5,
-          scale: 1,
-          labelOrigin: new google.maps.Point(0, -2),
-        },
-      });
-
-      jobMarker.addListener('click', () => {
-        setSelectedJob(marker);
-        onSelectMarker?.(marker.id);
-        map.panTo({ lat, lng });
-      });
-
-      markersRef.current.push(jobMarker);
-    });
-  }, [isGoogleMapsReady, mapMode, markers, selectedMarkerId, activeCoords, radiusKm]);
-
-  // Radar Animation Loop
   useEffect(() => {
-    if (!showRadar && mapMode !== 'radar') return;
+    if (!showRadar) return;
 
     const p1 = Animated.loop(
       Animated.sequence([
@@ -272,50 +193,39 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
       p2.stop();
       fl.stop();
     };
-  }, [showRadar, mapMode]);
+  }, [showRadar]);
 
-  // Recenter Google Map to User Location
-  const handleRecenter = () => {
-    if (googleMapInstance.current) {
-      getCurrentCoordinates().then((coords) => {
-        setActiveCoords(coords);
-        googleMapInstance.current.panTo(coords);
-        googleMapInstance.current.setZoom(13);
-      });
-    }
+  const handleOpenGoogleMaps = () => {
+    const selected = markers.find((m) => m.id === selectedMarkerId);
+    const destLat = selected?.lat ?? centerLat;
+    const destLng = selected?.lng ?? centerLng;
+    const label = selected?.title ?? `${locationCity} Work Site`;
+    googleMapsService.openLocation(destLat, destLng, label);
   };
 
-  const handleZoomIn = () => {
-    if (googleMapInstance.current) {
-      googleMapInstance.current.setZoom(googleMapInstance.current.getZoom() + 1);
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (googleMapInstance.current) {
-      googleMapInstance.current.setZoom(Math.max(googleMapInstance.current.getZoom() - 1, 8));
-    }
-  };
+  const isGoogleMode = (viewMode === 'roadmap' || viewMode === 'satellite') && !imageError;
 
   return (
     <View style={[styles.mapContainer, style]}>
-      {/* ─── Map Canvas Area ─── */}
       <View style={[styles.mapCanvas, { height }]}>
-        {/* Real Google Maps Container (Web) */}
-        {Platform.OS === 'web' && (
-          <div
-            ref={mapDivRef}
-            style={{
-              width: '100%',
-              height: '100%',
-              display: mapMode === 'google' ? 'block' : 'none',
+        {/* Layer 1: Google Maps Static Imagery */}
+        {isGoogleMode && (
+          <Image
+            source={{ uri: googleMapUrl }}
+            style={styles.googleMapImage}
+            resizeMode="cover"
+            onLoadEnd={() => setImageLoading(false)}
+            onError={() => {
+              setImageLoading(false);
+              setImageError(true);
             }}
           />
         )}
 
-        {/* Radar / Vector Fallback View */}
-        {mapMode === 'radar' && (
-          <>
+        {/* Layer 2: Vector Cartography (Active in schematic mode or while image loading/fallback) */}
+        {(!isGoogleMode || imageLoading) && (
+          <View style={StyleSheet.absoluteFill}>
+            {/* Urban grid and arterial routes */}
             <View style={styles.gridLineH1} />
             <View style={styles.gridLineH2} />
             <View style={styles.gridLineV1} />
@@ -324,171 +234,232 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
             <View style={styles.arterialRoadV} />
             <View style={styles.diagonalRoad} />
 
+            {/* Subtle city zone polygons */}
             <View style={styles.zoneBlock1} />
             <View style={styles.zoneBlock2} />
             <View style={styles.zoneBlock3} />
+          </View>
+        )}
 
-            {/* Animated Radar Pulse */}
-            {showRadar && (
-              <>
-                <Animated.View
-                  style={[
-                    styles.radarWave,
+        {/* Subtle Dark/Light Overlay for contrast over Google Maps */}
+        {isGoogleMode && viewMode === 'satellite' && (
+          <View style={styles.satelliteTintOverlay} />
+        )}
+        {isGoogleMode && viewMode === 'roadmap' && (
+          <View style={styles.roadmapTintOverlay} />
+        )}
+
+        {/* Loading Spinner */}
+        {isGoogleMode && imageLoading && (
+          <View style={styles.loaderOverlay}>
+            <ActivityIndicator size="small" color="#0D3B3F" />
+          </View>
+        )}
+
+        {/* Layer 3: Live Radar Waves */}
+        {showRadar && (
+          <>
+            <Animated.View
+              style={[
+                styles.radarWave,
+                {
+                  transform: [
                     {
-                      transform: [
-                        {
-                          scale: pulseAnim1.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.2, 2.8],
-                          }),
-                        },
-                      ],
-                      opacity: pulseAnim1.interpolate({
-                        inputRange: [0, 0.6, 1],
-                        outputRange: [0.6, 0.25, 0],
+                      scale: pulseAnim1.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.2, 2.8],
                       }),
                     },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.radarWave,
+                  ],
+                  opacity: pulseAnim1.interpolate({
+                    inputRange: [0, 0.6, 1],
+                    outputRange: [0.5, 0.2, 0],
+                  }),
+                },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.radarWave,
+                {
+                  transform: [
                     {
-                      transform: [
-                        {
-                          scale: pulseAnim2.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.2, 2.8],
-                          }),
-                        },
-                      ],
-                      opacity: pulseAnim2.interpolate({
-                        inputRange: [0, 0.6, 1],
-                        outputRange: [0.6, 0.25, 0],
+                      scale: pulseAnim2.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.2, 2.8],
                       }),
                     },
-                  ]}
-                />
-              </>
-            )}
-
-            {/* Center User Pin */}
-            <View style={styles.userMarkerContainer}>
-              <View style={styles.userDotPulse} />
-              <View style={styles.userDot} />
-              <View style={styles.userBadge}>
-                <Text style={styles.userBadgeText}>{userLabel}</Text>
-              </View>
-            </View>
-
-            {/* Fallback Relative Job Pins */}
-            {markers.map((marker, idx) => {
-              const isSelected = marker.id === selectedMarkerId;
-              const displayWage =
-                typeof marker.wage === 'number' ? `₹${marker.wage.toLocaleString('en-IN')}` : marker.wage;
-              const top = marker.top ?? (idx % 2 === 0 ? '32%' : '65%');
-              const left = marker.left ?? (idx % 3 === 0 ? '68%' : '24%');
-
-              return (
-                <TouchableOpacity
-                  key={marker.id}
-                  onPress={() => onSelectMarker?.(marker.id)}
-                  activeOpacity={0.85}
-                  style={[styles.markerWrap, { top: top as any, left: left as any }]}
-                >
-                  <Animated.View
-                    style={[
-                      styles.markerPill,
-                      isSelected ? styles.markerPillActive : styles.markerPillDefault,
-                      { transform: [{ translateY: isSelected ? floatAnim : 0 }] },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.markerWage,
-                        isSelected ? styles.markerWageActive : styles.markerWageDefault,
-                      ]}
-                    >
-                      {displayWage}
-                    </Text>
-                  </Animated.View>
-                  <View
-                    style={[
-                      styles.markerAnchorDot,
-                      isSelected ? styles.anchorDotActive : styles.anchorDotDefault,
-                    ]}
-                  />
-                </TouchableOpacity>
-              );
-            })}
+                  ],
+                  opacity: pulseAnim2.interpolate({
+                    inputRange: [0, 0.6, 1],
+                    outputRange: [0.5, 0.2, 0],
+                  }),
+                },
+              ]}
+            />
           </>
         )}
 
-        {/* ─── Floating Map Action Controls ─── */}
-        <View style={styles.floatingControls}>
-          {Platform.OS === 'web' && isGoogleMapsReady && (
-            <TouchableOpacity
-              style={styles.floatingBtn}
-              onPress={() => setMapMode(mapMode === 'google' ? 'radar' : 'google')}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons
-                name={mapMode === 'google' ? 'radar' : 'map'}
-                size={16}
-                color="#090D14"
-              />
-            </TouchableOpacity>
-          )}
-
-          {mapMode === 'google' && (
-            <>
-              <TouchableOpacity style={styles.floatingBtn} onPress={handleRecenter} activeOpacity={0.8}>
-                <Feather name="crosshair" size={15} color="#090D14" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.floatingBtn} onPress={handleZoomIn} activeOpacity={0.8}>
-                <Feather name="plus" size={15} color="#090D14" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.floatingBtn} onPress={handleZoomOut} activeOpacity={0.8}>
-                <Feather name="minus" size={15} color="#090D14" />
-              </TouchableOpacity>
-            </>
-          )}
+        {/* Center User Marker */}
+        <View style={styles.userMarkerContainer}>
+          <View style={styles.userDotPulse} />
+          <View style={styles.userDot} />
+          <View style={styles.userBadge}>
+            <Text style={styles.userBadgeText}>{userLabel}</Text>
+          </View>
         </View>
 
-        {/* ─── Interactive Selected Job Popup Card ─── */}
-        {selectedJob && (
-          <View style={styles.jobPreviewCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.previewTitle} numberOfLines={1}>
-                {selectedJob.title || 'Gig Opportunity'}
-              </Text>
-              <Text style={styles.previewSub}>
-                {typeof selectedJob.wage === 'number'
-                  ? `₹${selectedJob.wage.toLocaleString('en-IN')} / day`
-                  : selectedJob.wage}{' '}
-                · {locationCity}
-              </Text>
-            </View>
+        {/* Job Pins */}
+        {markers.map((marker, index) => {
+          const isSelected = marker.id === selectedMarkerId;
+          const displayWage =
+            typeof marker.wage === 'number' ? `₹${marker.wage.toLocaleString('en-IN')}` : marker.wage;
+
+          // Use real GPS coordinates if available, otherwise fall back to explicit top/left, then defaults
+          let topPos: string;
+          let leftPos: string;
+          if (marker.lat && marker.lng) {
+            const coords = latLngToOverlayPercent(marker.lat, marker.lng);
+            topPos = coords.top;
+            leftPos = coords.left;
+          } else if (marker.top !== undefined && marker.left !== undefined) {
+            topPos = String(marker.top);
+            leftPos = String(marker.left);
+          } else {
+            const defaultTops = ['30%', '58%', '24%', '68%', '42%'];
+            const defaultLefts = ['62%', '20%', '28%', '74%', '48%'];
+            topPos = defaultTops[index % defaultTops.length];
+            leftPos = defaultLefts[index % defaultLefts.length];
+          }
+
+          return (
             <TouchableOpacity
-              onPress={() => onSelectMarker?.(selectedJob.id)}
-              style={styles.previewBtn}
-              activeOpacity={0.8}
+              key={marker.id}
+              onPress={() => onSelectMarker?.(marker.id)}
+              activeOpacity={0.85}
+              style={[
+                styles.markerWrap,
+                {
+                  top: topPos as any,
+                  left: leftPos as any,
+                },
+              ]}
             >
-              <Text style={styles.previewBtnText}>View →</Text>
+              <Animated.View
+                style={[
+                  styles.markerPill,
+                  isSelected ? styles.markerPillActive : styles.markerPillDefault,
+                  { transform: [{ translateY: isSelected ? floatAnim : 0 }] },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.markerWage,
+                    isSelected ? styles.markerWageActive : styles.markerWageDefault,
+                  ]}
+                >
+                  {displayWage}
+                </Text>
+              </Animated.View>
+              <View
+                style={[
+                  styles.markerAnchorDot,
+                  isSelected ? styles.anchorDotActive : styles.anchorDotDefault,
+                ]}
+              />
             </TouchableOpacity>
-          </View>
-        )}
+          );
+        })}
+
+        {/* Top Control Bar: Mode Toggle + Google Maps Badge */}
+        <View style={styles.topControlBar}>
+          {showModeToggle && (
+            <View style={styles.modeToggleGroup}>
+              <TouchableOpacity
+                onPress={() => setViewMode('roadmap')}
+                activeOpacity={0.8}
+                style={[
+                  styles.modeBtn,
+                  viewMode === 'roadmap' && styles.modeBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeBtnText,
+                    viewMode === 'roadmap' && styles.modeBtnTextActive,
+                  ]}
+                >
+                  Map
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setViewMode('satellite')}
+                activeOpacity={0.8}
+                style={[
+                  styles.modeBtn,
+                  viewMode === 'satellite' && styles.modeBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeBtnText,
+                    viewMode === 'satellite' && styles.modeBtnTextActive,
+                  ]}
+                >
+                  Satellite
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setViewMode('schematic')}
+                activeOpacity={0.8}
+                style={[
+                  styles.modeBtn,
+                  viewMode === 'schematic' && styles.modeBtnActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeBtnText,
+                    viewMode === 'schematic' && styles.modeBtnTextActive,
+                  ]}
+                >
+                  Radar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showGoogleMapsButton && (
+            <TouchableOpacity
+              onPress={handleOpenGoogleMaps}
+              activeOpacity={0.8}
+              style={styles.googleMapsBadgeBtn}
+            >
+              <Feather name="external-link" size={10} color="#0D3B3F" />
+              <Text style={styles.googleMapsBadgeText}>Google Maps</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* ─── Map Bottom Status Strip ─── */}
+      {/* Map Bottom Status Strip */}
       <View style={styles.statusStrip}>
         <View style={styles.stripLeft}>
           <View style={styles.livePulseDot} />
           <Text style={styles.stripLiveText}>
-            {mapMode === 'google' ? 'Google Maps Live' : 'Live Radar'} · {locationCity}
+            {viewMode === 'satellite' ? 'Satellite View' : 'Live Radar'} · {locationCity}
           </Text>
         </View>
-        <Text style={styles.stripRadiusText}>Within {radiusKm} km radius</Text>
+        <TouchableOpacity
+          onPress={handleOpenGoogleMaps}
+          activeOpacity={0.7}
+          style={styles.stripRightBtn}
+        >
+          <Feather name="navigation" size={11} color="#0D3B3F" />
+          <Text style={styles.stripRadiusText}>Radius {radiusKm} km · Navigate</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -508,12 +479,141 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECEAE4',
     overflow: 'hidden',
   },
-  gridLineH1: { position: 'absolute', left: 0, right: 0, top: '25%', height: 1, backgroundColor: '#E0DDD5' },
-  gridLineH2: { position: 'absolute', left: 0, right: 0, top: '75%', height: 1, backgroundColor: '#E0DDD5' },
-  gridLineV1: { position: 'absolute', top: 0, bottom: 0, left: '30%', width: 1, backgroundColor: '#E0DDD5' },
-  gridLineV2: { position: 'absolute', top: 0, bottom: 0, left: '70%', width: 1, backgroundColor: '#E0DDD5' },
-  arterialRoadH: { position: 'absolute', left: 0, right: 0, top: '50%', height: 6, backgroundColor: '#DFDBD2' },
-  arterialRoadV: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 6, backgroundColor: '#DFDBD2' },
+  googleMapImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  satelliteTintOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(9, 13, 20, 0.25)',
+  },
+  roadmapTintOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  loaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(236, 234, 228, 0.6)',
+  },
+  topControlBar: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  modeToggleGroup: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: BorderRadius.full,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    ...Shadow.xs,
+  },
+  modeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  modeBtnActive: {
+    backgroundColor: '#090D14',
+  },
+  modeBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 9,
+    color: '#5A6578',
+  },
+  modeBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  googleMapsBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    ...Shadow.xs,
+  },
+  googleMapsBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#0D3B3F',
+  },
+  gridLineH1: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '25%',
+    height: 1,
+    backgroundColor: '#E0DDD5',
+  },
+  gridLineH2: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '75%',
+    height: 1,
+    backgroundColor: '#E0DDD5',
+  },
+  gridLineV1: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '30%',
+    width: 1,
+    backgroundColor: '#E0DDD5',
+  },
+  gridLineV2: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '70%',
+    width: 1,
+    backgroundColor: '#E0DDD5',
+  },
+  arterialRoadH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    height: 6,
+    backgroundColor: '#DFDBD2',
+  },
+  arterialRoadV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    width: 6,
+    backgroundColor: '#DFDBD2',
+  },
   diagonalRoad: {
     position: 'absolute',
     top: '-20%',
@@ -523,9 +623,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#DFDBD2',
     transform: [{ rotate: '35deg' }],
   },
-  zoneBlock1: { position: 'absolute', top: '12%', left: '60%', width: 65, height: 45, borderRadius: 6, backgroundColor: '#E4E0D6' },
-  zoneBlock2: { position: 'absolute', bottom: '15%', left: '12%', width: 55, height: 40, borderRadius: 6, backgroundColor: '#E4E0D6' },
-  zoneBlock3: { position: 'absolute', top: '18%', left: '10%', width: 50, height: 35, borderRadius: 6, backgroundColor: '#E4E0D6' },
+  zoneBlock1: {
+    position: 'absolute',
+    top: '12%',
+    left: '60%',
+    width: 65,
+    height: 45,
+    borderRadius: 6,
+    backgroundColor: '#E4E0D6',
+  },
+  zoneBlock2: {
+    position: 'absolute',
+    bottom: '15%',
+    left: '12%',
+    width: 55,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: '#E4E0D6',
+  },
+  zoneBlock3: {
+    position: 'absolute',
+    top: '18%',
+    left: '10%',
+    width: 50,
+    height: 35,
+    borderRadius: 6,
+    backgroundColor: '#E4E0D6',
+  },
   radarWave: {
     position: 'absolute',
     top: '50%',
@@ -549,13 +673,14 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 5,
   },
   userDotPulse: {
     position: 'absolute',
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(200, 241, 53, 0.4)',
+    backgroundColor: 'rgba(200, 241, 53, 0.45)',
   },
   userDot: {
     width: 14,
@@ -582,6 +707,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     transform: [{ translateX: -24 }, { translateY: -14 }],
+    zIndex: 6,
   },
   markerPill: {
     paddingHorizontal: 7,
@@ -605,76 +731,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: -0.3,
   },
-  markerWageActive: { color: '#C8F135' },
-  markerWageDefault: { color: '#090D14' },
+  markerWageActive: {
+    color: '#C8F135',
+  },
+  markerWageDefault: {
+    color: '#090D14',
+  },
   markerAnchorDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
     marginTop: 1.5,
   },
-  anchorDotActive: { backgroundColor: '#C8F135' },
-  anchorDotDefault: { backgroundColor: '#8E99A8' },
-
-  // Floating map controls
-  floatingControls: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    gap: 6,
-    zIndex: 10,
-  },
-  floatingBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.sm,
-  },
-
-  // Selected Job Card
-  jobPreviewCard: {
-    position: 'absolute',
-    bottom: 8,
-    left: 10,
-    right: 10,
-    backgroundColor: '#090D14',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 15,
-    ...Shadow.md,
-  },
-  previewTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
-  },
-  previewSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#8E99A8',
-    marginTop: 2,
-  },
-  previewBtn: {
+  anchorDotActive: {
     backgroundColor: '#C8F135',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
   },
-  previewBtnText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#090D14',
+  anchorDotDefault: {
+    backgroundColor: '#8E99A8',
   },
-
   statusStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -685,8 +759,30 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E8E6E0',
   },
-  stripLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  livePulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-  stripLiveText: { fontFamily: FontFamily.semiBold, fontSize: 11, color: '#090D14' },
-  stripRadiusText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#8E99A8' },
+  stripLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  stripLiveText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: '#090D14',
+  },
+  stripRightBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stripRadiusText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: '#0D3B3F',
+  },
 });

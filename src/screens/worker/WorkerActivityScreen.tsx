@@ -1,7 +1,7 @@
 // Worker Activity Screen — Visual timeline + active shift check-in
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,20 +14,49 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import {
-  WORKER_APPLICATIONS,
-  CURRENT_WORKER,
-  formatWage,
-  formatDate,
-  getStatusColor,
-  getStatusLabel,
-} from '../../data/mockData';
+import { api } from '../../services/api';
+import { useAuthStore, useWorkerStore } from '../../store';
+import { CURRENT_WORKER, formatWage, formatDate } from '../../data/mockData';
 import { attendanceService } from '../../services/attendance/attendanceService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
 type TabKey = 'applications' | 'history';
+
+function getStatusColor(status: string) {
+  switch (status?.toUpperCase()) {
+    case 'ACCEPTED':
+    case 'HIRED':
+      return '#10B981';
+    case 'PENDING':
+    case 'APPLIED':
+      return '#F59E0B';
+    case 'REJECTED':
+      return '#EF4444';
+    case 'COMPLETED':
+      return '#0D3B3F';
+    default:
+      return '#5A6578';
+  }
+}
+
+function getStatusLabel(status: string) {
+  switch (status?.toUpperCase()) {
+    case 'ACCEPTED':
+    case 'HIRED':
+      return 'Hired / Accepted';
+    case 'PENDING':
+    case 'APPLIED':
+      return 'Under Review';
+    case 'REJECTED':
+      return 'Not Selected';
+    case 'COMPLETED':
+      return 'Completed';
+    default:
+      return status || 'Pending';
+  }
+}
 
 const TIMELINE_STEPS = [
   { key: 'applied', label: 'Applied', icon: 'send' as const },
@@ -53,10 +82,29 @@ function getTimelineStep(status: string): number {
 export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('applications');
   const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
-  const applications = WORKER_APPLICATIONS;
-  const worker = CURRENT_WORKER;
-  const history = worker.workHistory;
-  const totalEarned = history.reduce((sum, item) => sum + item.wage, 0);
+  const workerId = useAuthStore((s) => s.workerId) || 1;
+  const profile = useWorkerStore((s) => s.profile);
+  const worker = profile ?? CURRENT_WORKER;
+  const [applications, setApplications] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadActivityData() {
+      try {
+        const [appsList, historyList] = await Promise.all([
+          api.getApplications({ worker_id: workerId }),
+          api.getWorkerHistory(workerId)
+        ]);
+        if (appsList && Array.isArray(appsList)) setApplications(appsList);
+        if (historyList && Array.isArray(historyList)) setHistory(historyList);
+      } catch (err) {
+        console.error('Error loading worker activity:', err);
+      }
+    }
+    loadActivityData();
+  }, [workerId]);
+
+  const totalEarned = history.reduce((sum, item) => sum + parseFloat(item.wage || 0), 0);
 
   const handleCheckIn = (app: typeof applications[0]) => {
     const result = attendanceService.checkInWorker({

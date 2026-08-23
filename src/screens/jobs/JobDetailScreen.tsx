@@ -1,7 +1,7 @@
 // Job Detail Screen — Premium showcase transaction screen
 // Large wage · Map route visual · Staffing · Employer trust · Sticky action
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,26 +13,49 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import {
-  MOCK_JOBS,
-  CURRENT_WORKER,
-  formatWage,
-  formatDate,
-  formatDistance,
-} from '../../data/mockData';
+import { api } from '../../services/api';
 import { useAuthStore } from '../../store';
-import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
+import { formatWage, formatDate, formatDistance, CURRENT_WORKER, MOCK_JOBS } from '../../data/mockData';
+import { googleMapsService } from '../../services/maps/googleMapsService';
+import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
 export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
   const role = useAuthStore((s) => s.role);
-  const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-  const hiringProgress = job.workersRequired > 0 ? job.workersHired / job.workersRequired : 0;
-  const isFull = job.workersHired >= job.workersRequired;
-  const match = computeJobWorkerMatch(job, CURRENT_WORKER);
+  const mockJob = MOCK_JOBS.find((j) => j.id === jobId) || MOCK_JOBS[0];
+  const match = computeJobWorkerMatch(mockJob, CURRENT_WORKER);
+  const [job, setJob] = useState<any>({
+    job_id: jobId,
+    title: 'Commercial Wiring & Setup',
+    description: 'Urgent need for certified electrician for commercial building panel wiring.',
+    skill_required: 'Electrician',
+    wage: 1200,
+    job_date: '2026-08-25',
+    start_time: '09:00',
+    end_time: '18:00',
+    location: 'Okhla Phase 3, New Delhi',
+    workers_required: 2,
+    status: 'OPEN',
+    company_name: 'Apex Builders Pvt Ltd'
+  });
+
+  useEffect(() => {
+    async function loadJob() {
+      try {
+        const fetched = await api.getJobById(jobId);
+        if (fetched) setJob(fetched);
+      } catch (err) {
+        console.error('Error fetching job details:', err);
+      }
+    }
+    loadJob();
+  }, [jobId]);
+
+  const hiringProgress = (job.workers_required || 1) > 0 ? (job.workers_hired || 0) / (job.workers_required || 1) : 0;
+  const isFull = (job.workers_hired || 0) >= (job.workers_required || 1);
 
   return (
     <View style={styles.container}>
@@ -97,21 +120,19 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {
                 id: job.id,
                 wage: formatWage(job.maxWage),
+                lat: job.location.lat,
+                lng: job.location.lng,
                 title: job.title,
-                lat: job.location?.lat,
-                lng: job.location?.lng,
                 top: '45%',
                 left: '50%',
-              }
+              },
             ]}
-            userCoordinates={
-              job.location?.lat && job.location?.lng
-                ? { lat: job.location.lat, lng: job.location.lng }
-                : undefined
-            }
             selectedMarkerId={job.id}
-            height={180}
-            locationCity={job.location?.city || 'Noida'}
+            centerLat={job.location.lat}
+            centerLng={job.location.lng}
+            zoom={14}
+            height={160}
+            locationCity={job.location.city}
             radiusKm={job.distanceKm ?? 3}
           />
           <View style={styles.locationAddressCard}>
@@ -120,6 +141,22 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.locationAddress}>{job.location.address}</Text>
               <Text style={styles.locationCity}>{job.location.city}, {job.location.state}</Text>
             </View>
+            <TouchableOpacity
+              onPress={() =>
+                googleMapsService.openDirections({
+                  destLat: job.location.lat,
+                  destLng: job.location.lng,
+                  destLabel: job.title,
+                  originLat: CURRENT_WORKER.location.lat,
+                  originLng: CURRENT_WORKER.location.lng,
+                })
+              }
+              activeOpacity={0.8}
+              style={styles.directionsBtn}
+            >
+              <Feather name="navigation" size={12} color="#0D3B3F" />
+              <Text style={styles.directionsBtnText}>Directions</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -174,7 +211,7 @@ export const JobDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={styles.requirementsCard}>
             <Text style={styles.reqTitle}>Requirements & Tools</Text>
             <View style={styles.reqChips}>
-              {job.requirements.map((req, idx) => (
+              {job.requirements.map((req: string, idx: number) => (
                 <View key={idx} style={styles.reqChip}>
                   <Feather name="check" size={11} color="#0D3B3F" strokeWidth={2.5} />
                   <Text style={styles.reqText}>{req}</Text>
@@ -358,6 +395,22 @@ const styles = StyleSheet.create({
   },
   locationAddress: { fontFamily: FontFamily.bold, fontSize: 12, color: '#090D14' },
   locationCity: { fontFamily: FontFamily.regular, fontSize: 10, color: '#8E99A8', marginTop: 1 },
+  directionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3F2EE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: '#E8E6E0',
+  },
+  directionsBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: '#0D3B3F',
+  },
 
   // Staffing
   staffingCard: {

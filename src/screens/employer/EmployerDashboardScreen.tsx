@@ -1,7 +1,7 @@
 // Employer Dashboard — Staffing overview + post CTA + ranked applicants
 // Deep Teal + Electric Lime + Warm Ivory
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,31 +13,77 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
-import {
-  CURRENT_EMPLOYER,
-  MOCK_JOBS,
-  MOCK_APPLICATIONS,
-  formatWage,
-  getStatusColor,
-  getStatusLabel,
-} from '../../data/mockData';
-import { useEmployerStore, useAuthStore } from '../../store';
-import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
+import { api } from '../../services/api';
+import { formatWage } from '../../data/mockData';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
+function getStatusColor(status: string) {
+  switch (status?.toUpperCase()) {
+    case 'ACCEPTED':
+    case 'HIRED':
+      return '#10B981';
+    case 'PENDING':
+    case 'APPLIED':
+      return '#F59E0B';
+    case 'REJECTED':
+      return '#EF4444';
+    case 'COMPLETED':
+      return '#0D3B3F';
+    default:
+      return '#5A6578';
+  }
+}
+
+function getStatusLabel(status: string) {
+  switch (status?.toUpperCase()) {
+    case 'ACCEPTED':
+    case 'HIRED':
+      return 'Hired';
+    case 'PENDING':
+    case 'APPLIED':
+      return 'Pending';
+    case 'REJECTED':
+      return 'Declined';
+    case 'COMPLETED':
+      return 'Completed';
+    default:
+      return status || 'Pending';
+  }
+}
+
 export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) => {
-  const storeProfile = useEmployerStore((s) => s.profile);
-  const authName = useAuthStore((s) => s.name);
-  const employer = storeProfile ?? {
-    ...CURRENT_EMPLOYER,
-    businessName: authName || CURRENT_EMPLOYER.businessName,
-    contactName: authName || CURRENT_EMPLOYER.contactName,
-  };
-  const employerJobs = MOCK_JOBS.filter((j) => j.employerId === employer.id);
-  const totalHired = employerJobs.reduce((sum, j) => sum + j.workersHired, 0);
-  const totalNeeded = employerJobs.reduce((sum, j) => sum + j.workersRequired, 0);
+  const [employer, setEmployer] = useState<any>({
+    employer_id: 1,
+    company_name: 'Apex Builders Pvt Ltd',
+    company_type: 'Construction',
+    total_jobs_posted: 3,
+    total_spending: 1200
+  });
+  const [employerJobs, setEmployerJobs] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadEmployerDashboard() {
+      try {
+        const [empData, jobsList, appsList] = await Promise.all([
+          api.getEmployerProfile(1).catch(() => null),
+          api.getJobs({ employer_id: 1 }),
+          api.getApplications()
+        ]);
+        if (empData) setEmployer(empData);
+        if (jobsList && Array.isArray(jobsList)) setEmployerJobs(jobsList);
+        if (appsList && Array.isArray(appsList)) setApplications(appsList);
+      } catch (err) {
+        console.error('Error loading employer dashboard:', err);
+      }
+    }
+    loadEmployerDashboard();
+  }, []);
+
+  const totalHired = employerJobs.reduce((sum, j) => sum + (j.workers_hired || 0), 0);
+  const totalNeeded = employerJobs.reduce((sum, j) => sum + (j.workers_required || 1), 0);
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -149,16 +195,16 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Ranked Applicants</Text>
-          <Text style={styles.sectionCount}>{MOCK_APPLICATIONS.length} pending review</Text>
+          <Text style={styles.sectionCount}>{applications.length} pending review</Text>
         </View>
 
-        {MOCK_APPLICATIONS.map((app) => {
-          const match = computeJobWorkerMatch(app.job, app.worker);
+        {applications.map((app: any) => {
+          const match = app.match || { totalScore: 88 };
           return (
             <TouchableOpacity
-              key={app.id}
+              key={app.application_id || app.id}
               style={styles.applicantRow}
-              onPress={() => shellNavigation.navigate('WorkerDetail', { workerId: app.workerId })}
+              onPress={() => shellNavigation.navigate('WorkerDetail', { workerId: app.worker_id || app.workerId })}
               activeOpacity={0.85}
             >
               {/* Avatar */}
