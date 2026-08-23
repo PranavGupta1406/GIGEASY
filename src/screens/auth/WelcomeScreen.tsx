@@ -1,12 +1,13 @@
 /**
- * WelcomeScreen — GigEasy Launch Experience (Cinematic Title Lift Choreography)
+ * WelcomeScreen — GigEasy Consumer Launch Experience
  *
- * Cinematic Sequence:
- *   1. [0.0s - 2.5s] Network scene is the living hero.
- *   2. [2.6s] "GigEasy." emerges smoothly from within the central scene.
- *   3. [2.9s] The title block organically travels UPWARD with natural spring physics.
- *   4. [3.4s] Settles into the top hero position while the network remains alive behind it.
- *   5. [3.4s+] Bottom action suite unlocks.
+ * Balanced, centered global-consumer composition:
+ *   - Balanced GigEasy wordmark + natural tagline
+ *   - Clean top-right language switcher [ EN | हिंदी ]
+ *   - Living Network Canvas (Worker ↔ Job ↔ Employer)
+ *   - Dual equal-weight CTAs:
+ *     [ FIND WORK NEAR ME / आस-पास काम खोजें ]
+ *     [ HIRE WORKERS NEAR ME / कर्मचारी खोजें ]
  */
 
 import React, { useState, useRef, useCallback } from 'react';
@@ -21,170 +22,123 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize, BorderRadius, Shadow } from '../../constants';
+import { FontFamily, FontSize } from '../../constants';
 import { HeroCanvas, HeroPhase } from '../../components/hero/HeroCanvas';
-import { useAuthStore } from '../../store';
+import { useAuthStore, useLanguageStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
-const C = {
-  bg: '#F8F7F4',
-  ink: '#090D14',
-  teal: '#0D3B3F',
-  lime: '#C8F135',
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  border: '#E2E8F0',
   white: '#FFFFFF',
-  textMuted: '#5A6578',
-  border: '#E5E2D9',
+  sheetBg: 'rgba(248, 250, 252, 0.98)',
 };
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const [phase, setPhase] = useState<HeroPhase>('SPAWN');
   const [activeTransition, setActiveTransition] = useState<'worker' | 'employer' | null>(null);
   const switchRole = useAuthStore((s) => s.switchRole);
+  const { language, toggleLanguage, t } = useLanguageStore();
 
-  // ── Animated Values for Cinematic Flow ──
-  // Title emergence & upward lift
-  const brandOpacity = useRef(new Animated.Value(0)).current;
-  const brandScale = useRef(new Animated.Value(0.92)).current;
-  const brandTranslateY = useRef(new Animated.Value(85)).current; // starts in mid-scene, lifts to 0
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const brandOpacity    = useRef(new Animated.Value(0)).current;
+  const brandScale      = useRef(new Animated.Value(0.94)).current;
+  const brandTranslateY = useRef(new Animated.Value(24)).current;
+  const taglineOpacity  = useRef(new Animated.Value(0)).current;
+  const ctaOpacity      = useRef(new Animated.Value(0)).current;
+  const ctaTranslateY   = useRef(new Animated.Value(20)).current;
+  const fadeOutAnim     = useRef(new Animated.Value(0)).current;
 
-  // CTA Reveal
-  const ctaOpacity = useRef(new Animated.Value(0)).current;
-  const ctaTranslateY = useRef(new Animated.Value(24)).current;
-  const fadeOutAnim = useRef(new Animated.Value(0)).current;
-
-  // ── Phase Synchronization ──
   const handlePhaseChange = useCallback((p: HeroPhase) => {
     setPhase(p);
 
-    // 1. Logo emerges from the central scene
     if (p === 'EMERGE') {
       Animated.parallel([
-        Animated.timing(brandOpacity, {
-          toValue: 1,
-          duration: 320,
-          useNativeDriver: true,
-        }),
-        Animated.spring(brandScale, {
-          toValue: 1,
-          tension: 70,
-          friction: 8,
-          useNativeDriver: true,
-        }),
+        Animated.timing(brandOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+        Animated.spring(brandScale, { toValue: 1, tension: 70, friction: 8, useNativeDriver: true }),
       ]).start();
     }
 
-    // 2. Logo smoothly and organically travels UPWARD
     if (p === 'LIFT') {
       Animated.parallel([
-        Animated.spring(brandTranslateY, {
-          toValue: 0,
-          tension: 42,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.timing(taglineOpacity, {
-          toValue: 1,
-          duration: 360,
-          delay: 80,
-          useNativeDriver: true,
-        }),
+        Animated.spring(brandTranslateY, { toValue: 0, tension: 40, friction: 9, useNativeDriver: true }),
+        Animated.timing(taglineOpacity, { toValue: 1, duration: 320, delay: 50, useNativeDriver: true }),
       ]).start();
     }
 
-    // 3. CTA actions settle in final landing state
     if (p === 'INTERACTIVE') {
-      // Ensure title is settled at top
       brandOpacity.setValue(1);
       brandTranslateY.setValue(0);
       taglineOpacity.setValue(1);
-
       Animated.parallel([
-        Animated.timing(ctaOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.spring(ctaTranslateY, {
-          toValue: 0,
-          tension: 60,
-          friction: 9,
-          useNativeDriver: true,
-        }),
+        Animated.timing(ctaOpacity, { toValue: 1, duration: 360, useNativeDriver: true }),
+        Animated.spring(ctaTranslateY, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
       ]).start();
     }
-  }, [brandOpacity, brandScale, brandTranslateY, taglineOpacity, ctaOpacity, ctaTranslateY]);
+  }, []);
 
-  // Navigate to Phone auth with role preset
+  // Direct Role Selection -> Proceed straight to Phone verification
   const handleSelectMode = (mode: 'worker' | 'employer') => {
     setActiveTransition(mode);
     switchRole(mode);
-
-    Animated.timing(fadeOutAnim, {
-      toValue: 1,
-      duration: 320,
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.timing(fadeOutAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start(() => {
       navigation.navigate('Phone');
     });
   };
 
-  const isTitleVisible = phase === 'EMERGE' || phase === 'LIFT' || phase === 'INTERACTIVE' || Platform.OS !== 'web';
+  const isTitleVisible = ['EMERGE', 'LIFT', 'INTERACTIVE'].includes(phase) || Platform.OS !== 'web';
   const isActionsVisible = phase === 'INTERACTIVE' || Platform.OS !== 'web';
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
 
-      {/* ── BACKGROUND LAYER: The Living 2.5D Marketplace Canvas (Continuous Loop) ── */}
-      <HeroCanvas
-        onPhaseChange={handlePhaseChange}
-        activeModeTransition={activeTransition}
-      />
+      {/* Living Network Canvas */}
+      <HeroCanvas onPhaseChange={handlePhaseChange} activeModeTransition={activeTransition} />
 
-      {/* ── FOREGROUND LAYER: Dynamically Emerging & Upward-Lifting Title Block ── */}
-      {isTitleVisible && (
-        <SafeAreaView style={styles.topTypographyZone} pointerEvents="none">
+      {/* Top Header Row with Balanced Centered Brand & Language Switch */}
+      <SafeAreaView style={styles.topContainer}>
+        {/* Language switch button in top-right */}
+        <View style={styles.langRow}>
+          <TouchableOpacity
+            style={styles.langPill}
+            onPress={toggleLanguage}
+            activeOpacity={0.8}
+          >
+            <Feather name="globe" size={13} color={T.primary} />
+            <Text style={styles.langText}>
+              {language === 'en' ? 'हिंदी' : 'English'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Centered, balanced GigEasy Brand & Tagline */}
+        {isTitleVisible && (
           <Animated.View
             style={[
-              styles.animatedTitleBlock,
+              styles.centeredBrandBlock,
               {
                 opacity: brandOpacity,
-                transform: [
-                  { translateY: brandTranslateY },
-                  { scale: brandScale },
-                ],
+                transform: [{ translateY: brandTranslateY }, { scale: brandScale }],
               },
             ]}
           >
-            {/* Live Marketplace Pill */}
-            <View style={styles.liveMarketPill}>
-              <View style={styles.liveGreenDot} />
-              <Text style={styles.liveMarketText}>Verified Gig Marketplace · NCR</Text>
-            </View>
-
-            {/* Locked Wordmark (Single cohesive unit) */}
-            <View style={styles.brandTitleRow}>
-              <Text style={styles.brandTitleText}>
-                GigEasy<Text style={styles.brandDot}>.</Text>
-              </Text>
-            </View>
-
-            {/* Editorial Sub-Headline */}
-            <Animated.View style={{ opacity: taglineOpacity, alignItems: 'center' }}>
-              <Text style={styles.brandTagline}>Work is around you.</Text>
-              <Text style={styles.brandSubline}>
-                Verified local gigs · Instant daily payouts · Direct hiring
-              </Text>
-            </Animated.View>
+            <Text style={styles.brandName}>GigEasy</Text>
+            <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
+              {t('brandTagline')}
+            </Animated.Text>
           </Animated.View>
-        </SafeAreaView>
-      )}
+        )}
+      </SafeAreaView>
 
-      {/* ── BOTTOM LAYER: Action Suite ── */}
+      {/* Bottom Sheet: Role Selection CTAs */}
       {isActionsVisible && (
         <Animated.View
           style={[
@@ -195,62 +149,55 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             },
           ]}
         >
-          {/* Primary Action: Find Work Near Me */}
+          <Text style={styles.questionPrompt}>{t('needWorkQuestion')}</Text>
+
+          {/* Option 1: Find Work (Equal Weight Primary) */}
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={styles.roleCTA}
             onPress={() => handleSelectMode('worker')}
             activeOpacity={0.88}
           >
-            <View style={styles.btnContent}>
-              <Text style={styles.primaryBtnTitle}>Find Work Near Me</Text>
-              <Text style={styles.primaryBtnSub}>Instant local gigs · Daily payouts</Text>
+            <View style={styles.roleCTAInner}>
+              <View style={styles.iconCircle}>
+                <Feather name="briefcase" size={18} color={T.white} />
+              </View>
+              <View style={styles.roleTextCol}>
+                <Text style={styles.roleTitle}>{t('findWork')}</Text>
+                <Text style={styles.roleSub}>{t('findWorkSub')}</Text>
+              </View>
             </View>
             <View style={styles.arrowCircle}>
-              <Feather name="arrow-right" size={17} color="#090D14" />
+              <Feather name="arrow-right" size={16} color={T.white} />
             </View>
           </TouchableOpacity>
 
-          {/* Secondary Action: Hire Workers */}
+          {/* Option 2: Hire Workers (Equal Weight Primary) */}
           <TouchableOpacity
-            style={styles.secondaryBtn}
+            style={styles.roleCTASecondary}
             onPress={() => handleSelectMode('employer')}
-            activeOpacity={0.82}
+            activeOpacity={0.88}
           >
-            <View style={styles.secondaryContent}>
-              <MaterialCommunityIcons name="briefcase-plus-outline" size={16} color={C.teal} />
-              <Text style={styles.secondaryBtnTitle}>
-                Looking to hire workers? <Text style={styles.secondaryHighlight}>Post a gig →</Text>
-              </Text>
+            <View style={styles.roleCTAInner}>
+              <View style={styles.iconCircleSecondary}>
+                <Feather name="users" size={18} color={T.primary} />
+              </View>
+              <View style={styles.roleTextCol}>
+                <Text style={styles.roleTitleSecondary}>{t('hireWorkers')}</Text>
+                <Text style={styles.roleSubSecondary}>{t('hireWorkersSub')}</Text>
+              </View>
+            </View>
+            <View style={styles.arrowCircleSecondary}>
+              <Feather name="arrow-right" size={16} color={T.primary} />
             </View>
           </TouchableOpacity>
 
-          {/* Trust Guarantees */}
-          <View style={styles.trustFooter}>
-            <View style={styles.trustItem}>
-              <MaterialCommunityIcons name="shield-check" size={13} color={C.teal} />
-              <Text style={styles.trustText}>Aadhaar Verified</Text>
-            </View>
-            <View style={styles.trustDivider} />
-            <View style={styles.trustItem}>
-              <MaterialCommunityIcons name="lock-check" size={13} color={C.teal} />
-              <Text style={styles.trustText}>Escrow Guaranteed</Text>
-            </View>
-            <View style={styles.trustDivider} />
-            <View style={styles.trustItem}>
-              <MaterialCommunityIcons name="lightning-bolt" size={13} color={C.teal} />
-              <Text style={styles.trustText}>Instant Match</Text>
-            </View>
-          </View>
+          <Text style={styles.trustFooter}>{t('trustedTagline')}</Text>
         </Animated.View>
       )}
 
-      {/* ── Screen Exit Fade Layer ── */}
+      {/* Exit fade overlay */}
       <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          styles.exitCover,
-          { opacity: fadeOutAnim },
-        ]}
+        style={[StyleSheet.absoluteFill, styles.exitCover, { opacity: fadeOutAnim }]}
         pointerEvents="none"
       />
     </View>
@@ -260,81 +207,69 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: T.bg,
   },
 
-  // ── Top Zone ──
-  topTypographyZone: {
+  // Top Area
+  topContainer: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? 20 : 12,
+    top: Platform.OS === 'android' ? 12 : 8,
     left: 0,
     right: 0,
-    alignItems: 'center',
+    zIndex: 25,
     paddingHorizontal: 20,
-    zIndex: 15,
   },
-  animatedTitleBlock: {
-    alignItems: 'center',
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
     width: '100%',
+    marginBottom: 4,
   },
-  liveMarketPill: {
+  langPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    gap: 5,
+    backgroundColor: T.white,
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 8,
-    ...Shadow.xs,
+    borderWidth: 1.5,
+    borderColor: T.border,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  liveGreenDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-    marginRight: 7,
-  },
-  liveMarketText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10.5,
-    color: '#090D14',
-    letterSpacing: 0.2,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  brandTitleText: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 38,
-    color: '#090D14',
-    letterSpacing: -1.3,
-    lineHeight: 42,
-  },
-  brandDot: {
-    color: '#C8F135',
-    fontFamily: FontFamily.extraBold,
-  },
-  brandTagline: {
+  langText: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#090D14',
-    letterSpacing: -0.3,
-    marginBottom: 3,
+    fontSize: 12,
+    color: T.primary,
+  },
+
+  // Centered Brand Title & Tagline Block
+  centeredBrandBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  brandName: {
+    fontFamily: FontFamily.extraBold,
+    fontSize: 34,
+    color: T.primary,
+    letterSpacing: -1.2,
+    lineHeight: 38,
     textAlign: 'center',
   },
-  brandSubline: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11.5,
-    color: '#5A6578',
-    letterSpacing: -0.1,
+  tagline: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    color: T.textSecondary,
+    marginTop: 3,
     textAlign: 'center',
   },
 
-  // ── Bottom Sheet & Actions ──
+  // Bottom CTAs Sheet
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
@@ -342,102 +277,131 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === 'android' ? 24 : 36,
-    paddingTop: 14,
-    alignItems: 'center',
-    backgroundColor: 'rgba(248, 247, 244, 0.95)',
+    paddingTop: 16,
+    backgroundColor: T.sheetBg,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: T.border,
     zIndex: 20,
+    gap: 10,
   },
-  primaryBtn: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: C.lime,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
+  questionPrompt: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: T.ink,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+
+  // Equal Role CTA 1: Find Work
+  roleCTA: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 9,
-    ...Shadow.sm,
+    backgroundColor: T.primary,
+    borderRadius: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    minHeight: 58,
+    shadowColor: T.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.20,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  btnContent: {
+  roleCTAInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     flex: 1,
   },
-  primaryBtnTitle: {
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleTextCol: {
+    flex: 1,
+  },
+  roleTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 15.5,
-    color: '#090D14',
+    fontSize: 15,
+    color: T.white,
     letterSpacing: -0.3,
   },
-  primaryBtnSub: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10.5,
-    color: '#2A3C08',
+  roleSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 1,
   },
   arrowCircle: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Equal Role CTA 2: Hire Workers
+  roleCTASecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: T.white,
     borderRadius: 16,
-    backgroundColor: '#090D14',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  secondaryBtn: {
-    width: '100%',
-    maxWidth: 420,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 13,
-    paddingVertical: 11,
+    paddingVertical: 13,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 12,
-    ...Shadow.xs,
+    minHeight: 58,
+    borderWidth: 1.5,
+    borderColor: T.primary,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  secondaryContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  secondaryBtnTitle: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12.5,
-    color: '#090D14',
-  },
-  secondaryHighlight: {
-    fontFamily: FontFamily.bold,
-    color: C.teal,
-  },
-  trustFooter: {
-    flexDirection: 'row',
+  iconCircleSecondary: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: T.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trustItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  roleTitleSecondary: {
+    fontFamily: FontFamily.bold,
+    fontSize: 15,
+    color: T.primary,
+    letterSpacing: -0.3,
   },
-  trustText: {
+  roleSubSecondary: {
     fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#5A6578',
+    fontSize: 11,
+    color: T.textSecondary,
+    marginTop: 1,
   },
-  trustDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#D4D1C8',
-    marginHorizontal: 8,
+  arrowCircleSecondary: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: T.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
+  trustFooter: {
+    fontFamily: FontFamily.medium,
+    fontSize: 10.5,
+    color: T.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+
   exitCover: {
-    backgroundColor: C.bg,
+    backgroundColor: T.bg,
   },
 });

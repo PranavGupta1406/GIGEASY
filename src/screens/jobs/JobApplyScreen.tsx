@@ -1,5 +1,5 @@
 // Job Apply & Daily Wage Proposal Screen
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#1A68D5) · Clean Consumer Flow
 
 import React, { useState } from 'react';
 import {
@@ -17,28 +17,43 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import {
-  Colors,
   FontFamily,
   FontSize,
   Spacing,
   BorderRadius,
-  Shadow,
 } from '../../constants';
 import { GigEasyButton } from '../../components';
 import { MOCK_JOBS, formatWage } from '../../data/mockData';
-import { useWorkerStore } from '../../store';
+import { useWorkerStore, useLanguageStore } from '../../store';
+import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApply'>;
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+};
 
 export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
   const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-  const profile = useWorkerStore((s) => s.profile);
   const applyForJob = useWorkerStore((s) => s.applyForJob);
+  const { t } = useLanguageStore();
 
   const [proposedWage, setProposedWage] = useState<number>(job.maxWage);
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const catVisual = getCategoryVisual(job.skillRequired.category);
 
   const wagePresets = [
     job.minWage,
@@ -58,30 +73,28 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
         [
           {
             text: 'View Activity',
-            onPress: () => navigation.navigate('MainApp', { initialMode: 'worker' }),
+            onPress: () => navigation.goBack(),
           },
         ]
       );
-    }, 600);
+    }, 400);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.white} />
 
-      {/* Nav Header */}
+      {/* Header */}
       <View style={styles.navBar}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color="#090D14" />
+          <Feather name="arrow-left" size={22} color={T.ink} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>
-          Apply for Gig
-        </Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.navTitle}>Apply for Gig</Text>
+        <View style={{ width: 32 }} />
       </View>
 
       <ScrollView
@@ -90,14 +103,14 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         {/* Job Summary Banner */}
         <View style={styles.jobBanner}>
-          <Text style={styles.jobCategory}>{job.skillRequired.category.toUpperCase()}</Text>
-          <Text style={styles.jobTitle}>{job.title}</Text>
-          <Text style={styles.jobEmployer}>{job.employer.businessName} · {job.location.city}</Text>
-
-          <View style={styles.budgetRow}>
-            <Text style={styles.budgetLabel}>Employer Budget:</Text>
-            <Text style={styles.budgetValue}>
-              {formatWage(job.minWage)} – {formatWage(job.maxWage)} / day
+          <View style={[styles.jobIconBox, { backgroundColor: catVisual.bg }]}>
+            <Feather name={catVisual.iconName} size={20} color={catVisual.color} />
+          </View>
+          <View style={styles.jobBannerInfo}>
+            <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+            <Text style={styles.employerName}>{job.employer.businessName} · {job.location.city}</Text>
+            <Text style={styles.budgetRange}>
+              Employer Budget: {formatWage(job.minWage)} – {formatWage(job.maxWage)} / day
             </Text>
           </View>
         </View>
@@ -162,7 +175,7 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
           <TextInput
             style={styles.noteInput}
             placeholder="e.g. 3 years experience with warehouse staging. Ready to start tomorrow."
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor="#94A3B8"
             multiline
             numberOfLines={3}
             value={note}
@@ -172,7 +185,7 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Escrow Guarantee */}
         <View style={styles.protectionNotice}>
-          <MaterialCommunityIcons name="shield-check" size={18} color="#0D3B3F" />
+          <MaterialCommunityIcons name="shield-check" size={18} color={T.primary} />
           <View style={styles.protectionTextWrap}>
             <Text style={styles.protectionTitle}>GigEasy Payment Guarantee</Text>
             <Text style={styles.protectionSub}>
@@ -182,16 +195,16 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom Apply Action */}
+      {/* Sticky Bottom Apply Button */}
       <View style={styles.bottomBar}>
         <GigEasyButton
-          label={isSubmitting ? 'Sending Proposal...' : `Send Application (${formatWage(proposedWage)}/day)`}
+          label={isSubmitting ? 'Sending Application...' : `Submit Application (${formatWage(proposedWage)}/day)`}
           onPress={handleApply}
           variant="primary"
           size="lg"
           fullWidth
-          showArrow
           loading={isSubmitting}
+          showArrow
         />
       </View>
     </SafeAreaView>
@@ -199,211 +212,131 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: T.bg },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[2.5],
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: T.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
   },
-  backBtn: { padding: Spacing[1] },
-  navTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
-    color: '#090D14',
-  },
-  placeholder: { width: 24 },
-  scrollContent: { paddingBottom: Spacing[14] },
+  backBtn: { padding: 4 },
+  navTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: T.ink },
+  scrollContent: { paddingBottom: 100 },
   jobBanner: {
-    backgroundColor: '#FFFFFF',
-    padding: Spacing[5],
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
-  },
-  jobCategory: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#0D3B3F',
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  jobTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xl,
-    color: '#090D14',
-    marginBottom: 2,
-    letterSpacing: -0.4,
-  },
-  jobEmployer: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
-    marginBottom: Spacing[3],
-  },
-  budgetRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F2F0EB',
-    padding: Spacing[2.5],
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: '#E8E6E0',
+    gap: 12,
+    backgroundColor: T.white,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: T.border,
   },
-  budgetLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#5A6578',
+  jobIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  budgetValue: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#090D14',
-  },
+  jobBannerInfo: { flex: 1 },
+  jobTitle: { fontFamily: FontFamily.bold, fontSize: 15, color: T.ink, marginBottom: 2 },
+  employerName: { fontFamily: FontFamily.medium, fontSize: 12, color: T.textSecondary, marginBottom: 2 },
+  budgetRange: { fontFamily: FontFamily.semiBold, fontSize: 11, color: T.primary },
   card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: Spacing[5],
-    marginTop: Spacing[3],
-    padding: Spacing[4],
-    borderRadius: BorderRadius.lg,
+    backgroundColor: T.white,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
   },
-  cardTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: '#090D14',
-    marginBottom: 2,
-  },
-  cardSubtitle: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#5A6578',
-    marginBottom: Spacing[3],
-  },
+  cardTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: T.ink, marginBottom: 2 },
+  cardSubtitle: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary, marginBottom: 12 },
   wageHeroBox: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#090D14',
-    paddingVertical: Spacing[3.5],
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing[3],
+    backgroundColor: T.primaryMuted,
+    borderRadius: 14,
+    paddingVertical: 16,
+    marginBottom: 12,
   },
-  currencySymbol: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xl,
-    color: '#C8F135',
-    marginRight: 2,
-  },
-  wageHeroNumber: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 36,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  perDayText: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.xs,
-    color: '#8E99A8',
-    marginLeft: 4,
-  },
+  currencySymbol: { fontFamily: FontFamily.extraBold, fontSize: 24, color: T.primary, marginRight: 2 },
+  wageHeroNumber: { fontFamily: FontFamily.extraBold, fontSize: 36, color: T.primary, letterSpacing: -1 },
+  perDayText: { fontFamily: FontFamily.medium, fontSize: 13, color: T.textSecondary, marginLeft: 4 },
   stepperRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing[2],
-    marginBottom: Spacing[3],
+    gap: 8,
+    marginBottom: 10,
   },
   stepBtn: {
     flex: 1,
-    paddingVertical: Spacing[2],
-    backgroundColor: '#F2F0EB',
-    borderRadius: BorderRadius.md,
+    paddingVertical: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
     alignItems: 'center',
   },
-  stepBtnText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#090D14',
-  },
+  stepBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: T.ink },
   presetsRow: {
     flexDirection: 'row',
-    gap: Spacing[1.5],
+    gap: 6,
     justifyContent: 'space-between',
   },
   presetChip: {
     flex: 1,
-    paddingVertical: 6,
-    backgroundColor: '#F2F0EB',
-    borderRadius: BorderRadius.sm,
+    paddingVertical: 7,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
     alignItems: 'center',
   },
-  presetChipActive: {
-    backgroundColor: '#0D3B3F',
-  },
-  presetText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#5A6578',
-  },
-  presetTextActive: {
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-  },
+  presetChipActive: { backgroundColor: T.primary },
+  presetText: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary },
+  presetTextActive: { color: T.white, fontFamily: FontFamily.bold },
   noteInput: {
-    backgroundColor: '#F8F7F4',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    borderRadius: BorderRadius.md,
-    padding: Spacing[3],
+    borderColor: T.border,
+    borderRadius: 12,
+    padding: 12,
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#090D14',
+    fontSize: 16,
+    color: T.ink,
     textAlignVertical: 'top',
-    minHeight: 65,
+    minHeight: 70,
   },
   protectionNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[2.5],
-    marginHorizontal: Spacing[5],
-    marginTop: Spacing[3],
-    padding: Spacing[3],
-    backgroundColor: '#E8F3F4',
-    borderRadius: BorderRadius.md,
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: T.primaryMuted,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#C0DFE2',
+    borderColor: T.primaryLight,
   },
   protectionTextWrap: { flex: 1 },
-  protectionTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#0D3B3F',
-  },
-  protectionSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#5A6578',
-    marginTop: 1,
-  },
+  protectionTitle: { fontFamily: FontFamily.bold, fontSize: 12, color: T.primary },
+  protectionSub: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary, marginTop: 1 },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: Spacing[5],
-    paddingTop: Spacing[3],
-    paddingBottom: Spacing[4],
+    backgroundColor: T.white,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: '#E8E6E0',
-    ...Shadow.md,
+    borderTopColor: T.border,
   },
 });

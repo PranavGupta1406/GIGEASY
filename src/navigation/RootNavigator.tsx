@@ -1,20 +1,20 @@
 // GigEasy Navigation — Single unified app shell with mode-aware content
-// One app, two perspectives: Find Work | Hire Workers
-// Deep Teal + Electric Lime + Warm Ivory
+// Flow: Welcome → Role → Phone → OTP → Onboarding → MainApp
+// One brand. One color. Two perspectives: Find Work | Hire Workers.
 
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FontFamily, FontSize } from '../constants';
+import { FontFamily } from '../constants';
 
 // Auth screens
-import { SplashScreen } from '../screens/auth/SplashScreen';
 import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
+import { RoleScreen } from '../screens/auth/RoleScreen';
 import { PhoneScreen } from '../screens/auth/PhoneScreen';
 import { OTPScreen } from '../screens/auth/OTPScreen';
-import { RoleScreen } from '../screens/auth/RoleScreen';
+import { SplashScreen } from '../screens/auth/SplashScreen';
 
 // Worker onboarding
 import { WorkerNameScreen } from '../screens/worker/onboarding/WorkerNameScreen';
@@ -48,11 +48,10 @@ import { ModeSwitcher } from '../components/ModeSwitcher';
 import { BottomNav } from '../components/BottomNav';
 
 export type RootStackParamList = {
-  Splash: undefined;
   Welcome: undefined;
+  Role: undefined;
   Phone: undefined;
   OTP: { phoneNumber: string };
-  Role: undefined;
   // Worker onboarding
   WorkerName: undefined;
   WorkerSkills: undefined;
@@ -67,7 +66,8 @@ export type RootStackParamList = {
   JobApplicants: { jobId: string };
   WorkerDetail: { workerId: string };
   PostJob: undefined;
-  // Legacy (kept for any existing navigation calls)
+  // Legacy routes
+  Splash: undefined;
   WorkerTabs: { initialMode?: 'worker' | 'employer' } | undefined;
   EmployerTabs: { initialMode?: 'worker' | 'employer' } | undefined;
 };
@@ -77,6 +77,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 type Mode = 'worker' | 'employer';
 type WorkerTab = 'Home' | 'Jobs' | 'Activity' | 'Profile';
 type EmployerTab = 'Dashboard' | 'Jobs' | 'Workers' | 'Profile';
+
+// Brand constants
+const BRAND = {
+  navy: '#1A68D5',
+  background: '#F8FAFC',
+  border: '#E2E8F0',
+};
 
 // ─── Main App Shell ───────────────────────────────────────────────────────────
 
@@ -93,12 +100,12 @@ function MainAppScreen({ route, navigation }: any) {
     Animated.sequence([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 120,
+        duration: 110,
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 180,
         useNativeDriver: true,
       }),
     ]).start();
@@ -140,25 +147,18 @@ function MainAppScreen({ route, navigation }: any) {
       {/* Top bar: Logo + ModeSwitcher */}
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 14) }]}>
         <View style={styles.logoArea}>
-          <View style={styles.wordmarkWrap}>
-            <Text style={styles.brandGig}>Gig</Text>
-            <Text style={styles.brandEasy}>Easy</Text>
-            <View style={styles.brandDot} />
-          </View>
+          <Text style={styles.wordmark}>GigEasy</Text>
         </View>
         <ModeSwitcher activeMode={mode} onSwitch={handleModeSwitch} />
         <View style={styles.topRight} />
       </View>
 
-      {/* Mode indicator line */}
       <View style={styles.topBarBorder} />
 
-      {/* Animated content area */}
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {renderContent()}
       </Animated.View>
 
-      {/* Bottom navigation */}
       <BottomNav
         mode={mode}
         activeTab={activeTab}
@@ -178,15 +178,17 @@ export function RootNavigator() {
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          contentStyle: { backgroundColor: '#F8F7F4' },
+          contentStyle: { backgroundColor: BRAND.background },
         }}
       >
-        {/* Auth */}
-        <Stack.Screen name="Splash" component={SplashScreen} />
+        {/* Auth — new order: Welcome → Role → Phone → OTP */}
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        <Stack.Screen name="Role" component={RoleScreen} />
         <Stack.Screen name="Phone" component={PhoneScreen} />
         <Stack.Screen name="OTP" component={OTPScreen} />
-        <Stack.Screen name="Role" component={RoleScreen} />
+
+        {/* Legacy splash redirect */}
+        <Stack.Screen name="Splash" component={SplashScreen} />
 
         {/* Worker Onboarding */}
         <Stack.Screen name="WorkerName" component={WorkerNameScreen} />
@@ -196,14 +198,14 @@ export function RootNavigator() {
         {/* Employer Onboarding */}
         <Stack.Screen name="EmployerName" component={EmployerNameScreen} />
 
-        {/* Main App Shell — single screen for both modes */}
+        {/* Main App Shell */}
         <Stack.Screen
           name="MainApp"
           component={MainAppScreen}
           options={{ animation: 'fade' }}
         />
 
-        {/* Legacy routes — redirect to MainApp */}
+        {/* Legacy routes */}
         <Stack.Screen
           name="WorkerTabs"
           component={MainAppScreen}
@@ -233,46 +235,26 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
-    backgroundColor: '#F8F7F4',
+    backgroundColor: BRAND.background,
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingHorizontal: 18,
+    paddingBottom: 11,
   },
   logoArea: {
     flex: 1,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  wordmarkWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  brandGig: {
+  wordmark: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#090D14',
-    letterSpacing: -0.4,
-  },
-  brandEasy: {
-    fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#0D3B3F',
-    letterSpacing: -0.4,
-  },
-  brandDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#C8F135',
-    marginLeft: 2,
-    marginTop: -2,
-    borderWidth: 1,
-    borderColor: '#0D3B3F',
+    fontSize: 17,
+    color: BRAND.navy,
+    letterSpacing: -0.5,
   },
   topRight: {
     flex: 1,
@@ -280,7 +262,7 @@ const styles = StyleSheet.create({
   },
   topBarBorder: {
     height: 1,
-    backgroundColor: '#E8E6E0',
+    backgroundColor: BRAND.border,
   },
   content: {
     flex: 1,

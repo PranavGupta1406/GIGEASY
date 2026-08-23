@@ -3,6 +3,26 @@
 import { create } from 'zustand';
 import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication } from '../types';
 import { MOCK_JOBS, MOCK_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
+import { TRANSLATIONS, LanguageCode, TranslationKey } from '../i18n/translations';
+
+// ─── Language Store ───────────────────────────────────────────────────────────
+
+interface LanguageState {
+  language: LanguageCode;
+  setLanguage: (lang: LanguageCode) => void;
+  toggleLanguage: () => void;
+  t: (key: TranslationKey) => string;
+}
+
+export const useLanguageStore = create<LanguageState>((set, get) => ({
+  language: 'en',
+  setLanguage: (lang) => set({ language: lang }),
+  toggleLanguage: () => set((state) => ({ language: state.language === 'en' ? 'hi' : 'en' })),
+  t: (key) => {
+    const lang = get().language;
+    return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.en[key] ?? String(key);
+  },
+}));
 
 // ─── Auth Store ───────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 // Job Applicants Screen — Match Ranking & Counter-Offer Terminal
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#6497B2) Palette · Simple & Confident
 
 import React, { useState } from 'react';
 import {
@@ -15,22 +15,19 @@ import {
   Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import {
-  Colors,
   FontFamily,
   FontSize,
   Spacing,
   BorderRadius,
-  Shadow,
 } from '../../constants';
 import {
   GigEasyAvatar,
   GigEasyVerifiedBadge,
   GigEasyRating,
   GigEasyTrustScore,
-  GigEasyMatchBadge,
   GigEasyButton,
 } from '../../components';
 import {
@@ -42,6 +39,22 @@ import { computeJobWorkerMatch } from '../../services/matching/matchingEngine';
 import { useEmployerStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApplicants'>;
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  money: '#EA580C',
+  moneyBg: '#FFEDD5',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+};
 
 export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
@@ -58,8 +71,8 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleHire = (applicant: typeof applicants[0]) => {
     Alert.alert(
-      'Confirm Hire & Lock Escrow',
-      `Hire ${applicant.worker.name} for ${formatWage(applicant.proposedWage)}/day? Funds will be locked into GigEasy Escrow.`,
+      'Confirm Hire',
+      `Hire ${applicant.worker.name} for ${formatWage(applicant.proposedWage)}/day?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -90,7 +103,7 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.white} />
 
       {/* Header */}
       <View style={styles.navBar}>
@@ -99,87 +112,109 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
           style={styles.backBtn}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color="#090D14" />
+          <Feather name="arrow-left" size={22} color={T.ink} />
         </TouchableOpacity>
-        <Text style={styles.navTitle} numberOfLines={1}>
-          Applicants ({applicants.length})
-        </Text>
-        <View style={styles.placeholder} />
+        <View style={styles.navTitleWrap}>
+          <Text style={styles.navTitle} numberOfLines={1}>{job.title}</Text>
+          <Text style={styles.navSub}>Applicants & Match Ranking</Text>
+        </View>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{applicants.length}</Text>
+        </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Job Mini Summary */}
-        <View style={styles.jobSummary}>
-          <Text style={styles.jobTitle}>{job.title}</Text>
-          <Text style={styles.jobMeta}>
-            {job.workersHired} of {job.workersRequired} hired · Budget: {formatWage(job.minWage)} – {formatWage(job.maxWage)}/day
-          </Text>
+        {/* Job Overview Strip */}
+        <View style={styles.overviewStrip}>
+          <View style={styles.overviewItem}>
+            <Text style={styles.overviewNum}>{job.workersHired}/{job.workersRequired}</Text>
+            <Text style={styles.overviewLabel}>Hired / Needed</Text>
+          </View>
+          <View style={styles.stripDivider} />
+          <View style={styles.overviewItem}>
+            <Text style={[styles.overviewNum, { color: T.primary }]}>{formatWage(job.maxWage)}</Text>
+            <Text style={styles.overviewLabel}>Budget/Day</Text>
+          </View>
+          <View style={styles.stripDivider} />
+          <View style={styles.overviewItem}>
+            <Text style={styles.overviewNum}>{job.startTime}</Text>
+            <Text style={styles.overviewLabel}>Shift Start</Text>
+          </View>
         </View>
 
-        {/* Applicants List */}
-        <View style={styles.listSection}>
-          {applicants.map((app) => {
-            const match = computeJobWorkerMatch(job, app.worker);
+        {/* Section Header */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Ranked by Compatibility</Text>
+          <Text style={styles.sectionSub}>Location · Rating · Verification</Text>
+        </View>
+
+        {/* Applicant Cards */}
+        {applicants.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Feather name="users" size={32} color={T.textMuted} />
+            <Text style={styles.emptyTitle}>No applicants yet</Text>
+            <Text style={styles.emptySub}>Matching Engine is dispatching your gig to verified workers nearby.</Text>
+          </View>
+        ) : (
+          applicants.map((app) => {
+            const matchResult = computeJobWorkerMatch(job, app.worker);
 
             return (
               <View key={app.id} style={styles.applicantCard}>
                 {/* Header */}
                 <View style={styles.cardHeader}>
-                  <GigEasyAvatar
-                    name={app.worker.name}
-                    photoUri={app.worker.profilePhoto}
-                    size={48}
-                  />
+                  <GigEasyAvatar name={app.worker.name} size={46} showVerified />
                   <View style={styles.headerInfo}>
                     <View style={styles.nameRow}>
                       <Text style={styles.workerName}>{app.worker.name}</Text>
                       {app.worker.verificationStatus === 'verified' && (
-                        <MaterialCommunityIcons name="check-decagram" size={12} color="#0D3B3F" />
+                        <GigEasyVerifiedBadge small />
                       )}
                     </View>
                     <View style={styles.metaRow}>
-                      <Ionicons name="star" size={11} color="#090D14" />
-                      <Text style={styles.metaText}>{app.worker.rating.toFixed(1)}</Text>
+                      <GigEasyRating rating={app.worker.rating} />
                       <Text style={styles.metaDot}>·</Text>
-                      <MaterialCommunityIcons name="shield-check" size={12} color="#10B981" />
-                      <Text style={[styles.metaText, { color: '#047857' }]}>{app.worker.trustScore}% trust</Text>
+                      <GigEasyTrustScore score={app.worker.trustScore} />
+                      <Text style={styles.metaDot}>·</Text>
+                      <Text style={styles.metaText}>{app.worker.experienceYears}y exp</Text>
                     </View>
                   </View>
-
-                  <GigEasyMatchBadge score={match.totalScore} />
+                  <View style={{ backgroundColor: T.primaryMuted, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: T.primary }}>{matchResult.totalScore}%</Text>
+                  </View>
                 </View>
 
                 {/* Proposed Wage Banner */}
                 <View style={styles.wageBox}>
-                  <Text style={styles.wageBoxLabel}>Asking Daily Wage:</Text>
+                  <Text style={styles.wageBoxLabel}>Proposed Daily Wage</Text>
                   <Text style={styles.wageBoxValue}>{formatWage(app.proposedWage)}/day</Text>
                 </View>
 
-                {/* Reasons */}
+                {/* Match signals */}
                 <View style={styles.reasonsList}>
-                  {match.reasons.map((r, i) => (
-                    <View key={i} style={styles.reasonRow}>
-                      <Feather name="check" size={11} color="#0D3B3F" strokeWidth={2.5} />
-                      <Text style={styles.reasonText}>{r}</Text>
+                  {matchResult.reasons.slice(0, 2).map((reason: string, idx: number) => (
+                    <View key={idx} style={styles.reasonRow}>
+                      <Feather name="check-circle" size={12} color={T.primary} />
+                      <Text style={styles.reasonText}>{reason}</Text>
                     </View>
                   ))}
                 </View>
 
-                {/* Action Buttons */}
+                {/* Actions */}
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     style={styles.counterBtn}
                     onPress={() => {
                       setSelectedApplicant(app);
-                      setCounterWage(String(job.minWage));
+                      setCounterWage(String(app.proposedWage));
                       setCounterModalVisible(true);
                     }}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.counterBtnText}>Counter-Offer</Text>
+                    <Text style={styles.counterBtnText}>Counter Offer</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -192,11 +227,11 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
             );
-          })}
-        </View>
+          })
+        )}
       </ScrollView>
 
-      {/* Counter Offer Modal */}
+      {/* Counter-Offer Modal */}
       <Modal
         visible={counterModalVisible}
         transparent
@@ -206,42 +241,42 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Send Wage Counter-Offer</Text>
+              <Text style={styles.modalTitle}>Make Counter-Offer</Text>
               <TouchableOpacity onPress={() => setCounterModalVisible(false)}>
-                <Feather name="x" size={20} color="#090D14" />
+                <Feather name="x" size={20} color={T.ink} />
               </TouchableOpacity>
             </View>
-
             <Text style={styles.modalSub}>
-              Propose a new daily rate to {selectedApplicant?.worker.name}
+              Propose a revised daily rate to {selectedApplicant?.worker.name}
             </Text>
 
             <View style={styles.modalInputGroup}>
-              <Text style={styles.modalInputLabel}>Counter Daily Wage (₹)</Text>
+              <Text style={styles.modalInputLabel}>Counter Wage (₹ / Day)</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="e.g. 900"
-                placeholderTextColor="#8E99A8"
                 keyboardType="number-pad"
                 value={counterWage}
                 onChangeText={setCounterWage}
+                placeholder="e.g. 950"
+                placeholderTextColor={T.textMuted}
               />
             </View>
 
             <View style={styles.modalInputGroup}>
-              <Text style={styles.modalInputLabel}>Message (Optional)</Text>
+              <Text style={styles.modalInputLabel}>Note (Optional)</Text>
               <TextInput
                 style={[styles.modalInput, styles.modalTextArea]}
-                placeholder="e.g. We can offer ₹900/day for on-time morning arrival."
-                placeholderTextColor="#8E99A8"
                 multiline
+                numberOfLines={2}
                 value={counterMessage}
                 onChangeText={setCounterMessage}
+                placeholder="e.g. Can do ₹950 if you can arrive 30 mins early"
+                placeholderTextColor={T.textMuted}
               />
             </View>
 
             <GigEasyButton
-              label="Dispatch Counter-Offer"
+              label="Send Counter-Offer"
               onPress={handleSendCounter}
               variant="primary"
               size="lg"
@@ -255,55 +290,111 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: T.bg },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[2.5],
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
+    gap: Spacing[3],
   },
   backBtn: { padding: Spacing[1] },
+  navTitleWrap: { flex: 1 },
   navTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
-    color: '#090D14',
+    fontSize: FontSize.base,
+    color: T.ink,
   },
-  placeholder: { width: 24 },
-  scrollContent: { paddingBottom: Spacing[10] },
-  jobSummary: {
-    backgroundColor: '#FFFFFF',
-    padding: Spacing[4],
+  navSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: T.textSecondary,
+  },
+  countBadge: {
+    backgroundColor: T.primaryMuted,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: T.primaryLight,
+  },
+  countBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: T.primary,
+  },
+  scrollContent: { paddingBottom: Spacing[8] },
+  overviewStrip: {
+    flexDirection: 'row',
+    backgroundColor: T.white,
+    paddingVertical: Spacing[3.5],
+    paddingHorizontal: Spacing[5],
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
   },
-  jobTitle: {
+  overviewItem: { flex: 1, alignItems: 'center' },
+  overviewNum: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#090D14',
+    color: T.ink,
     letterSpacing: -0.3,
   },
-  jobMeta: {
+  overviewLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 10,
+    color: T.textSecondary,
+    marginTop: 1,
+  },
+  stripDivider: { width: 1, height: 28, backgroundColor: T.border },
+  sectionHeaderRow: {
+    paddingHorizontal: Spacing[5],
+    paddingTop: Spacing[4],
+    paddingBottom: Spacing[2],
+  },
+  sectionTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: T.ink,
+  },
+  sectionSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: T.textSecondary,
+    marginTop: 1,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: Spacing[12],
+    paddingHorizontal: Spacing[6],
+    gap: Spacing[2],
+  },
+  emptyTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: T.ink,
+  },
+  emptySub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#5A6578',
-    marginTop: 2,
-  },
-  listSection: {
-    paddingHorizontal: Spacing[5],
-    paddingTop: Spacing[3],
+    color: T.textSecondary,
+    textAlign: 'center',
   },
   applicantCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
+    marginHorizontal: 16,
     borderRadius: BorderRadius.lg,
     padding: Spacing[4],
     marginBottom: Spacing[3],
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -321,7 +412,7 @@ const styles = StyleSheet.create({
   workerName: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#090D14',
+    color: T.ink,
   },
   metaRow: {
     flexDirection: 'row',
@@ -331,29 +422,29 @@ const styles = StyleSheet.create({
   metaText: {
     fontFamily: FontFamily.medium,
     fontSize: 10,
-    color: '#5A6578',
+    color: T.textSecondary,
   },
-  metaDot: { color: '#D4D1C8', fontSize: 10 },
+  metaDot: { color: T.textMuted, fontSize: 10 },
   wageBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F2F0EB',
+    backgroundColor: T.primaryMuted,
     padding: Spacing[2.5],
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.primaryLight,
     marginBottom: Spacing[2.5],
   },
   wageBoxLabel: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: '#5A6578',
+    color: T.textSecondary,
   },
   wageBoxValue: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.base,
-    color: '#0D3B3F',
+    color: T.primary,
   },
   reasonsList: {
     gap: 4,
@@ -367,47 +458,47 @@ const styles = StyleSheet.create({
   reasonText: {
     fontFamily: FontFamily.medium,
     fontSize: 11,
-    color: '#090D14',
+    color: T.ink,
   },
   actionRow: {
     flexDirection: 'row',
     gap: Spacing[2],
     paddingTop: Spacing[2.5],
     borderTopWidth: 1,
-    borderTopColor: '#F2F0EB',
+    borderTopColor: '#F0F4F8',
   },
   counterBtn: {
     flex: 1,
     paddingVertical: Spacing[2],
     borderRadius: BorderRadius.full,
     borderWidth: 1.5,
-    borderColor: '#090D14',
+    borderColor: T.primary,
     alignItems: 'center',
   },
   counterBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
+    color: T.primary,
   },
   hireBtn: {
     flex: 1,
     paddingVertical: Spacing[2],
     borderRadius: BorderRadius.full,
-    backgroundColor: '#0D3B3F',
+    backgroundColor: T.primary,
     alignItems: 'center',
   },
   hireBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#FFFFFF',
+    color: T.white,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(9, 13, 20, 0.65)',
+    backgroundColor: 'rgba(28, 43, 58, 0.60)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderTopLeftRadius: BorderRadius['2xl'],
     borderTopRightRadius: BorderRadius['2xl'],
     padding: Spacing[6],
@@ -422,12 +513,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#090D14',
+    color: T.ink,
   },
   modalSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#5A6578',
+    color: T.textSecondary,
     marginBottom: Spacing[4],
   },
   modalInputGroup: {
@@ -436,19 +527,19 @@ const styles = StyleSheet.create({
   modalInputLabel: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.xs,
-    color: '#090D14',
+    color: T.ink,
     marginBottom: Spacing[1],
   },
   modalInput: {
-    backgroundColor: '#F8F7F4',
-    borderWidth: 1.5,
-    borderColor: '#E8E6E0',
+    backgroundColor: '#F0F4F8',
+    borderWidth: 1,
+    borderColor: T.border,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing[3.5],
     paddingVertical: Spacing[2.5],
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#090D14',
+    color: T.ink,
   },
   modalTextArea: {
     minHeight: 60,

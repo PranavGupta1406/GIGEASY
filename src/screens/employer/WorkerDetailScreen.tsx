@@ -1,5 +1,5 @@
 // Worker Detail Screen (Employer Inspection) — Trust Scorecard, Verified History & Direct Hire
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#6497B2) Palette · Simple & Confident
 
 import React from 'react';
 import {
@@ -16,12 +16,10 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import {
-  Colors,
   FontFamily,
   FontSize,
   Spacing,
   BorderRadius,
-  Shadow,
 } from '../../constants';
 import {
   GigEasyAvatar,
@@ -32,6 +30,22 @@ import {
 import { MOCK_WORKERS, formatWage, formatDate } from '../../data/mockData';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerDetail'>;
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  money: '#EA580C',
+  moneyBg: '#FFEDD5',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+};
 
 export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { workerId } = route.params;
@@ -58,7 +72,7 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.white} />
 
       {/* Nav Header */}
       <View style={styles.navBar}>
@@ -67,10 +81,10 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           style={styles.backBtn}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color="#090D14" />
+          <Feather name="arrow-left" size={22} color={T.ink} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>
-          Worker Inspection
+          Worker Profile
         </Text>
         <View style={styles.placeholder} />
       </View>
@@ -91,14 +105,14 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.nameRow}>
                 <Text style={styles.workerName}>{worker.name}</Text>
                 {worker.verificationStatus === 'verified' && (
-                  <MaterialCommunityIcons name="check-decagram" size={14} color="#0D3B3F" />
+                  <MaterialCommunityIcons name="check-decagram" size={16} color={T.primary} />
                 )}
               </View>
               <Text style={styles.workerSub}>
                 {worker.experienceYears}y experience · {worker.location.city}
               </Text>
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color="#090D14" />
+                <Ionicons name="star" size={13} color="#D97706" />
                 <Text style={styles.ratingText}>{worker.rating.toFixed(1)}</Text>
                 <Text style={styles.ratingCount}>({worker.completedJobs} gigs)</Text>
               </View>
@@ -115,25 +129,25 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* Trust Score Breakdown */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="shield-check" size={20} color="#0D3B3F" />
+            <MaterialCommunityIcons name="shield-check" size={20} color={T.primary} />
             <Text style={styles.cardTitle}>Trust & Verification Audit</Text>
           </View>
 
           <View style={styles.trustScoreBar}>
             <Text style={styles.trustScoreNumber}>{worker.trustScore}/100 PTS</Text>
-            <Text style={styles.trustScoreLabel}>High Trust Tier</Text>
+            <Text style={styles.trustScoreLabel}>Verified Work Record</Text>
           </View>
 
           <View style={styles.auditRow}>
-            <Feather name="check" size={12} color="#0D3B3F" strokeWidth={2.5} />
-            <Text style={styles.auditText}>Aadhaar e-KYC Identity Verified</Text>
+            <Feather name="check" size={12} color={T.primary} strokeWidth={2.5} />
+            <Text style={styles.auditText}>Aadhaar Identity Verified</Text>
           </View>
           <View style={styles.auditRow}>
-            <Feather name="check" size={12} color="#0D3B3F" strokeWidth={2.5} />
-            <Text style={styles.auditText}>98% On-Time GPS Shift Check-in</Text>
+            <Feather name="check" size={12} color={T.primary} strokeWidth={2.5} />
+            <Text style={styles.auditText}>98% On-Time Shift Attendance</Text>
           </View>
           <View style={styles.auditRow}>
-            <Feather name="check" size={12} color="#0D3B3F" strokeWidth={2.5} />
+            <Feather name="check" size={12} color={T.primary} strokeWidth={2.5} />
             <Text style={styles.auditText}>Zero dispute flags in past 12 months</Text>
           </View>
         </View>
@@ -144,7 +158,7 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={styles.skillsGrid}>
             {worker.skills.map((skill) => (
               <View key={skill.id} style={styles.skillChip}>
-                <Feather name="check" size={11} color="#0D3B3F" strokeWidth={2.5} />
+                <Feather name="check" size={11} color={T.primary} strokeWidth={2.5} />
                 <Text style={styles.skillText}>{skill.name}</Text>
               </View>
             ))}
@@ -153,9 +167,9 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Past Work Reviews */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Verified Work History</Text>
+          <Text style={styles.cardTitle}>Work History</Text>
           {worker.workHistory.length === 0 ? (
-            <Text style={styles.noReviews}>No previous reviews on file.</Text>
+            <Text style={styles.noReviews}>No previous records on file.</Text>
           ) : (
             worker.workHistory.map((item) => (
               <View key={item.id} style={styles.reviewItem}>
@@ -186,121 +200,131 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: T.bg },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[2.5],
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
   },
   backBtn: { padding: Spacing[1] },
   navTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.md,
-    color: '#090D14',
+    color: T.ink,
   },
   placeholder: { width: 24 },
-  scrollContent: { paddingBottom: Spacing[14] },
+  scrollContent: { paddingBottom: 100 },
   heroCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: Spacing[5],
-    marginTop: Spacing[4],
-    padding: Spacing[5],
+    backgroundColor: T.white,
+    marginHorizontal: 16,
+    marginTop: 14,
+    padding: 16,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[3.5],
-    marginBottom: Spacing[3.5],
+    gap: 14,
+    marginBottom: 14,
   },
   heroInfo: { flex: 1 },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[1.5],
+    gap: 6,
     marginBottom: 2,
   },
   workerName: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#090D14',
+    color: T.ink,
   },
   workerSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#5A6578',
+    color: T.textSecondary,
     marginBottom: 4,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   ratingText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
+    color: T.ink,
   },
   ratingCount: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#5A6578',
+    color: T.textMuted,
   },
   wageBox: {
-    backgroundColor: '#090D14',
-    padding: Spacing[3],
+    backgroundColor: T.primaryMuted,
+    padding: 12,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: T.primaryLight,
   },
   wageLabel: {
     fontFamily: FontFamily.bold,
     fontSize: 9,
-    color: '#C8F135',
+    color: T.primary,
     letterSpacing: 0.6,
     marginBottom: 2,
   },
   wageValue: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: T.primary,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: Spacing[5],
-    marginTop: Spacing[3],
-    padding: Spacing[4],
+    backgroundColor: T.white,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 16,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[2],
-    marginBottom: Spacing[2.5],
+    gap: 8,
+    marginBottom: 10,
   },
   cardTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: '#090D14',
-    marginBottom: Spacing[2],
+    color: T.ink,
+    marginBottom: 8,
   },
   trustScoreBar: {
-    backgroundColor: '#E8F3F4',
-    padding: Spacing[3],
+    backgroundColor: T.primaryMuted,
+    padding: 12,
     borderRadius: BorderRadius.md,
-    marginBottom: Spacing[3],
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#C0DFE2',
+    borderColor: T.primaryLight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -308,49 +332,49 @@ const styles = StyleSheet.create({
   trustScoreNumber: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.md,
-    color: '#0D3B3F',
+    color: T.primary,
   },
   trustScoreLabel: {
     fontFamily: FontFamily.bold,
     fontSize: 11,
-    color: '#0D3B3F',
+    color: T.primary,
   },
   auditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[2],
-    marginBottom: Spacing[1.5],
+    gap: 8,
+    marginBottom: 6,
   },
   auditText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#5A6578',
+    color: T.textSecondary,
   },
   skillsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing[1.5],
+    gap: 6,
   },
   skillChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#E8F3F4',
-    paddingHorizontal: Spacing[3],
+    backgroundColor: T.primaryMuted,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: '#C0DFE2',
+    borderColor: T.primaryLight,
   },
   skillText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#0D3B3F',
+    color: T.primary,
   },
   reviewItem: {
-    paddingVertical: Spacing[2],
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F0EB',
+    borderBottomColor: '#F0F4F8',
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -361,29 +385,33 @@ const styles = StyleSheet.create({
   reviewJob: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
+    color: T.ink,
   },
   reviewEmployer: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#5A6578',
+    color: T.textSecondary,
   },
   noReviews: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#8E99A8',
+    color: T.textMuted,
   },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: Spacing[5],
-    paddingTop: Spacing[3],
-    paddingBottom: Spacing[4],
+    backgroundColor: T.white,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: '#E8E6E0',
-    ...Shadow.md,
+    borderTopColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 4,
   },
 });

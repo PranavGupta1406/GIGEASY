@@ -43,11 +43,13 @@ export const SKILL_CATEGORIES = [
   'Events',
   'Factory',
   'Delivery',
+  'Retail',
+  'Logistics',
   'Helper',
   'Farming',
 ] as const;
 
-export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
+export type SkillCategory = string;
 
 export interface Skill {
   id: string;

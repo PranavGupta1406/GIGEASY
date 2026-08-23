@@ -1,5 +1,5 @@
-// Worker Home Screen — Flagship map experience + earnings hero + horizontal job discovery
-// Location + Opportunities + Earnings + Availability
+// Worker Home Screen — Clean, wage-first visual job discovery
+// High-scannability, visual category pills, live radar map, and multilingual support
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -10,50 +10,54 @@ import {
   TouchableOpacity,
   Switch,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize, Spacing, BorderRadius, Colors, Shadow } from '../../constants';
-import { MOCK_JOBS, CURRENT_WORKER, formatWage } from '../../data/mockData';
-import { rankJobsForWorker } from '../../services/matching/matchingEngine';
+import { FontFamily, FontSize } from '../../constants';
+import { MOCK_JOBS, CURRENT_WORKER } from '../../data/mockData';
 import { InteractiveMapVisual } from '../../components/InteractiveMapVisual';
+import { GigEasyJobCard } from '../../components/GigEasyCards';
+import { getCategoryVisual } from '../../components/GigEasyPrimitives';
+import { useLanguageStore } from '../../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+};
+
 const MAP_JOB_PINS = [
-  { id: 'j1', wage: '₹1,000', title: 'Warehouse Loading', top: '30%', left: '62%' },
-  { id: 'j2', wage: '₹1,500', title: 'Industrial Electrician', top: '56%', left: '18%' },
+  { id: 'j1', wage: '₹1,000', title: 'Warehouse Helper', top: '30%', left: '62%' },
+  { id: 'j2', wage: '₹1,500', title: 'Electrician', top: '56%', left: '18%' },
   { id: 'j3', wage: '₹850', title: 'Site Helper', top: '22%', left: '26%' },
   { id: 'j4', wage: '₹1,200', title: 'Event Setup', top: '68%', left: '72%' },
 ];
 
+const CATEGORIES = ['All', 'Warehouse', 'Electrical', 'Plumbing', 'Construction', 'Delivery', 'Events', 'Cleaning'];
+
 export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [isAvailable, setIsAvailable] = useState(true);
   const [selectedPinId, setSelectedPinId] = useState('j1');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const { t } = useLanguageStore();
 
   const worker = CURRENT_WORKER;
-  const rankedJobs = useMemo(() => rankJobsForWorker(MOCK_JOBS, worker), [worker]);
-
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  })();
 
   const filteredJobs = useMemo(() => {
-    if (selectedCategory === 'ALL') return rankedJobs;
-    return rankedJobs.filter(
-      (item) => item.job.skillRequired.category.toUpperCase() === selectedCategory
+    if (selectedCategory === 'All') return MOCK_JOBS;
+    return MOCK_JOBS.filter(
+      (job) => job.skillRequired.category.toLowerCase() === selectedCategory.toLowerCase()
     );
-  }, [rankedJobs, selectedCategory]);
-
-  const nearJobs = filteredJobs.slice(0, 4);
-  const bestPaying = [...filteredJobs].sort((a, b) => b.job.maxWage - a.job.maxWage).slice(0, 4);
-
-  const categories = ['ALL', 'WAREHOUSE', 'ELECTRICAL', 'CONSTRUCTION', 'HOSPITALITY', 'DELIVERY'];
+  }, [selectedCategory]);
 
   return (
     <ScrollView
@@ -61,80 +65,34 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* ─── 1. Greeting + Availability ─── */}
-      <View style={styles.greetingBlock}>
-        <View style={styles.greetingLeft}>
-          <Text style={styles.greetingText}>
-            {greeting}, {worker.name.split(' ')[0]}
-          </Text>
-          <View style={styles.locationRow}>
-            <Feather name="map-pin" size={11} color="#0D3B3F" />
-            <Text style={styles.locationText}>{worker.location.city}</Text>
-            <View style={styles.dotDivider} />
-            <View style={[styles.availDot, { backgroundColor: isAvailable ? '#10B981' : '#8E99A8' }]} />
-            <Text style={styles.availText}>{isAvailable ? 'Available' : 'Unavailable'}</Text>
+      {/* ─── 1. Location & Status ─── */}
+      <View style={styles.topHeader}>
+        <View style={styles.locationBlock}>
+          <View style={styles.locationPill}>
+            <Feather name="map-pin" size={12} color={T.primary} />
+            <Text style={styles.locationCity}>{worker.location.city}, {worker.location.state}</Text>
           </View>
+          <Text style={styles.workerGreeting}>Hi, {worker.name.split(' ')[0]}</Text>
         </View>
 
-        <Switch
-          value={isAvailable}
-          onValueChange={setIsAvailable}
-          trackColor={{ false: '#E8E6E0', true: '#D4F63D' }}
-          thumbColor={isAvailable ? '#0D3B3F' : '#8E99A8'}
-          style={styles.switch}
-        />
-      </View>
-
-      {/* ─── 2. Earnings Hero Card ─── */}
-      <View style={styles.earningsCard}>
-        <View style={styles.earningsTopRow}>
-          <View>
-            <Text style={styles.earningsLabel}>EARNED THIS MONTH</Text>
-            <Text style={styles.earningsAmount}>₹4,850</Text>
-          </View>
-          <View style={styles.earningsBadge}>
-            <Feather name="trending-up" size={12} color="#C8F135" />
-            <Text style={styles.earningsBadgeText}>+18% vs last month</Text>
-          </View>
-        </View>
-
-        <View style={styles.earningsDivider} />
-
-        <View style={styles.earningsMetaRow}>
-          <View style={styles.metaItem}>
-            <Feather name="briefcase" size={12} color="#8E99A8" />
-            <Text style={styles.metaValue}>{worker.completedJobs}</Text>
-            <Text style={styles.metaLabel}>gigs done</Text>
-          </View>
-          <View style={styles.metaSeparator} />
-          <View style={styles.metaItem}>
-            <Feather name="star" size={12} color="#C8F135" />
-            <Text style={styles.metaValue}>{worker.rating.toFixed(1)}</Text>
-            <Text style={styles.metaLabel}>rating</Text>
-          </View>
-          <View style={styles.metaSeparator} />
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="shield-check" size={13} color="#10B981" />
-            <Text style={[styles.metaValue, { color: '#10B981' }]}>{worker.trustScore}%</Text>
-            <Text style={styles.metaLabel}>trust score</Text>
-          </View>
+        <View style={styles.availControl}>
+          <View style={[styles.statusDot, { backgroundColor: isAvailable ? T.success : '#94A3B8' }]} />
+          <Text style={styles.availText}>{isAvailable ? 'Looking for work' : 'Busy'}</Text>
+          <Switch
+            value={isAvailable}
+            onValueChange={setIsAvailable}
+            trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
+            thumbColor={isAvailable ? T.primary : '#94A3B8'}
+            style={styles.switch}
+          />
         </View>
       </View>
 
-      {/* ─── 3. Work Near You Map Visual ─── */}
+      {/* ─── 2. Interactive Map Visual ─── */}
       <View style={styles.mapSection}>
         <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Work near you</Text>
-            <Text style={styles.sectionSub}>{rankedJobs.length} live opportunities within {worker.preferredRadius} km</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => shellNavigation.navigate('JobDetail', { jobId: selectedPinId })}
-            activeOpacity={0.7}
-            style={styles.explorePill}
-          >
-            <Text style={styles.explorePillText}>Explore →</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>{t('gigsNearYou')}</Text>
+          <Text style={styles.sectionSub}>{filteredJobs.length} {t('availableToday')}</Text>
         </View>
 
         <InteractiveMapVisual
@@ -144,21 +102,23 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
             setSelectedPinId(id);
             shellNavigation.navigate('JobDetail', { jobId: id });
           }}
-          height={210}
+          height={180}
           locationCity={worker.location.city}
           radiusKm={worker.preferredRadius}
         />
       </View>
 
-      {/* ─── 4. Quick Category Filter Pills ─── */}
+      {/* ─── 3. Visual Horizontal Category Filter ─── */}
       <View style={styles.categorySection}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryScroll}
         >
-          {categories.map((cat) => {
+          {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat;
+            const catVisual = cat !== 'All' ? getCategoryVisual(cat) : null;
+
             return (
               <TouchableOpacity
                 key={cat}
@@ -169,13 +129,21 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
                   isSelected && styles.categoryPillActive,
                 ]}
               >
+                {catVisual && (
+                  <Feather
+                    name={catVisual.iconName}
+                    size={12}
+                    color={isSelected ? T.white : catVisual.color}
+                    style={{ marginRight: 4 }}
+                  />
+                )}
                 <Text
                   style={[
                     styles.categoryPillText,
                     isSelected && styles.categoryPillTextActive,
                   ]}
                 >
-                  {cat}
+                  {cat === 'All' ? t('allCategories') : cat}
                 </Text>
               </TouchableOpacity>
             );
@@ -183,481 +151,163 @@ export const WorkerHomeScreen: React.FC<Props> = ({ shellNavigation }) => {
         </ScrollView>
       </View>
 
-      {/* ─── 5. Near You — Horizontal Discovery ─── */}
-      <View style={styles.discoverySection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Urgent Today</Text>
+      {/* ─── 4. Visual Job Cards Feed ─── */}
+      <View style={styles.feedSection}>
+        <View style={styles.feedHeader}>
+          <Text style={styles.feedTitle}>{t('tabJobs')}</Text>
           <TouchableOpacity
-            onPress={() => shellNavigation.navigate('JobDetail', { jobId: nearJobs[0]?.job.id ?? 'j1' })}
+            onPress={() => shellNavigation.navigate('WorkerTabs')}
             activeOpacity={0.7}
           >
-            <Text style={styles.seeAll}>See all ({nearJobs.length})</Text>
+            <Text style={styles.seeAllText}>See all ({filteredJobs.length}) →</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.hScrollContent}
-        >
-          {nearJobs.map(({ job, match }) => (
-            <TouchableOpacity
+        <View style={styles.jobList}>
+          {filteredJobs.map((job) => (
+            <GigEasyJobCard
               key={job.id}
-              style={styles.horizontalJobCard}
+              job={job}
               onPress={() => shellNavigation.navigate('JobDetail', { jobId: job.id })}
-              activeOpacity={0.88}
-            >
-              <View style={styles.hCardHeader}>
-                <View style={styles.hCategoryBadge}>
-                  <Text style={styles.hCardCategory}>{job.skillRequired.category.toUpperCase()}</Text>
-                </View>
-                <View style={styles.matchScoreBadge}>
-                  <Text style={styles.matchScoreText}>{match.totalScore}% Match</Text>
-                </View>
-              </View>
-
-              <Text style={styles.hCardWage}>
-                {formatWage(job.maxWage)}
-                <Text style={styles.hCardWageUnit}>/day</Text>
-              </Text>
-
-              <Text style={styles.hCardTitle} numberOfLines={2}>{job.title}</Text>
-
-              <View style={styles.hCardMeta}>
-                <Feather name="map-pin" size={10} color="#5A6578" />
-                <Text style={styles.hCardMetaText}>{job.distanceKm} km · {job.location.city}</Text>
-              </View>
-
-              <View style={styles.hCardFooter}>
-                <View style={styles.verifiedRow}>
-                  <MaterialCommunityIcons name="check-decagram" size={12} color="#0D3B3F" />
-                  <Text style={styles.verifiedText}>Verified</Text>
-                </View>
-                <Text style={styles.shiftText}>{job.startTime}</Text>
-              </View>
-            </TouchableOpacity>
+            />
           ))}
-        </ScrollView>
-      </View>
-
-      {/* ─── 6. Best Paying Gigs — Dark Luxury Cards ─── */}
-      <View style={styles.discoverySection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>High Paying Near You</Text>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.seeAll}>Highest Rate</Text>
-          </TouchableOpacity>
         </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.hScrollContent}
-        >
-          {bestPaying.map(({ job }) => (
-            <TouchableOpacity
-              key={job.id}
-              style={[styles.horizontalJobCard, styles.darkCard]}
-              onPress={() => shellNavigation.navigate('JobDetail', { jobId: job.id })}
-              activeOpacity={0.88}
-            >
-              <View style={styles.hCardHeader}>
-                <View style={styles.hCategoryBadgeDark}>
-                  <Text style={styles.hCardCategoryDark}>{job.skillRequired.category.toUpperCase()}</Text>
-                </View>
-                <View style={styles.instantBadge}>
-                  <Text style={styles.instantBadgeText}>Daily Cash</Text>
-                </View>
-              </View>
-
-              <Text style={styles.hCardWageDark}>
-                {formatWage(job.maxWage)}
-                <Text style={styles.hCardWageUnitDark}>/day</Text>
-              </Text>
-
-              <Text style={styles.hCardTitleDark} numberOfLines={2}>{job.title}</Text>
-
-              <View style={styles.hCardMeta}>
-                <Feather name="map-pin" size={10} color="rgba(255,255,255,0.4)" />
-                <Text style={styles.hCardMetaTextDark}>{job.distanceKm} km · {job.location.city}</Text>
-              </View>
-
-              <View style={styles.hCardFooterDark}>
-                <Text style={styles.employerNameDark} numberOfLines={1}>
-                  {job.employer.businessName}
-                </Text>
-                <Feather name="arrow-up-right" size={13} color="#C8F135" />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
       </View>
-
-      <View style={styles.bottomPad} />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
-  scrollContent: { paddingBottom: 24 },
+  container: { flex: 1, backgroundColor: T.bg },
+  scrollContent: { paddingBottom: 32 },
 
-  // Greeting
-  greetingBlock: {
+  // Top Header
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    paddingBottom: 14,
+    backgroundColor: T.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
   },
-  greetingLeft: { flex: 1 },
-  greetingText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xl,
-    color: '#090D14',
-    letterSpacing: -0.4,
-  },
-  locationRow: {
+  locationBlock: { flex: 1 },
+  locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 3,
+    marginBottom: 2,
   },
-  locationText: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 11,
-    color: '#090D14',
+  locationCity: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: T.primary,
   },
-  dotDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#D4D1C8',
-    marginHorizontal: 3,
+  workerGreeting: {
+    fontFamily: FontFamily.bold,
+    fontSize: 20,
+    color: T.ink,
+    letterSpacing: -0.4,
   },
-  availDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  availControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   availText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#5A6578',
-  },
-  switch: { transform: [{ scale: 0.75 }] },
-
-  // Earnings Hero
-  earningsCard: {
-    backgroundColor: '#090D14',
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 18,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#090D14',
-    ...Shadow.sm,
-  },
-  earningsTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  earningsLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#8E99A8',
-    letterSpacing: 0.6,
-    marginBottom: 2,
-  },
-  earningsAmount: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 34,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  earningsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(200, 241, 53, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  earningsBadgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#C8F135',
-  },
-  earningsDivider: {
-    height: 1,
-    backgroundColor: '#1E293B',
-    marginVertical: 12,
-  },
-  earningsMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  metaValue: {
-    fontFamily: FontFamily.bold,
     fontSize: 12,
-    color: '#FFFFFF',
+    color: T.textSecondary,
   },
-  metaLabel: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#8E99A8',
-  },
-  metaSeparator: {
-    width: 1,
-    height: 12,
-    backgroundColor: '#1E293B',
+  switch: {
+    transform: [{ scale: 0.75 }],
   },
 
   // Map Section
   mapSection: {
-    marginTop: 18,
+    marginTop: 14,
     paddingHorizontal: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: '#090D14',
+    fontSize: 16,
+    color: T.ink,
     letterSpacing: -0.3,
   },
   sectionSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#5A6578',
-    marginTop: 1,
-  },
-  explorePill: {
-    backgroundColor: '#E8F3F4',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  explorePillText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#0D3B3F',
+    fontSize: 12,
+    color: T.textSecondary,
   },
 
   // Category Pills
   categorySection: {
-    marginTop: 16,
+    marginTop: 14,
   },
   categoryScroll: {
     paddingHorizontal: 16,
     gap: 8,
   },
   categoryPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: T.white,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
   },
   categoryPillActive: {
-    backgroundColor: '#0D3B3F',
-    borderColor: '#0D3B3F',
+    backgroundColor: T.primary,
+    borderColor: T.primary,
   },
   categoryPillText: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 10,
-    color: '#5A6578',
-    letterSpacing: 0.4,
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: T.textSecondary,
   },
   categoryPillTextActive: {
-    color: '#FFFFFF',
+    color: T.white,
     fontFamily: FontFamily.bold,
   },
 
-  // Discovery
-  discoverySection: {
-    marginTop: 20,
-  },
-  seeAll: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#0D3B3F',
-  },
-  hScrollContent: {
+  // Feed Section
+  feedSection: {
+    marginTop: 18,
     paddingHorizontal: 16,
+  },
+  feedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  feedTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 17,
+    color: T.ink,
+    letterSpacing: -0.3,
+  },
+  seeAllText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: T.primary,
+  },
+  jobList: {
     gap: 10,
   },
-  horizontalJobCard: {
-    width: 175,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
-  },
-  darkCard: {
-    backgroundColor: '#090D14',
-    borderColor: '#090D14',
-  },
-  hCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  hCategoryBadge: {
-    backgroundColor: '#F2F0EB',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  hCategoryBadgeDark: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  hCardCategory: {
-    fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#0D3B3F',
-    letterSpacing: 0.5,
-  },
-  hCardCategoryDark: {
-    fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#C8F135',
-    letterSpacing: 0.5,
-  },
-  matchScoreBadge: {
-    backgroundColor: '#E8F3F4',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  matchScoreText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#0D3B3F',
-  },
-  instantBadge: {
-    backgroundColor: 'rgba(200, 241, 53, 0.15)',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  instantBadgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#C8F135',
-  },
-  hCardWage: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#0D3B3F',
-    letterSpacing: -0.5,
-  },
-  hCardWageUnit: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#8E99A8',
-  },
-  hCardWageDark: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#C8F135',
-    letterSpacing: -0.5,
-  },
-  hCardWageUnitDark: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  hCardTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#090D14',
-    lineHeight: 16,
-    marginVertical: 4,
-  },
-  hCardTitleDark: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
-    lineHeight: 16,
-    marginVertical: 4,
-  },
-  hCardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginBottom: 8,
-  },
-  hCardMetaText: {
-    fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#5A6578',
-  },
-  hCardMetaTextDark: {
-    fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#8E99A8',
-  },
-  hCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F0EB',
-  },
-  hCardFooterDark: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-  },
-  verifiedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  verifiedText: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 10,
-    color: '#0D3B3F',
-  },
-  shiftText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#5A6578',
-  },
-  employerNameDark: {
-    flex: 1,
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#CBD5E1',
-    marginRight: 4,
-  },
-  bottomPad: { height: 16 },
 });

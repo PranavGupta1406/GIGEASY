@@ -1,5 +1,5 @@
 // Employer Onboarding Screen — Business Name & Sector Details
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Navy (#1E3A5F)
 
 import React, { useState } from 'react';
 import {
@@ -12,23 +12,26 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../../navigation/RootNavigator';
-import {
-  Colors,
-  FontFamily,
-  FontSize,
-  Spacing,
-  BorderRadius,
-  Shadow,
-} from '../../../constants';
+import { FontFamily, FontSize } from '../../../constants';
 import { GigEasyButton } from '../../../components';
 import { CURRENT_EMPLOYER } from '../../../data/mockData';
 import { useEmployerStore, useAuthStore } from '../../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmployerName'>;
+
+const B = {
+  bg: '#F8FAFC',
+  navy: '#1A68D5',
+  navyLight: '#EBF3FC',
+  ink: '#0F172A',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+};
 
 const BUSINESS_TYPES = [
   'Logistics & Warehousing',
@@ -64,7 +67,7 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F7F4" />
+      <StatusBar barStyle="dark-content" backgroundColor={B.bg} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -73,12 +76,9 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>EMPLOYER ONBOARDING</Text>
-            </View>
             <Text style={styles.title}>Tell us about your{'\n'}business</Text>
             <Text style={styles.subtitle}>
-              Set up your employer identity to post gigs and discover verified workers near you.
+              Set up your employer profile to post jobs and connect with workers nearby.
             </Text>
           </View>
 
@@ -88,7 +88,7 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
             <TextInput
               style={styles.textInput}
               placeholder="e.g. Bharat Logistics Pvt Ltd"
-              placeholderTextColor="#8E99A8"
+              placeholderTextColor="#8A99AB"
               value={businessName}
               onChangeText={setBusinessName}
               autoFocus
@@ -132,7 +132,7 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
             <TextInput
               style={styles.textInput}
               placeholder="e.g. Noida, Gurugram, Delhi"
-              placeholderTextColor="#8E99A8"
+              placeholderTextColor="#8A99AB"
               value={city}
               onChangeText={setCity}
             />
@@ -157,96 +157,79 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: B.bg },
   scrollContent: { flexGrow: 1 },
   content: {
     flex: 1,
-    paddingHorizontal: Spacing[6],
-    paddingTop: Spacing[5],
+    paddingHorizontal: 24,
+    paddingTop: 24,
     justifyContent: 'space-between',
-    paddingBottom: Spacing[8],
+    paddingBottom: Platform.OS === 'android' ? 28 : 36,
   },
   header: {
-    marginBottom: Spacing[5],
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#E8F3F4',
-    paddingHorizontal: Spacing[2.5],
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: '#C0DFE2',
-    marginBottom: Spacing[2.5],
-  },
-  badgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#0D3B3F',
-    letterSpacing: 0.6,
+    marginBottom: 24,
   },
   title: {
     fontFamily: FontFamily.bold,
     fontSize: 32,
-    color: '#090D14',
+    color: B.ink,
     lineHeight: 38,
     letterSpacing: -1,
-    marginBottom: Spacing[2],
+    marginBottom: 8,
   },
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: '#5A6578',
+    color: B.textMuted,
     lineHeight: 20,
   },
   inputGroup: {
-    marginBottom: Spacing[4],
+    marginBottom: 20,
   },
   inputLabel: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
-    marginBottom: Spacing[1.5],
+    color: B.ink,
+    marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: B.white,
     borderWidth: 1.5,
-    borderColor: '#090D14',
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3.5],
+    borderColor: B.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: '#090D14',
-    ...Shadow.xs,
+    color: B.ink,
   },
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing[2],
+    gap: 8,
   },
   typeChip: {
-    paddingHorizontal: Spacing[3.5],
-    paddingVertical: Spacing[2],
-    borderRadius: BorderRadius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#E8E6E0',
-    backgroundColor: '#FFFFFF',
+    borderColor: B.border,
+    backgroundColor: B.white,
   },
   typeChipSelected: {
-    borderColor: '#0D3B3F',
-    backgroundColor: '#0D3B3F',
+    borderColor: B.navy,
+    backgroundColor: B.navy,
   },
   typeText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: '#090D14',
+    color: B.ink,
   },
   typeTextSelected: {
     color: '#FFFFFF',
     fontFamily: FontFamily.semiBold,
   },
   ctaSection: {
-    marginTop: Spacing[4],
+    marginTop: 20,
   },
 });

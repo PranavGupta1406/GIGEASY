@@ -1,5 +1,6 @@
 // GigEasy Signature Interactive Map Visual
-// Clean urban cartography with live radar sweep and selectable job pins
+// Clean cartography with live pulse and selectable wage pins
+// Brand Navy (#1E3A5F)
 
 import React, { useEffect, useRef } from 'react';
 import {
@@ -10,8 +11,7 @@ import {
   Animated,
   ViewStyle,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Colors, FontFamily, FontSize, BorderRadius, Spacing, Shadow } from '../constants';
+import { FontFamily, BorderRadius } from '../constants';
 
 export interface MapJobMarker {
   id: string;
@@ -19,8 +19,8 @@ export interface MapJobMarker {
   title?: string;
   category?: string;
   distance?: string;
-  top: string | number; // percentage or px
-  left: string | number; // percentage or px
+  top: string | number;
+  left: string | number;
 }
 
 interface InteractiveMapVisualProps {
@@ -35,11 +35,24 @@ interface InteractiveMapVisualProps {
   style?: ViewStyle;
 }
 
+const B = {
+  navy: '#1A68D5',
+  navyLight: '#EBF3FC',
+  ink: '#0F172A',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  mapBg: '#F1F5F9',
+  road: '#E2E8F0',
+  green: '#10B981',
+  money: '#EA580C',
+};
+
 export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
   markers = [],
   selectedMarkerId,
   onSelectMarker,
-  height = 220,
+  height = 200,
   showRadar = true,
   userLabel = 'YOU',
   locationCity = 'Noida',
@@ -113,21 +126,19 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
   return (
     <View style={[styles.mapContainer, style]}>
       <View style={[styles.mapCanvas, { height }]}>
-        {/* Urban grid and arterial routes */}
+        {/* Grid and routes */}
         <View style={styles.gridLineH1} />
         <View style={styles.gridLineH2} />
         <View style={styles.gridLineV1} />
         <View style={styles.gridLineV2} />
         <View style={styles.arterialRoadH} />
         <View style={styles.arterialRoadV} />
-        <View style={styles.diagonalRoad} />
 
-        {/* Subtle city zone polygons */}
+        {/* City zones */}
         <View style={styles.zoneBlock1} />
         <View style={styles.zoneBlock2} />
-        <View style={styles.zoneBlock3} />
 
-        {/* Radar Waves */}
+        {/* Pulse Waves */}
         {showRadar && (
           <>
             <Animated.View
@@ -138,13 +149,13 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
                     {
                       scale: pulseAnim1.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0.2, 2.8],
+                        outputRange: [0.2, 2.6],
                       }),
                     },
                   ],
                   opacity: pulseAnim1.interpolate({
                     inputRange: [0, 0.6, 1],
-                    outputRange: [0.6, 0.25, 0],
+                    outputRange: [0.4, 0.15, 0],
                   }),
                 },
               ]}
@@ -157,13 +168,13 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
                     {
                       scale: pulseAnim2.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0.2, 2.8],
+                        outputRange: [0.2, 2.6],
                       }),
                     },
                   ],
                   opacity: pulseAnim2.interpolate({
                     inputRange: [0, 0.6, 1],
-                    outputRange: [0.6, 0.25, 0],
+                    outputRange: [0.4, 0.15, 0],
                   }),
                 },
               ]}
@@ -173,7 +184,6 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
 
         {/* Center User Marker */}
         <View style={styles.userMarkerContainer}>
-          <View style={styles.userDotPulse} />
           <View style={styles.userDot} />
           <View style={styles.userBadge}>
             <Text style={styles.userBadgeText}>{userLabel}</Text>
@@ -229,9 +239,9 @@ export const InteractiveMapVisual: React.FC<InteractiveMapVisualProps> = ({
       <View style={styles.statusStrip}>
         <View style={styles.stripLeft}>
           <View style={styles.livePulseDot} />
-          <Text style={styles.stripLiveText}>Live Radar · {locationCity}</Text>
+          <Text style={styles.stripLiveText}>Gigs in {locationCity}</Text>
         </View>
-        <Text style={styles.stripRadiusText}>Within {radiusKm} km radius</Text>
+        <Text style={styles.stripRadiusText}>Within {radiusKm} km</Text>
       </View>
     </View>
   );
@@ -242,13 +252,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    backgroundColor: '#F3F2EE',
-    ...Shadow.xs,
+    borderColor: B.border,
+    backgroundColor: B.mapBg,
   },
   mapCanvas: {
     position: 'relative',
-    backgroundColor: '#ECEAE4',
+    backgroundColor: B.mapBg,
     overflow: 'hidden',
   },
   gridLineH1: {
@@ -257,7 +266,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: '25%',
     height: 1,
-    backgroundColor: '#E0DDD5',
+    backgroundColor: B.road,
   },
   gridLineH2: {
     position: 'absolute',
@@ -265,7 +274,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: '75%',
     height: 1,
-    backgroundColor: '#E0DDD5',
+    backgroundColor: B.road,
   },
   gridLineV1: {
     position: 'absolute',
@@ -273,7 +282,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: '30%',
     width: 1,
-    backgroundColor: '#E0DDD5',
+    backgroundColor: B.road,
   },
   gridLineV2: {
     position: 'absolute',
@@ -281,32 +290,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: '70%',
     width: 1,
-    backgroundColor: '#E0DDD5',
+    backgroundColor: B.road,
   },
   arterialRoadH: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: '50%',
-    height: 6,
-    backgroundColor: '#DFDBD2',
+    height: 5,
+    backgroundColor: B.road,
   },
   arterialRoadV: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: '50%',
-    width: 6,
-    backgroundColor: '#DFDBD2',
-  },
-  diagonalRoad: {
-    position: 'absolute',
-    top: '-20%',
-    bottom: '-20%',
-    left: '20%',
-    width: 4,
-    backgroundColor: '#DFDBD2',
-    transform: [{ rotate: '35deg' }],
+    width: 5,
+    backgroundColor: B.road,
   },
   zoneBlock1: {
     position: 'absolute',
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     width: 65,
     height: 45,
     borderRadius: 6,
-    backgroundColor: '#E4E0D6',
+    backgroundColor: '#E4EAF2',
   },
   zoneBlock2: {
     position: 'absolute',
@@ -324,29 +324,20 @@ const styles = StyleSheet.create({
     width: 55,
     height: 40,
     borderRadius: 6,
-    backgroundColor: '#E4E0D6',
-  },
-  zoneBlock3: {
-    position: 'absolute',
-    top: '18%',
-    left: '10%',
-    width: 50,
-    height: 35,
-    borderRadius: 6,
-    backgroundColor: '#E4E0D6',
+    backgroundColor: '#E4EAF2',
   },
   radarWave: {
     position: 'absolute',
     top: '50%',
     left: '50%',
-    width: 120,
-    height: 120,
-    marginLeft: -60,
-    marginTop: -60,
-    borderRadius: 60,
+    width: 110,
+    height: 110,
+    marginLeft: -55,
+    marginTop: -55,
+    borderRadius: 55,
     borderWidth: 1.5,
-    borderColor: '#0D3B3F',
-    backgroundColor: 'rgba(13, 59, 63, 0.06)',
+    borderColor: B.navy,
+    backgroundColor: 'rgba(30, 58, 95, 0.08)',
   },
   userMarkerContainer: {
     position: 'absolute',
@@ -359,32 +350,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  userDotPulse: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(200, 241, 53, 0.4)',
-  },
   userDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#090D14',
-    borderWidth: 2.5,
-    borderColor: '#C8F135',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: B.navy,
+    borderWidth: 2,
+    borderColor: B.white,
   },
   userBadge: {
-    marginTop: 3,
-    backgroundColor: '#090D14',
+    marginTop: 2,
+    backgroundColor: B.navy,
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 3,
   },
   userBadgeText: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.bold,
     fontSize: 7,
-    color: '#C8F135',
+    color: B.white,
     letterSpacing: 0.5,
   },
   markerWrap: {
@@ -393,21 +377,18 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -24 }, { translateY: -14 }],
   },
   markerPill: {
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
   markerPillActive: {
-    backgroundColor: '#090D14',
-    borderColor: '#C8F135',
-    borderWidth: 1.5,
-    ...Shadow.sm,
+    backgroundColor: B.navy,
+    borderColor: B.navy,
   },
   markerPillDefault: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D4D1C8',
-    ...Shadow.xs,
+    backgroundColor: B.white,
+    borderColor: B.border,
   },
   markerWage: {
     fontFamily: FontFamily.bold,
@@ -415,10 +396,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   markerWageActive: {
-    color: '#C8F135',
+    color: B.white,
   },
   markerWageDefault: {
-    color: '#090D14',
+    color: B.navy,
   },
   markerAnchorDot: {
     width: 4,
@@ -427,20 +408,20 @@ const styles = StyleSheet.create({
     marginTop: 1.5,
   },
   anchorDotActive: {
-    backgroundColor: '#C8F135',
+    backgroundColor: B.navy,
   },
   anchorDotDefault: {
-    backgroundColor: '#8E99A8',
+    backgroundColor: '#8A99AB',
   },
   statusStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: B.white,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderTopWidth: 1,
-    borderTopColor: '#E8E6E0',
+    borderTopColor: B.border,
   },
   stripLeft: {
     flexDirection: 'row',
@@ -451,16 +432,16 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#10B981',
+    backgroundColor: B.green,
   },
   stripLiveText: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: 11,
-    color: '#090D14',
+    color: B.ink,
   },
   stripRadiusText: {
     fontFamily: FontFamily.medium,
     fontSize: 11,
-    color: '#8E99A8',
+    color: B.textMuted,
   },
 });

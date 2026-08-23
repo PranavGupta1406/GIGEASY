@@ -1,5 +1,5 @@
 // Phone Screen — Clean Indian Mobile Entry
-// Warm Ivory + Deep Teal + Electric Lime
+// Vibrant Brand Blue (#1A68D5) · Multilingual
 
 import React, { useState } from 'react';
 import {
@@ -15,25 +15,28 @@ import {
   Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import {
-  Colors,
-  FontFamily,
-  FontSize,
-  Spacing,
-  BorderRadius,
-  Shadow,
-} from '../../constants';
-import { GigEasyButton } from '../../components';
-import { useAuthStore } from '../../store';
+import { FontFamily, FontSize, Spacing, BorderRadius } from '../../constants';
+import { useAuthStore, useLanguageStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Phone'>;
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+};
 
 export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
+  const { t } = useLanguageStore();
 
   const isValid = phone.replace(/\D/g, '').length === 10;
 
@@ -48,21 +51,21 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
       setIsLoading(false);
       setPhoneNumber(phone);
       navigation.navigate('OTP', { phoneNumber: phone });
-    }, 500);
+    }, 400);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F7F4" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
 
-      {/* Nav Header */}
+      {/* Back */}
       <View style={styles.navHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color="#090D14" />
+          <Feather name="arrow-left" size={22} color={T.ink} />
         </TouchableOpacity>
       </View>
 
@@ -73,23 +76,25 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>What's your{'\n'}mobile number?</Text>
+            <Text style={styles.title}>{t('enterMobile')}</Text>
             <Text style={styles.subtitle}>
-              We'll send a 4-digit verification code to keep your account safe.
+              {t('otpSubtitle')}
             </Text>
           </View>
 
-          {/* Phone Input Box */}
-          <View style={styles.inputContainer}>
+          {/* Phone Input */}
+          <View style={[styles.inputContainer, phone.length > 0 && styles.inputContainerActive]}>
             <View style={styles.countryBadge}>
               <Text style={styles.flag}>🇮🇳</Text>
               <Text style={styles.countryCode}>+91</Text>
             </View>
 
+            <View style={styles.divider} />
+
             <TextInput
               style={styles.phoneInput}
               placeholder="98765 43210"
-              placeholderTextColor="#8E99A8"
+              placeholderTextColor="#94A3B8"
               keyboardType="number-pad"
               maxLength={10}
               value={phone}
@@ -102,34 +107,39 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={() => setPhone('')}
                 style={styles.clearBtn}
               >
-                <Feather name="x-circle" size={16} color="#8E99A8" />
+                <Feather name="x-circle" size={16} color="#94A3B8" />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Security Guarantee Note */}
-          <View style={styles.securityNote}>
-            <MaterialCommunityIcons name="shield-check" size={16} color="#0D3B3F" />
-            <Text style={styles.securityText}>
-              GigEasy uses enterprise encryption. Your phone number stays 100% private.
-            </Text>
-          </View>
-
           {/* CTA */}
           <View style={styles.ctaSection}>
-            <GigEasyButton
-              label={isLoading ? 'Sending Code...' : 'Get Verification Code'}
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                (!isValid || isLoading) && styles.sendBtnDisabled,
+              ]}
               onPress={handleSendOTP}
-              variant="primary"
-              size="lg"
-              fullWidth
-              showArrow
               disabled={!isValid || isLoading}
-              loading={isLoading}
-            />
+              activeOpacity={0.88}
+            >
+              <Text style={[
+                styles.sendBtnText,
+                (!isValid || isLoading) && styles.sendBtnTextDisabled,
+              ]}>
+                {isLoading ? 'Sending Code...' : t('getCode')}
+              </Text>
+              {!isLoading && (
+                <Feather
+                  name="arrow-right"
+                  size={17}
+                  color={isValid ? '#FFFFFF' : '#94A3B8'}
+                />
+              )}
+            </TouchableOpacity>
 
             <Text style={styles.termsText}>
-              By proceeding, you agree to GigEasy's Terms of Service and Privacy Policy.
+              By proceeding, you agree to GigEasy's Terms of Service.
             </Text>
           </View>
         </View>
@@ -141,7 +151,7 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7F4',
+    backgroundColor: T.bg,
   },
   navHeader: {
     paddingHorizontal: Spacing[5],
@@ -155,46 +165,50 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: Spacing[6],
-    paddingTop: Spacing[3],
-    justifyContent: 'space-between',
-    paddingBottom: Spacing[8],
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'android' ? 28 : 36,
   },
   header: {
-    marginBottom: Spacing[5],
+    marginBottom: 32,
   },
   title: {
     fontFamily: FontFamily.bold,
-    fontSize: 32,
-    color: '#090D14',
-    lineHeight: 38,
+    fontSize: 30,
+    color: T.ink,
+    lineHeight: 36,
     letterSpacing: -1,
     marginBottom: Spacing[2],
   },
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
-    color: '#5A6578',
+    color: T.textSecondary,
     lineHeight: 22,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderWidth: 1.5,
-    borderColor: '#090D14',
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing[4],
-    height: 58,
-    ...Shadow.xs,
+    borderColor: T.border,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 60,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  inputContainerActive: {
+    borderColor: T.primary,
   },
   countryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingRight: Spacing[3],
-    borderRightWidth: 1,
-    borderRightColor: '#E8E6E0',
+    paddingRight: 14,
   },
   flag: {
     fontSize: 18,
@@ -202,45 +216,60 @@ const styles = StyleSheet.create({
   countryCode: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#090D14',
+    color: T.ink,
+  },
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: T.border,
+    marginRight: 14,
   },
   phoneInput: {
     flex: 1,
-    paddingLeft: Spacing[3.5],
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,
-    color: '#090D14',
+    color: T.ink,
     letterSpacing: 1,
   },
   clearBtn: {
-    padding: Spacing[1],
-  },
-  securityNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-    backgroundColor: '#E8F3F4',
-    padding: Spacing[3],
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing[4],
-    borderWidth: 1,
-    borderColor: '#C0DFE2',
-  },
-  securityText: {
-    flex: 1,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.xs,
-    color: '#0D3B3F',
-    lineHeight: 18,
+    padding: 4,
   },
   ctaSection: {
     marginTop: 'auto',
-    gap: Spacing[3],
+    gap: 14,
+  },
+  sendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: T.primary,
+    borderRadius: 16,
+    height: 56,
+    paddingHorizontal: 20,
+    shadowColor: T.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sendBtnDisabled: {
+    backgroundColor: '#E2E8F0',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  sendBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 16,
+    color: T.white,
+    letterSpacing: -0.3,
+  },
+  sendBtnTextDisabled: {
+    color: '#94A3B8',
   },
   termsText: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#8E99A8',
+    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 16,
   },

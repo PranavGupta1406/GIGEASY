@@ -1,5 +1,5 @@
 // Employer Workers Screen — Worker discovery directory
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#6497B2) Palette · Simple & Confident
 
 import React, { useState } from 'react';
 import {
@@ -13,11 +13,27 @@ import {
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
+import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { MOCK_WORKERS, formatWage } from '../../data/mockData';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+  money: '#EA580C',
+  moneyBg: '#FFEDD5',
+};
 
 export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [search, setSearch] = useState('');
@@ -40,17 +56,17 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
         <Text style={styles.screenTitle}>Discover Workers</Text>
 
         <View style={styles.searchBar}>
-          <Feather name="search" size={16} color="#8E99A8" />
+          <Feather name="search" size={16} color={T.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by skill, name, location..."
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor={T.textMuted}
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Feather name="x" size={16} color="#8E99A8" />
+              <Feather name="x" size={16} color={T.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -63,7 +79,7 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
           <MaterialCommunityIcons
             name="check-decagram"
             size={13}
-            color={verifiedOnly ? '#C8F135' : '#0D3B3F'}
+            color={verifiedOnly ? T.white : T.primary}
           />
           <Text style={[styles.verifiedText, verifiedOnly && styles.verifiedTextActive]}>
             Aadhaar Verified Only
@@ -72,7 +88,7 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-        <Text style={styles.count}>Showing {filtered.length} verified candidate{filtered.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.count}>Showing {filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</Text>
 
         {filtered.map((worker) => (
           <TouchableOpacity
@@ -90,30 +106,34 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
               <View style={styles.nameRow}>
                 <Text style={styles.workerName}>{worker.name}</Text>
                 {worker.verificationStatus === 'verified' && (
-                  <MaterialCommunityIcons name="check-decagram" size={12} color="#0D3B3F" />
+                  <MaterialCommunityIcons name="check-decagram" size={12} color={T.primary} />
                 )}
-                <View style={[styles.trustPill, { backgroundColor: worker.trustScore >= 85 ? '#E8F3F4' : '#FEF3C7' }]}>
-                  <Text style={[styles.trustText, { color: worker.trustScore >= 85 ? '#0D3B3F' : '#D97706' }]}>
+                <View style={[styles.trustPill, { backgroundColor: T.primaryMuted }]}>
+                  <Text style={[styles.trustText, { color: T.primary }]}>
                     {worker.trustScore}% trust
                   </Text>
                 </View>
               </View>
-              <Text style={styles.workerSkills} numberOfLines={1}>
-                {worker.skills.map(s => s.name).join(' · ')}
+
+              <Text style={styles.workerSub} numberOfLines={1}>
+                {worker.skills.map(s => s.name).join(', ')}
               </Text>
-              <View style={styles.workerMeta}>
-                <Feather name="map-pin" size={10} color="#5A6578" />
-                <Text style={styles.workerMetaText}>{worker.location.city}</Text>
+
+              <View style={styles.bottomMeta}>
+                <View style={styles.ratingWrap}>
+                  <Ionicons name="star" size={11} color="#D97706" />
+                  <Text style={styles.ratingText}>{worker.rating.toFixed(1)}</Text>
+                  <Text style={styles.metaCount}>({worker.completedJobs})</Text>
+                </View>
                 <Text style={styles.dot}>·</Text>
-                <Ionicons name="star" size={10} color="#090D14" />
-                <Text style={styles.workerMetaText}>{worker.rating.toFixed(1)}</Text>
-                <Text style={styles.dot}>·</Text>
-                <Text style={[styles.workerMetaText, { color: '#0D3B3F', fontFamily: FontFamily.bold }]}>
-                  {formatWage(worker.expectedDailyWage)}/day
-                </Text>
+                <Text style={styles.locText}>{worker.location.city}</Text>
               </View>
             </View>
-            <Feather name="chevron-right" size={16} color="#8E99A8" />
+
+            <View style={styles.wageColumn}>
+              <Text style={styles.wageText}>{formatWage(worker.expectedDailyWage)}</Text>
+              <Text style={styles.wageUnit}>/day</Text>
+            </View>
           </TouchableOpacity>
         ))}
         <View style={{ height: 24 }} />
@@ -123,92 +143,84 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: T.bg },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    backgroundColor: T.white,
     paddingTop: 16,
     paddingBottom: 12,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
+    gap: 10,
   },
-  screenTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize['2xl'],
-    color: '#090D14',
-    letterSpacing: -0.5,
-    marginBottom: 12,
-  },
+  screenTitle: { fontFamily: FontFamily.bold, fontSize: FontSize['2xl'], color: T.ink, letterSpacing: -0.5 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F0EB',
-    borderRadius: 14,
+    backgroundColor: '#F0F4F8',
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,
     gap: 8,
-    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
   },
-  searchInput: {
-    flex: 1,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.sm,
-    color: '#090D14',
-  },
+  searchInput: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: T.ink },
   verifiedChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 5,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#E8F3F4',
-    alignSelf: 'flex-start',
+    backgroundColor: T.primaryMuted,
     borderWidth: 1,
-    borderColor: '#C0DFE2',
+    borderColor: T.primaryLight,
   },
-  verifiedChipActive: {
-    backgroundColor: '#0D3B3F',
-    borderColor: '#0D3B3F',
-  },
-  verifiedText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#0D3B3F' },
-  verifiedTextActive: { color: '#FFFFFF', fontFamily: FontFamily.bold },
-  list: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24 },
-  count: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578', marginBottom: 10 },
+  verifiedChipActive: { backgroundColor: T.primary, borderColor: T.primary },
+  verifiedText: { fontFamily: FontFamily.semiBold, fontSize: 11, color: T.primary },
+  verifiedTextActive: { color: T.white },
+  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
+  count: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary, marginBottom: 10 },
   workerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
     gap: 12,
-    ...Shadow.xs,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#0D3B3F',
+    backgroundColor: T.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  avatarText: { fontFamily: FontFamily.bold, fontSize: 15, color: T.white },
   workerInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
-  workerName: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: '#090D14' },
-  trustPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: BorderRadius.full,
-  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  workerName: { fontFamily: FontFamily.bold, fontSize: 14, color: T.ink },
+  trustPill: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
   trustText: { fontFamily: FontFamily.bold, fontSize: 9 },
-  workerSkills: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578', marginBottom: 3 },
-  workerMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  workerMetaText: { fontFamily: FontFamily.medium, fontSize: 10, color: '#5A6578' },
-  dot: { color: '#D4D1C8', fontSize: 10 },
+  workerSub: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary, marginBottom: 3 },
+  bottomMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  ratingText: { fontFamily: FontFamily.bold, fontSize: 11, color: T.ink },
+  metaCount: { fontFamily: FontFamily.regular, fontSize: 10, color: T.textMuted },
+  dot: { color: T.textMuted, fontSize: 10 },
+  locText: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
+  wageColumn: { alignItems: 'flex-end' },
+  wageText: { fontFamily: FontFamily.extraBold, fontSize: 16, color: T.primary, letterSpacing: -0.3 },
+  wageUnit: { fontFamily: FontFamily.medium, fontSize: 10, color: T.textMuted },
 });

@@ -1,5 +1,5 @@
 // Post Job Wizard Screen — Visual Skill Selector, Headcount Stepper & Wage Range
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#6497B2) Palette · Simple & Confident
 
 import React, { useState } from 'react';
 import {
@@ -17,18 +17,29 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import {
-  Colors,
   FontFamily,
   FontSize,
   Spacing,
   BorderRadius,
-  Shadow,
 } from '../../constants';
 import { GigEasyButton } from '../../components';
 import { MOCK_SKILLS, formatWage } from '../../data/mockData';
 import { useEmployerStore } from '../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostJob'>;
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+};
 
 export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
   const [title, setTitle] = useState('');
@@ -73,15 +84,15 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
       Alert.alert(
         'Gig Published & Dispatched',
-        `AI Matching Engine is now dispatching your gig to verified workers within 10 km.`,
+        `Matching Engine is now dispatching your gig to verified workers nearby.`,
         [{ text: 'View Dashboard', onPress: () => navigation.goBack() }]
       );
-    }, 600);
+    }, 400);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={T.white} />
 
       {/* Header */}
       <View style={styles.navBar}>
@@ -90,9 +101,9 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.backBtn}
           activeOpacity={0.7}
         >
-          <Feather name="arrow-left" size={22} color="#090D14" />
+          <Feather name="arrow-left" size={22} color={T.ink} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Post a New Gig</Text>
+        <Text style={styles.navTitle}>Post a New Job</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -102,11 +113,11 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* Title Input */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Gig Title & Role</Text>
+          <Text style={styles.cardTitle}>JOB TITLE & ROLE</Text>
           <TextInput
             style={styles.textInput}
             placeholder="e.g. Warehouse Loading Helper"
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor={T.textMuted}
             value={title}
             onChangeText={setTitle}
           />
@@ -114,7 +125,7 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Skill Category Selector */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Skill Category</Text>
+          <Text style={styles.cardTitle}>SKILL CATEGORY</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -149,7 +160,7 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Headcount Stepper */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Workers Required</Text>
+          <Text style={styles.cardTitle}>WORKERS REQUIRED</Text>
           <View style={styles.counterRow}>
             <TouchableOpacity
               onPress={() => setWorkersRequired((c) => Math.max(1, c - 1))}
@@ -172,7 +183,7 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Daily Wage Range */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Daily Wage Budget Range</Text>
+          <Text style={styles.cardTitle}>DAILY WAGE BUDGET RANGE</Text>
           <View style={styles.wageHeroDisplayBox}>
             <Text style={styles.wageHeroDisplay}>
               {formatWage(minWage)} – {formatWage(maxWage)} / day
@@ -202,11 +213,11 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Work Location */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Site Location & Address</Text>
+          <Text style={styles.cardTitle}>SITE LOCATION & ADDRESS</Text>
           <TextInput
             style={styles.textInput}
             placeholder="e.g. Sector 62, NSEZ, Noida"
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor={T.textMuted}
             value={address}
             onChangeText={setAddress}
           />
@@ -214,11 +225,11 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Scope */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Shift Instructions</Text>
+          <Text style={styles.cardTitle}>SHIFT INSTRUCTIONS</Text>
           <TextInput
             style={[styles.textInput, styles.textArea]}
             placeholder="Describe tasks, timing, safety requirements..."
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor={T.textMuted}
             multiline
             numberOfLines={3}
             value={description}
@@ -230,12 +241,13 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
       {/* Sticky Bottom Bar */}
       <View style={styles.bottomBar}>
         <GigEasyButton
-          label={isSubmitting ? 'Publishing Gig...' : 'Publish & Dispatch Gig →'}
+          label={isSubmitting ? 'Publishing...' : 'Publish & Dispatch Job'}
           onPress={handlePublish}
           variant="primary"
           size="lg"
           fullWidth
           loading={isSubmitting}
+          showArrow
         />
       </View>
     </SafeAreaView>
@@ -243,102 +255,106 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: T.bg },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[2.5],
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
   },
   backBtn: { padding: Spacing[1] },
   navTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.md,
-    color: '#090D14',
+    color: T.ink,
   },
   placeholder: { width: 24 },
-  scrollContent: { paddingBottom: Spacing[14] },
+  scrollContent: { paddingBottom: 100 },
   card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: Spacing[5],
-    marginTop: Spacing[3],
-    padding: Spacing[4],
+    backgroundColor: T.white,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 16,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#090D14',
-    marginBottom: Spacing[2.5],
-    letterSpacing: 0.2,
+    fontSize: 11,
+    color: T.textSecondary,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   textInput: {
-    backgroundColor: '#F8F7F4',
-    borderWidth: 1.5,
-    borderColor: '#E8E6E0',
+    backgroundColor: '#F0F4F8',
+    borderWidth: 1,
+    borderColor: T.border,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing[3.5],
-    paddingVertical: Spacing[2.5],
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: '#090D14',
+    color: T.ink,
   },
   textArea: {
     minHeight: 70,
     textAlignVertical: 'top',
   },
   skillsScroll: {
-    gap: Spacing[2],
+    gap: 8,
   },
   skillChip: {
-    paddingHorizontal: Spacing[3],
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#F2F0EB',
+    backgroundColor: '#F0F4F8',
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
   },
   skillChipSelected: {
-    backgroundColor: '#0D3B3F',
-    borderColor: '#0D3B3F',
+    backgroundColor: T.primary,
+    borderColor: T.primary,
   },
   skillText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: '#5A6578',
+    color: T.textSecondary,
   },
   skillTextSelected: {
-    color: '#FFFFFF',
+    color: T.white,
     fontFamily: FontFamily.bold,
   },
   counterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing[5],
-    paddingVertical: Spacing[2],
+    gap: 20,
+    paddingVertical: 8,
   },
   countBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F2F0EB',
+    backgroundColor: '#F0F4F8',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
   },
   countBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 22,
-    color: '#090D14',
+    color: T.ink,
   },
   countDisplay: {
     alignItems: 'center',
@@ -346,16 +362,18 @@ const styles = StyleSheet.create({
   countNum: {
     fontFamily: FontFamily.extraBold,
     fontSize: 32,
-    color: '#090D14',
+    color: T.ink,
   },
   countSub: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#5A6578',
+    color: T.textSecondary,
   },
   wageHeroDisplayBox: {
-    backgroundColor: '#090D14',
-    paddingVertical: 10,
+    backgroundColor: T.primaryMuted,
+    borderWidth: 1,
+    borderColor: T.primaryLight,
+    paddingVertical: 12,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     marginBottom: 8,
@@ -363,38 +381,42 @@ const styles = StyleSheet.create({
   wageHeroDisplay: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.lg,
-    color: '#C8F135',
+    color: T.primary,
   },
   wageAdjustRow: {
     flexDirection: 'row',
-    gap: Spacing[2],
-    marginTop: Spacing[1],
+    gap: 8,
+    marginTop: 4,
   },
   wageAdjustBtn: {
     flex: 1,
-    paddingVertical: Spacing[2],
-    backgroundColor: '#F2F0EB',
+    paddingVertical: 8,
+    backgroundColor: '#F0F4F8',
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
     alignItems: 'center',
   },
   wageAdjustBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
+    color: T.ink,
   },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: Spacing[5],
-    paddingTop: Spacing[3],
-    paddingBottom: Spacing[4],
+    backgroundColor: T.white,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: '#E8E6E0',
-    ...Shadow.md,
+    borderTopColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 4,
   },
 });

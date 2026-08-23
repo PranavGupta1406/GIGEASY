@@ -1,5 +1,5 @@
-// GigEasyCard — Job, Worker, and Application card components
-// Modern marketplace cards with layered depth and vector primitives
+// GigEasyCard — High-Scannability Consumer Job & Worker Cards
+// Strict Hierarchy: 1. Visual/Photo -> 2. Job Name -> 3. Pay -> 4. Location/Dist -> 5. Time -> 6. Action
 
 import React from 'react';
 import {
@@ -9,14 +9,12 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import {
-  Colors,
   FontFamily,
   FontSize,
   BorderRadius,
   Spacing,
-  Shadow,
 } from '../constants';
 import { Job, WorkerProfile, JobApplication } from '../types';
 import {
@@ -29,118 +27,124 @@ import {
 import {
   GigEasyAvatar,
   GigEasyRating,
-  GigEasyTrustScore,
   GigEasyStatusPill,
   GigEasyVerifiedBadge,
-  GigEasyMatchBadge,
+  getCategoryVisual,
 } from './GigEasyPrimitives';
-import { computeJobWorkerMatch } from '../services/matching/matchingEngine';
-import { CURRENT_WORKER } from '../data/mockData';
+import { useLanguageStore } from '../store';
 
-// ─── Job Card ─────────────────────────────────────────────────────────────────
+const T = {
+  primary: '#1A68D5',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  money: '#EA580C',
+  moneyBg: '#FFEDD5',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+  successLight: '#D1FAE5',
+};
+
+// ─── Visual Job Card ──────────────────────────────────────────────────────────
 
 interface JobCardProps {
   job: Job;
   onPress: () => void;
   style?: ViewStyle;
-  showMatchScore?: boolean;
 }
 
 export const GigEasyJobCard: React.FC<JobCardProps> = ({
   job,
   onPress,
   style,
-  showMatchScore = true,
 }) => {
-  const hiringProgress = job.workersHired / job.workersRequired;
+  const { t } = useLanguageStore();
+  const catVisual = getCategoryVisual(job.skillRequired.category);
   const isFull = job.workersHired >= job.workersRequired;
-  const match = computeJobWorkerMatch(job, CURRENT_WORKER);
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.9}
+      activeOpacity={0.88}
       style={[styles.jobCard, style]}
     >
-      {/* Header Row */}
-      <View style={styles.jobCardHeader}>
-        <View style={styles.jobCardTitleBlock}>
-          <View style={styles.categoryRow}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{job.skillRequired.category.toUpperCase()}</Text>
+      <View style={styles.cardMainRow}>
+        {/* 1. Category Visual Thumbnail */}
+        <View style={[styles.visualBox, { backgroundColor: catVisual.bg }]}>
+          <Feather name={catVisual.iconName} size={22} color={catVisual.color} />
+          <Text style={[styles.visualTag, { color: catVisual.color }]} numberOfLines={1}>
+            {job.skillRequired.category}
+          </Text>
+        </View>
+
+        {/* 2. Job Info & 3. Pay */}
+        <View style={styles.cardContent}>
+          <View style={styles.titleWageRow}>
+            <View style={styles.titleBlock}>
+              <Text style={styles.jobTitle} numberOfLines={1}>
+                {job.title}
+              </Text>
+              <Text style={styles.employerName} numberOfLines={1}>
+                {job.employer.businessName}
+              </Text>
             </View>
-            {showMatchScore && <GigEasyMatchBadge score={match.totalScore} />}
+
+            {/* High-Visibility Warm Wage Pill */}
+            <View style={styles.wagePill}>
+              <Text style={styles.wageText}>{formatWage(job.maxWage)}</Text>
+              <Text style={styles.wageUnit}>/day</Text>
+            </View>
           </View>
-          <Text style={styles.jobTitle} numberOfLines={1}>
-            {job.title}
-          </Text>
-          <Text style={styles.jobEmployer} numberOfLines={1}>
-            {job.employer.businessName}
-          </Text>
-        </View>
 
-        <View style={styles.jobWageBlock}>
-          <Text style={styles.jobWage}>{formatWage(job.maxWage)}</Text>
-          <Text style={styles.jobWageLabel}>/ day</Text>
+          {/* 4. Location & 5. Time */}
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Feather name="map-pin" size={12} color={T.primary} />
+              <Text style={styles.metaText} numberOfLines={1}>
+                {job.location.city} {job.distanceKm !== undefined ? `· ${formatDistance(job.distanceKm)}` : ''}
+              </Text>
+            </View>
+
+            <View style={styles.metaDot} />
+
+            <View style={styles.metaItem}>
+              <Feather name="clock" size={12} color={T.textMuted} />
+              <Text style={styles.metaText}>
+                {t('today')} · {job.startTime}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* Meta Row */}
-      <View style={styles.jobCardMeta}>
-        <View style={styles.metaRow}>
-          <Feather name="map-pin" size={11} color="#5A6578" style={styles.metaIcon} />
-          <Text style={styles.metaText}>
-            {job.location.city}
-            {job.distanceKm !== undefined ? ` · ${formatDistance(job.distanceKm)}` : ''}
+      {/* Card Footer: Staffing count & Action CTA */}
+      <View style={styles.cardFooter}>
+        <View style={styles.hiringCountBadge}>
+          <View style={[styles.liveDot, { backgroundColor: isFull ? '#94A3B8' : T.success }]} />
+          <Text style={styles.hiringCountText}>
+            {isFull ? 'Positions Filled' : `${job.workersRequired - job.workersHired} spots left`}
           </Text>
         </View>
-        <View style={styles.metaDot} />
-        <View style={styles.metaRow}>
-          <Feather name="clock" size={11} color="#5A6578" style={styles.metaIcon} />
-          <Text style={styles.metaText}>
-            {formatDate(job.startDate)} · {job.startTime}
-          </Text>
-        </View>
-      </View>
 
-      {/* Workers Progress Bar */}
-      <View style={styles.workersRow}>
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${Math.min(hiringProgress * 100, 100)}%`,
-                backgroundColor: isFull ? '#10B981' : '#0D3B3F',
-              },
-            ]}
-          />
-        </View>
-        <Text style={styles.workersText}>
-          {job.workersHired}/{job.workersRequired} hired
-        </Text>
-      </View>
-
-      {/* Footer Row */}
-      <View style={styles.jobCardFooter}>
-        <View style={styles.footerLeft}>
-          {job.employer.verificationStatus === 'verified' && (
-            <GigEasyVerifiedBadge small />
-          )}
-          <GigEasyRating rating={job.employer.rating} />
-        </View>
-
-        <View style={[styles.applyBtn, isFull && styles.applyBtnFull]}>
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.8}
+          style={[styles.applyBtn, isFull && styles.applyBtnFull]}
+        >
           <Text style={[styles.applyBtnText, isFull && styles.applyBtnFullText]}>
-            {isFull ? 'Filled' : 'View Gig →'}
+            {isFull ? 'View' : t('applyNow')}
           </Text>
-        </View>
+          <Feather name="arrow-right" size={13} color={isFull ? T.textMuted : T.white} />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 };
 
-// ─── Worker Card (for Employers) ──────────────────────────────────────────────
+// ─── Visual Worker Card (for Employers) ───────────────────────────────────────
 
 interface WorkerCardProps {
   worker: WorkerProfile;
@@ -160,92 +164,94 @@ export const GigEasyWorkerCard: React.FC<WorkerCardProps> = ({
   showActions = false,
   application,
   style,
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    activeOpacity={0.9}
-    style={[styles.workerCard, style]}
-  >
-    {/* Top Row */}
-    <View style={styles.workerCardTop}>
-      <GigEasyAvatar name={worker.name} photoUri={worker.profilePhoto} size={48} showVerified={worker.verificationStatus === 'verified'} />
-      <View style={styles.workerInfo}>
-        <View style={styles.workerNameRow}>
-          <Text style={styles.workerName}>{worker.name}</Text>
-          {worker.verificationStatus === 'verified' && (
-            <GigEasyVerifiedBadge small />
+}) => {
+  const { t } = useLanguageStore();
+  const primarySkill = worker.skills[0]?.name ?? 'General Worker';
+  const catVisual = getCategoryVisual(worker.skills[0]?.category ?? 'General');
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.88}
+      style={[styles.workerCard, style]}
+    >
+      <View style={styles.workerTopRow}>
+        <GigEasyAvatar
+          name={worker.name}
+          photoUri={worker.profilePhoto}
+          size={50}
+          showVerified={worker.verificationStatus === 'verified'}
+        />
+
+        <View style={styles.workerInfoCol}>
+          <View style={styles.nameVerifiedRow}>
+            <Text style={styles.workerName}>{worker.name}</Text>
+            {worker.verificationStatus === 'verified' && (
+              <GigEasyVerifiedBadge small />
+            )}
+          </View>
+
+          {/* Primary skill visual chip */}
+          <View style={[styles.skillChip, { backgroundColor: catVisual.bg }]}>
+            <Feather name={catVisual.iconName} size={11} color={catVisual.color} />
+            <Text style={[styles.skillChipText, { color: catVisual.color }]}>
+              {primarySkill}
+            </Text>
+          </View>
+
+          <View style={styles.workerMetaRow}>
+            <GigEasyRating rating={worker.rating} count={worker.completedJobs} />
+            <View style={styles.metaDot} />
+            <Text style={styles.workerLocText}>{worker.location.city} · Within {worker.preferredRadius}km</Text>
+          </View>
+        </View>
+
+        {/* Expected daily wage */}
+        <View style={styles.workerWageBlock}>
+          <Text style={styles.workerWageAmount}>{formatWage(worker.expectedDailyWage)}</Text>
+          <Text style={styles.workerWagePeriod}>/day</Text>
+        </View>
+      </View>
+
+      {/* Action footer */}
+      {showActions && (
+        <View style={styles.workerActionRow}>
+          {onNegotiate && (
+            <TouchableOpacity
+              onPress={onNegotiate}
+              activeOpacity={0.8}
+              style={styles.negotiateBtn}
+            >
+              <Text style={styles.negotiateBtnText}>{t('counterOffer')}</Text>
+            </TouchableOpacity>
+          )}
+          {onAccept && (
+            <TouchableOpacity
+              onPress={onAccept}
+              activeOpacity={0.85}
+              style={styles.hireBtn}
+            >
+              <Text style={styles.hireBtnText}>{t('hireWorker')}</Text>
+            </TouchableOpacity>
           )}
         </View>
-        <Text style={styles.workerSkills} numberOfLines={1}>
-          {worker.skills.map((s) => s.name).join(' · ')}
-        </Text>
-        <View style={styles.workerStats}>
-          <GigEasyRating rating={worker.rating} />
-          <View style={styles.statDivider} />
-          <GigEasyTrustScore
-            score={worker.trustScore}
-            label={worker.trustLabel}
+      )}
+
+      {application && (
+        <View style={styles.applicationBanner}>
+          <GigEasyStatusPill
+            status={application.status}
+            label={getStatusLabel(application.status)}
+            color={getStatusColor(application.status)}
           />
+          <Text style={styles.proposedWageText}>
+            Asking: {formatWage(application.proposedWage)}/day
+          </Text>
         </View>
-      </View>
-      <View style={styles.workerWageBlock}>
-        <Text style={styles.workerWage}>{formatWage(worker.expectedDailyWage)}</Text>
-        <Text style={styles.workerWageLabel}>/day</Text>
-      </View>
-    </View>
-
-    {/* Details Chips */}
-    <View style={styles.workerCardDetails}>
-      <View style={styles.detailChip}>
-        <Text style={styles.detailText}>{worker.experienceYears}y exp</Text>
-      </View>
-      <View style={styles.detailChip}>
-        <Text style={styles.detailText}>{worker.completedJobs} gigs done</Text>
-      </View>
-      <View style={styles.detailChip}>
-        <Text style={styles.detailText}>Within {worker.preferredRadius} km</Text>
-      </View>
-    </View>
-
-    {/* Actions */}
-    {showActions && (
-      <View style={styles.workerActions}>
-        {onNegotiate && (
-          <TouchableOpacity
-            onPress={onNegotiate}
-            activeOpacity={0.8}
-            style={styles.negotiateBtn}
-          >
-            <Text style={styles.negotiateBtnText}>Negotiate</Text>
-          </TouchableOpacity>
-        )}
-        {onAccept && (
-          <TouchableOpacity
-            onPress={onAccept}
-            activeOpacity={0.8}
-            style={styles.acceptBtn}
-          >
-            <Text style={styles.acceptBtnText}>Hire Worker</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    )}
-
-    {/* Application Status */}
-    {application && (
-      <View style={styles.applicationStatus}>
-        <GigEasyStatusPill
-          status={application.status}
-          label={getStatusLabel(application.status)}
-          color={getStatusColor(application.status)}
-        />
-        <Text style={styles.proposedWage}>
-          Asking: {formatWage(application.proposedWage)}/day
-        </Text>
-      </View>
-    )}
-  </TouchableOpacity>
-);
+      )}
+    </TouchableOpacity>
+  );
+};
 
 // ─── Application Card (Worker View) ──────────────────────────────────────────
 
@@ -260,351 +266,364 @@ export const GigEasyApplicationCard: React.FC<ApplicationCardProps> = ({
 }) => {
   const { job, status, proposedWage } = application;
   const statusColor = getStatusColor(status);
+  const catVisual = getCategoryVisual(job.skillRequired.category);
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.9}
-      style={styles.applicationCard}
+      activeOpacity={0.88}
+      style={styles.appCard}
     >
-      <View style={styles.appCardHeader}>
+      <View style={styles.appCardTop}>
+        <View style={[styles.smallVisualBox, { backgroundColor: catVisual.bg }]}>
+          <Feather name={catVisual.iconName} size={16} color={catVisual.color} />
+        </View>
+
         <View style={styles.appTitleBlock}>
           <Text style={styles.appJobTitle} numberOfLines={1}>{job.title}</Text>
           <Text style={styles.appEmployer}>{job.employer.businessName}</Text>
         </View>
+
         <GigEasyStatusPill
           status={status}
           label={getStatusLabel(status)}
           color={statusColor}
         />
       </View>
-      <View style={styles.appCardMeta}>
-        <View style={styles.metaRow}>
-          <Feather name="clock" size={11} color="#5A6578" style={styles.metaIcon} />
-          <Text style={styles.appMetaText}>
-            {formatDate(job.startDate)} · {job.startTime}
-          </Text>
+
+      <View style={styles.appCardBottom}>
+        <View style={styles.metaItem}>
+          <Feather name="clock" size={11} color={T.textMuted} />
+          <Text style={styles.appDateText}>{formatDate(job.startDate)} · {job.startTime}</Text>
         </View>
-        <Text style={styles.appWage}>{formatWage(proposedWage)}/day</Text>
+        <Text style={styles.appWageAmount}>{formatWage(proposedWage)}/day</Text>
       </View>
     </TouchableOpacity>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   // Job Card
   jobCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing[4],
-    marginBottom: Spacing[3],
+    backgroundColor: T.white,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  jobCardHeader: {
+  cardMainRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  visualBox: {
+    width: 62,
+    height: 62,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+  },
+  visualTag: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  cardContent: {
+    flex: 1,
+  },
+  titleWageRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: Spacing[2],
+    marginBottom: 6,
+    gap: 6,
   },
-  jobCardTitleBlock: {
+  titleBlock: {
     flex: 1,
-    marginRight: Spacing[2],
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[1.5],
-    marginBottom: 4,
-  },
-  categoryBadge: {
-    backgroundColor: '#F2F0EB',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  categoryText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#0D3B3F',
-    letterSpacing: 0.5,
   },
   jobTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: '#090D14',
+    fontSize: 15,
+    color: T.ink,
+    letterSpacing: -0.2,
     marginBottom: 2,
-    letterSpacing: -0.3,
   },
-  jobEmployer: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
+  employerName: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: T.textSecondary,
   },
-  jobWageBlock: {
+  wagePill: {
+    backgroundColor: T.moneyBg,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
     alignItems: 'flex-end',
   },
-  jobWage: {
+  wageText: {
     fontFamily: FontFamily.extraBold,
-    fontSize: FontSize.lg,
-    color: '#0D3B3F',
+    fontSize: 15,
+    color: T.money,
     letterSpacing: -0.4,
   },
-  jobWageLabel: {
+  wageUnit: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#8E99A8',
-  },
-  jobCardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing[2.5],
+    fontSize: 9.5,
+    color: T.money,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
-  metaIcon: {
-    marginRight: 4,
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   metaText: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
+    fontSize: 11,
+    color: T.textSecondary,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#D4D1C8',
-    marginHorizontal: Spacing[2],
+    backgroundColor: '#CBD5E1',
   },
-  workersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-    marginBottom: Spacing[2.5],
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#F2F0EB',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  workersText: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
-  },
-  jobCardFooter: {
+  cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing[2],
+    paddingTop: 10,
+    marginTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F2F0EB',
+    borderTopColor: '#F1F5F9',
   },
-  footerLeft: {
+  hiringCountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[2],
+    gap: 6,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  hiringCountText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: T.textSecondary,
   },
   applyBtn: {
-    backgroundColor: '#090D14',
-    paddingHorizontal: Spacing[3],
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: T.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
   applyBtnFull: {
-    backgroundColor: '#F2F0EB',
+    backgroundColor: '#F1F5F9',
   },
   applyBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#FFFFFF',
+    fontSize: 12,
+    color: T.white,
   },
   applyBtnFullText: {
-    color: '#8E99A8',
+    color: T.textMuted,
   },
 
   // Worker Card
   workerCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing[4],
-    marginBottom: Spacing[3],
+    backgroundColor: T.white,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
   },
-  workerCardTop: {
+  workerTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing[3],
-    marginBottom: Spacing[2.5],
+    gap: 12,
   },
-  workerInfo: {
+  workerInfoCol: {
     flex: 1,
   },
-  workerNameRow: {
+  nameVerifiedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[1],
-    marginBottom: 2,
+    gap: 6,
+    marginBottom: 3,
   },
   workerName: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: '#090D14',
-    letterSpacing: -0.3,
+    fontSize: 15,
+    color: T.ink,
   },
-  workerSkills: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
-    marginBottom: Spacing[1],
-  },
-  workerStats: {
+  skillChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[2],
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 4,
   },
-  statDivider: {
-    width: 1,
-    height: 10,
-    backgroundColor: '#E8E6E0',
+  skillChipText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10.5,
+  },
+  workerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  workerLocText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: T.textSecondary,
   },
   workerWageBlock: {
     alignItems: 'flex-end',
+    backgroundColor: T.moneyBg,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  workerWage: {
+  workerWageAmount: {
     fontFamily: FontFamily.extraBold,
-    fontSize: FontSize.base,
-    color: '#0D3B3F',
+    fontSize: 15,
+    color: T.money,
   },
-  workerWageLabel: {
+  workerWagePeriod: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#8E99A8',
+    fontSize: 9.5,
+    color: T.money,
   },
-  workerCardDetails: {
+  workerActionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing[1.5],
-    marginBottom: Spacing[1],
-  },
-  detailChip: {
-    backgroundColor: '#F2F0EB',
-    paddingHorizontal: Spacing[2],
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  detailText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#4B5565',
-  },
-  workerActions: {
-    flexDirection: 'row',
-    gap: Spacing[2],
-    marginTop: Spacing[3],
-    paddingTop: Spacing[2],
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F2F0EB',
+    borderTopColor: '#F1F5F9',
   },
   negotiateBtn: {
     flex: 1,
-    paddingVertical: Spacing[2],
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: '#090D14',
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: T.primary,
     alignItems: 'center',
   },
   negotiateBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#090D14',
+    fontSize: 12,
+    color: T.primary,
   },
-  acceptBtn: {
+  hireBtn: {
     flex: 1,
-    paddingVertical: Spacing[2],
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#0D3B3F',
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: T.primary,
     alignItems: 'center',
   },
-  acceptBtnText: {
+  hireBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#FFFFFF',
+    fontSize: 12,
+    color: T.white,
   },
-  applicationStatus: {
+  applicationBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: Spacing[2],
-    paddingTop: Spacing[2],
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F2F0EB',
+    borderTopColor: '#F1F5F9',
   },
-  proposedWage: {
+  proposedWageText: {
     fontFamily: FontFamily.medium,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
+    fontSize: 11,
+    color: T.textSecondary,
   },
 
   // Application Card
-  applicationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.md,
-    padding: Spacing[3.5],
-    marginBottom: Spacing[2.5],
+  appCard: {
+    backgroundColor: T.white,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  appCardHeader: {
+  appCardTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: Spacing[2],
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  smallVisualBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   appTitleBlock: {
     flex: 1,
-    marginRight: Spacing[2],
   },
   appJobTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: '#090D14',
-    marginBottom: 1,
-    letterSpacing: -0.3,
+    fontSize: 14,
+    color: T.ink,
   },
   appEmployer: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
+    fontSize: 11,
+    color: T.textSecondary,
   },
-  appCardMeta: {
+  appCardBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  appMetaText: {
+  appDateText: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
+    fontSize: 11,
+    color: T.textSecondary,
   },
-  appWage: {
+  appWageAmount: {
     fontFamily: FontFamily.extraBold,
-    fontSize: FontSize.sm,
-    color: '#0D3B3F',
+    fontSize: 14,
+    color: T.money,
   },
 });

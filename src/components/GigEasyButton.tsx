@@ -1,7 +1,8 @@
-// GigEasyButton — Tactile, executive consumer-tech button
-// Deep Teal + Electric Lime + Warm Ivory + Ink
+// GigEasyButton — Brand Blue (#6497B2) CTA system
+// Primary: solid blue · Secondary: soft tint · Outline: blue border · Ghost: transparent
+// NO dark navy. NO lime. NO neon.
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -10,14 +11,15 @@ import {
   ViewStyle,
   TextStyle,
   View,
+  Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Colors, FontFamily, FontSize, BorderRadius, Spacing, Shadow } from '../constants';
+import { FontFamily, FontSize, BorderRadius, Spacing } from '../constants';
 
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'teal' | 'lime' | 'vermilion' | 'secondary' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   disabled?: boolean;
@@ -27,6 +29,19 @@ interface ButtonProps {
   iconName?: keyof typeof Feather.glyphMap;
   showArrow?: boolean;
 }
+
+// Design tokens
+const T = {
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  white: '#FFFFFF',
+  border: '#E2E8F0',
+  danger: '#EF4444',
+  dangerLight: '#FEE2E2',
+};
 
 export const GigEasyButton: React.FC<ButtonProps> = ({
   label,
@@ -41,141 +56,90 @@ export const GigEasyButton: React.FC<ButtonProps> = ({
   iconName,
   showArrow = false,
 }) => {
-  const getContainerStyle = () => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 20 }).start();
+  };
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 20 }).start();
+  };
+
+  const getContainerStyle = (): ViewStyle[] => {
     const base: ViewStyle[] = [styles.base];
-
-    // Variant
     switch (variant) {
-      case 'primary':
-        base.push(styles.primary);
-        break;
-      case 'teal':
-        base.push(styles.teal);
-        break;
-      case 'lime':
-        base.push(styles.lime);
-        break;
-      case 'vermilion':
-        base.push(styles.teal);
-        break;
-      case 'secondary':
-        base.push(styles.secondary);
-        break;
-      case 'outline':
-        base.push(styles.outline);
-        break;
-      case 'ghost':
-        base.push(styles.ghost);
-        break;
+      case 'primary': base.push(styles.primary); break;
+      case 'secondary': base.push(styles.secondary); break;
+      case 'outline': base.push(styles.outline); break;
+      case 'ghost': base.push(styles.ghost); break;
+      case 'danger': base.push(styles.danger); break;
     }
-
-    // Size
     switch (size) {
-      case 'sm':
-        base.push(styles.sm);
-        break;
-      case 'md':
-        base.push(styles.md);
-        break;
-      case 'lg':
-        base.push(styles.lg);
-        break;
+      case 'sm': base.push(styles.sm); break;
+      case 'md': base.push(styles.md); break;
+      case 'lg': base.push(styles.lg); break;
     }
-
     if (fullWidth) base.push(styles.fullWidth);
-    if (disabled) base.push(styles.disabled);
+    if (disabled || loading) base.push(styles.disabled);
     if (style) base.push(style);
-
     return base;
   };
 
-  const getTextStyle = () => {
-    const base: TextStyle[] = [styles.label];
-
+  const getLabelColor = (): string => {
+    if (disabled || loading) return '#9FBDCC';
     switch (variant) {
-      case 'primary':
-      case 'teal':
-      case 'vermilion':
-        base.push(styles.labelPrimary);
-        break;
-      case 'lime':
-        base.push(styles.labelLime);
-        break;
-      case 'secondary':
-        base.push(styles.labelSecondary);
-        break;
-      case 'outline':
-      case 'ghost':
-        base.push(styles.labelOutline);
-        break;
+      case 'primary': return T.white;
+      case 'secondary': return T.primary;
+      case 'outline': return T.primary;
+      case 'ghost': return T.primary;
+      case 'danger': return T.danger;
+      default: return T.white;
     }
+  };
 
+  const getLabelStyle = (): TextStyle[] => {
+    const base: TextStyle[] = [styles.label, { color: getLabelColor() }];
     switch (size) {
-      case 'sm':
-        base.push(styles.labelSm);
-        break;
-      case 'lg':
-        base.push(styles.labelLg);
-        break;
+      case 'sm': base.push(styles.labelSm); break;
+      case 'lg': base.push(styles.labelLg); break;
     }
-
-    if (disabled) base.push(styles.labelDisabled);
     if (textStyle) base.push(textStyle);
-
     return base;
   };
 
-  const isLightText = variant === 'primary' || variant === 'teal' || variant === 'vermilion';
+  const iconColor = getLabelColor();
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.88}
-      style={getContainerStyle()}
-    >
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={isLightText ? '#FFFFFF' : Colors.dark}
-        />
-      ) : (
-        <View style={styles.contentRow}>
-          {iconName && (
-            <Feather
-              name={iconName}
-              size={size === 'sm' ? 14 : 16}
-              color={isLightText ? '#FFFFFF' : variant === 'lime' ? '#090D14' : '#0D3B3F'}
-              style={styles.icon}
-            />
-          )}
-          <Text style={getTextStyle()}>{label}</Text>
-          {showArrow && (
-            <View
-              style={
-                variant === 'lime'
-                  ? styles.arrowCircleLime
-                  : isLightText
-                  ? styles.arrowCirclePrimary
-                  : styles.arrowCircleOutline
-              }
-            >
-              <Feather
-                name="arrow-right"
-                size={14}
-                color={variant === 'lime' ? '#FFFFFF' : isLightText ? '#090D14' : '#0D3B3F'}
-              />
-            </View>
-          )}
-        </View>
-      )}
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], ...(fullWidth ? { width: '100%' } : {}) }}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || loading}
+        activeOpacity={0.92}
+        style={getContainerStyle()}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={variant === 'primary' ? T.white : T.primary} />
+        ) : (
+          <View style={styles.contentRow}>
+            {iconName && (
+              <Feather name={iconName} size={size === 'sm' ? 14 : 16} color={iconColor} style={styles.icon} />
+            )}
+            <Text style={getLabelStyle()}>{label}</Text>
+            {showArrow && (
+              <Feather name="arrow-right" size={size === 'sm' ? 14 : 16} color={iconColor} style={styles.arrow} />
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: BorderRadius.full,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -184,108 +148,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
+  // Variants
   primary: {
-    backgroundColor: '#090D14', // Ink Slate
-    ...Shadow.sm,
-  },
-  teal: {
-    backgroundColor: '#0D3B3F', // Deep Midnight Teal
-    ...Shadow.sm,
-  },
-  lime: {
-    backgroundColor: '#C8F135', // Electric Lime
-    ...Shadow.sm,
+    backgroundColor: '#1A68D5',
+    shadowColor: '#1A68D5',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 3,
   },
   secondary: {
-    backgroundColor: '#F2F0EB',
+    backgroundColor: '#EBF3FC',
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: '#D6E6FA',
   },
   outline: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#090D14',
+    borderColor: '#1A68D5',
   },
   ghost: {
     backgroundColor: 'transparent',
   },
+  danger: {
+    backgroundColor: '#FCE8E8',
+    borderWidth: 1,
+    borderColor: '#F4B8B8',
+  },
+  // Sizes
   sm: {
-    paddingVertical: Spacing[2],
-    paddingHorizontal: Spacing[3.5],
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    height: 38,
+    borderRadius: 10,
   },
   md: {
-    paddingVertical: Spacing[3],
-    paddingHorizontal: Spacing[5],
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    height: 50,
   },
   lg: {
-    paddingVertical: Spacing[3.5],
-    paddingHorizontal: Spacing[6],
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    height: 56,
   },
   fullWidth: {
     width: '100%',
   },
   disabled: {
-    backgroundColor: '#E8E6E0',
-    borderColor: '#E8E6E0',
+    backgroundColor: '#EAF0F5',
+    borderColor: '#DDE6EF',
     shadowOpacity: 0,
     elevation: 0,
   },
   label: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
-  labelPrimary: {
-    color: '#FFFFFF',
-  },
-  labelLime: {
-    color: '#090D14',
-    fontFamily: FontFamily.extraBold,
-  },
-  labelSecondary: {
-    color: '#090D14',
-  },
-  labelOutline: {
-    color: '#090D14',
-  },
-  labelSm: {
-    fontSize: FontSize.sm,
-  },
-  labelLg: {
-    fontSize: FontSize.md,
-  },
-  labelDisabled: {
-    color: '#8E99A8',
-  },
-  icon: {
-    marginRight: Spacing[2],
-  },
-  arrowCirclePrimary: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#C8F135',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: Spacing[2],
-  },
-  arrowCircleLime: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#090D14',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: Spacing[2],
-  },
-  arrowCircleOutline: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#E8F3F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: Spacing[2],
-  },
+  labelSm: { fontSize: FontSize.sm },
+  labelLg: { fontSize: FontSize.md },
+  icon: { marginRight: -2 },
+  arrow: { marginLeft: -2 },
 });

@@ -8,24 +8,94 @@ import {
   Skill,
 } from '../types';
 
-// ─── Skills (Vector Icon Names) ─────────────────────────────────────────────
+// ─── Work Groups & Skills ──────────────────────────────────────────────────
+
+export interface WorkGroup {
+  id: string;
+  name: string;
+  nameHi: string;
+  icon: string;
+  skills: Skill[];
+}
 
 export const MOCK_SKILLS: Skill[] = [
-  { id: 's1', name: 'Warehouse Helper', category: 'Warehouse', icon: 'package' },
-  { id: 's2', name: 'Electrician', category: 'Electrical', icon: 'zap' },
-  { id: 's3', name: 'Plumber', category: 'Plumbing', icon: 'tool' },
-  { id: 's4', name: 'Carpenter', category: 'Carpentry', icon: 'scissors' },
-  { id: 's5', name: 'Painter', category: 'Painting', icon: 'edit-3' },
-  { id: 's6', name: 'Construction Worker', category: 'Construction', icon: 'tool' },
-  { id: 's7', name: 'Driver', category: 'Driving', icon: 'truck' },
-  { id: 's8', name: 'Cleaner', category: 'Cleaning', icon: 'check-circle' },
-  { id: 's9', name: 'Security Guard', category: 'Security', icon: 'shield' },
-  { id: 's10', name: 'Delivery Person', category: 'Delivery', icon: 'navigation' },
-  { id: 's11', name: 'Event Crew', category: 'Events', icon: 'calendar' },
-  { id: 's12', name: 'Factory Worker', category: 'Factory', icon: 'cpu' },
-  { id: 's13', name: 'General Helper', category: 'Helper', icon: 'user' },
-  { id: 's14', name: 'Hospitality Staff', category: 'Hospitality', icon: 'coffee' },
-  { id: 's15', name: 'Mason', category: 'Construction', icon: 'grid' },
+  // Group 1: Construction & Infrastructure
+  { id: 's_mason', name: 'Mason', category: 'Construction', icon: 'grid' },
+  { id: 's_carpenter', name: 'Carpenter', category: 'Carpentry', icon: 'scissors' },
+  { id: 's_painter', name: 'Painter', category: 'Painting', icon: 'edit-3' },
+  { id: 's_electrician', name: 'Electrician', category: 'Electrical', icon: 'zap' },
+  { id: 's_plumber', name: 'Plumber', category: 'Plumbing', icon: 'tool' },
+  { id: 's_welder', name: 'Welder', category: 'Construction', icon: 'zap' },
+  { id: 's_tile_fitter', name: 'Tile Fitter', category: 'Construction', icon: 'layers' },
+  { id: 's_pop_worker', name: 'POP Worker', category: 'Construction', icon: 'home' },
+  { id: 's_steel_fixer', name: 'Steel Fixer', category: 'Construction', icon: 'shield' },
+  { id: 's_scaffolding', name: 'Scaffolding Worker', category: 'Construction', icon: 'server' },
+
+  // Group 2: Factory & Industrial Workers
+  { id: 's_packing', name: 'Packing Worker', category: 'Factory', icon: 'box' },
+  { id: 's_assembly', name: 'Assembly Worker', category: 'Factory', icon: 'cpu' },
+  { id: 's_warehouse_loader', name: 'Warehouse Loader', category: 'Warehouse', icon: 'package' },
+  { id: 's_forklift', name: 'Forklift Operator', category: 'Factory', icon: 'truck' },
+  { id: 's_material_handler', name: 'Material Handler', category: 'Factory', icon: 'archive' },
+
+  // Group 3: Transportation & Delivery
+  { id: 's_auto_driver', name: 'Auto Driver', category: 'Driving', icon: 'navigation' },
+  { id: 's_erickshaw', name: 'E-Rickshaw Driver', category: 'Driving', icon: 'zap' },
+  { id: 's_tempo_driver', name: 'Tempo Driver', category: 'Driving', icon: 'truck' },
+  { id: 's_truck_driver', name: 'Truck Driver', category: 'Driving', icon: 'truck' },
+  { id: 's_loader_unloader', name: 'Loader / Unloader', category: 'Delivery', icon: 'download' },
+
+  // Group 4: Retail & Logistics
+  { id: 's_warehouse_assoc', name: 'Warehouse Associate', category: 'Logistics', icon: 'package' },
+  { id: 's_inventory_asst', name: 'Inventory Assistant', category: 'Logistics', icon: 'clipboard' },
+  { id: 's_billing_asst', name: 'Billing Assistant', category: 'Retail', icon: 'file-text' },
+  { id: 's_sales_promoter', name: 'Sales Promoter', category: 'Retail', icon: 'user-check' },
+
+  // Group 5: Event & Hospitality
+  { id: 's_decorator', name: 'Decorator', category: 'Events', icon: 'feather' },
+  { id: 's_catering_staff', name: 'Catering Staff', category: 'Hospitality', icon: 'coffee' },
+  { id: 's_waiter', name: 'Waiter', category: 'Hospitality', icon: 'user' },
+  { id: 's_kitchen_helper', name: 'Kitchen Helper', category: 'Hospitality', icon: 'heart' },
+  { id: 's_security_guard', name: 'Security Guard', category: 'Security', icon: 'shield' },
+  { id: 's_housekeeping', name: 'Housekeeping Staff', category: 'Cleaning', icon: 'check-circle' },
+];
+
+export const WORK_GROUPS: WorkGroup[] = [
+  {
+    id: 'grp_construction',
+    name: 'Construction & Infrastructure',
+    nameHi: 'निर्माण और बुनियादी ढांचा',
+    icon: 'tool',
+    skills: MOCK_SKILLS.slice(0, 10),
+  },
+  {
+    id: 'grp_factory',
+    name: 'Factory & Industrial Workers',
+    nameHi: 'फैक्ट्री और औद्योगिक श्रमिक',
+    icon: 'cpu',
+    skills: MOCK_SKILLS.slice(10, 15),
+  },
+  {
+    id: 'grp_transport',
+    name: 'Transportation & Delivery',
+    nameHi: 'परिवहन और डिलीवरी',
+    icon: 'truck',
+    skills: MOCK_SKILLS.slice(15, 20),
+  },
+  {
+    id: 'grp_retail',
+    name: 'Retail & Logistics',
+    nameHi: 'रिटेल और लॉजिस्टिक्स',
+    icon: 'package',
+    skills: MOCK_SKILLS.slice(20, 24),
+  },
+  {
+    id: 'grp_hospitality',
+    name: 'Event & Hospitality',
+    nameHi: 'इवेंट और हॉस्पिटैलिटी',
+    icon: 'coffee',
+    skills: MOCK_SKILLS.slice(24, 30),
+  },
 ];
 
 // ─── Employers ───────────────────────────────────────────────────────────────

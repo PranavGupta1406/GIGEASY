@@ -1,5 +1,5 @@
 // Worker Name & City Onboarding Screen
-// Warm Ivory + Deep Teal + Electric Lime
+// GigEasy Navy Brand · Clean Input
 
 import React, { useState } from 'react';
 import {
@@ -10,21 +10,24 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/RootNavigator';
-import {
-  Colors,
-  FontFamily,
-  FontSize,
-  Spacing,
-  BorderRadius,
-  Shadow,
-} from '../../../constants';
+import { FontFamily, FontSize } from '../../../constants';
 import { GigEasyButton } from '../../../components';
 import { useOnboardingStore } from '../../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerName'>;
+
+const B = {
+  bg: '#F8FAFC',
+  navy: '#1A68D5',
+  ink: '#0F172A',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+};
 
 export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
   const { workerName, setWorkerName } = useOnboardingStore();
@@ -40,7 +43,7 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F7F4" />
+      <StatusBar barStyle="dark-content" backgroundColor={B.bg} />
 
       <View style={styles.content}>
         {/* Progress */}
@@ -48,14 +51,14 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '33%' }]} />
           </View>
-          <Text style={styles.stepIndicator}>Step 1 of 3 · Digital Identity</Text>
+          <Text style={styles.stepIndicator}>Step 1 of 3 · Your Details</Text>
         </View>
 
         {/* Title */}
         <View style={styles.header}>
           <Text style={styles.title}>What is your{'\n'}full name?</Text>
           <Text style={styles.subtitle}>
-            This will appear on your verified digital work identity card.
+            Employers will see this name when you apply for gigs.
           </Text>
         </View>
 
@@ -65,7 +68,7 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.textInput}
             placeholder="e.g. Ravi Kumar"
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor="#8A99AB"
             value={workerName}
             onChangeText={setWorkerName}
             autoFocus
@@ -74,11 +77,11 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* City Input */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Primary Work Area / City</Text>
+          <Text style={styles.inputLabel}>Primary City / Area</Text>
           <TextInput
             style={styles.textInput}
             placeholder="e.g. Noida, Delhi, Gurugram"
-            placeholderTextColor="#8E99A8"
+            placeholderTextColor="#8A99AB"
             value={city}
             onChangeText={setCity}
           />
@@ -104,72 +107,71 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7F4',
+    backgroundColor: B.bg,
   },
   content: {
     flex: 1,
-    paddingHorizontal: Spacing[6],
-    paddingTop: Spacing[5],
+    paddingHorizontal: 24,
+    paddingTop: 24,
     justifyContent: 'space-between',
-    paddingBottom: Spacing[8],
+    paddingBottom: Platform.OS === 'android' ? 28 : 36,
   },
   progressSection: {
-    marginBottom: Spacing[4],
+    marginBottom: 24,
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#E8E6E0',
+    backgroundColor: B.border,
     borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#0D3B3F',
+    backgroundColor: B.navy,
     borderRadius: 2,
   },
   stepIndicator: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#5A6578',
+    fontSize: 12,
+    color: B.textMuted,
   },
   header: {
-    marginBottom: Spacing[5],
+    marginBottom: 28,
   },
   title: {
     fontFamily: FontFamily.bold,
     fontSize: 32,
-    color: '#090D14',
+    color: B.ink,
     lineHeight: 38,
     letterSpacing: -1,
-    marginBottom: Spacing[2],
+    marginBottom: 8,
   },
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
-    color: '#5A6578',
+    color: B.textMuted,
     lineHeight: 22,
   },
   inputGroup: {
-    marginBottom: Spacing[4],
+    marginBottom: 18,
   },
   inputLabel: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
-    marginBottom: Spacing[1.5],
+    color: B.ink,
+    marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: B.white,
     borderWidth: 1.5,
-    borderColor: '#090D14',
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3.5],
-    fontFamily: FontFamily.semiBold,
+    borderColor: B.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#090D14',
-    ...Shadow.xs,
+    color: B.ink,
   },
   ctaSection: {
     marginTop: 'auto',

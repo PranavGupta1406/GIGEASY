@@ -1,6 +1,5 @@
-// GigEasy BottomNav — Floating elevated navigation bar
-// Worker: Home · Discover · Activity · Profile
-// Employer: Home · Jobs · Workers · Profile
+// GigEasy BottomNav — Brand #1A68D5 active state
+// Smooth spring scale animation on tab press + multilingual labels
 
 import React, { useRef } from 'react';
 import {
@@ -13,28 +12,38 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { FontFamily, FontSize, Colors } from '../constants';
+import { FontFamily } from '../constants';
+import { useLanguageStore } from '../store';
 
 type Mode = 'worker' | 'employer';
 
+const T = {
+  primary: '#1A68D5',
+  inactive: '#94A3B8',
+  bg: '#FFFFFF',
+  border: '#E2E8F0',
+  activeDot: '#1A68D5',
+};
+
 interface NavTab {
   key: string;
-  label: string;
+  labelEn: string;
+  labelHi: string;
   icon: keyof typeof Feather.glyphMap;
 }
 
 const WORKER_TABS: NavTab[] = [
-  { key: 'Home', label: 'Home', icon: 'home' },
-  { key: 'Jobs', label: 'Discover', icon: 'compass' },
-  { key: 'Activity', label: 'Activity', icon: 'clock' },
-  { key: 'Profile', label: 'Profile', icon: 'user' },
+  { key: 'Home',     labelEn: 'Home',     labelHi: 'होम',       icon: 'home' },
+  { key: 'Jobs',     labelEn: 'Discover', labelHi: 'काम',       icon: 'compass' },
+  { key: 'Activity', labelEn: 'Activity', labelHi: 'गतिविधि',   icon: 'clock' },
+  { key: 'Profile',  labelEn: 'Profile',  labelHi: 'प्रोफ़ाइल', icon: 'user' },
 ];
 
 const EMPLOYER_TABS: NavTab[] = [
-  { key: 'Dashboard', label: 'Home', icon: 'home' },
-  { key: 'Jobs', label: 'Jobs', icon: 'briefcase' },
-  { key: 'Workers', label: 'Workers', icon: 'users' },
-  { key: 'Profile', label: 'Profile', icon: 'user' },
+  { key: 'Dashboard', labelEn: 'Home',    labelHi: 'होम',       icon: 'home' },
+  { key: 'Jobs',      labelEn: 'Jobs',    labelHi: 'नौकरियां', icon: 'briefcase' },
+  { key: 'Workers',   labelEn: 'Workers', labelHi: 'कामगार',   icon: 'users' },
+  { key: 'Profile',   labelEn: 'Profile', labelHi: 'प्रोफ़ाइल', icon: 'user' },
 ];
 
 interface BottomNavProps {
@@ -53,40 +62,35 @@ function NavItem({
   onPress: () => void;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const { language } = useLanguageStore();
 
   const handlePress = () => {
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.88,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 300,
-        friction: 16,
-      }),
+      Animated.spring(scaleAnim, { toValue: 0.82, tension: 450, friction: 14, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1,    tension: 280, friction: 14, useNativeDriver: true }),
     ]).start();
     onPress();
   };
 
+  const label = language === 'hi' ? tab.labelHi : tab.labelEn;
+
   return (
-    <TouchableOpacity
-      style={styles.navItem}
-      onPress={handlePress}
-      activeOpacity={0.8}
-    >
+    <TouchableOpacity style={styles.navItem} onPress={handlePress} activeOpacity={1}>
       <Animated.View style={[styles.navItemInner, { transform: [{ scale: scaleAnim }] }]}>
+        {/* Active indicator dot above icon */}
         {focused && <View style={styles.activeDot} />}
-        <Feather
-          name={tab.icon}
-          size={20}
-          color={focused ? '#0D3B3F' : '#8E99A8'}
-          strokeWidth={focused ? 2.4 : 1.6}
-        />
-        <Text style={[styles.navLabel, focused && styles.navLabelActive]}>
-          {tab.label}
+
+        <View style={[styles.iconBg, focused && styles.iconBgActive]}>
+          <Feather
+            name={tab.icon}
+            size={20}
+            color={focused ? T.primary : T.inactive}
+            strokeWidth={focused ? 2.2 : 1.5}
+          />
+        </View>
+
+        <Text style={[styles.navLabel, focused && styles.navLabelActive]} numberOfLines={1}>
+          {label}
         </Text>
       </Animated.View>
     </TouchableOpacity>
@@ -102,8 +106,7 @@ export function BottomNav({ mode, activeTab, onTabPress }: BottomNavProps) {
       style={[
         styles.container,
         {
-          paddingBottom: Math.max(insets.bottom, 8),
-          height: 60 + Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 6),
         },
       ]}
     >
@@ -122,21 +125,18 @@ export function BottomNav({ mode, activeTab, onTabPress }: BottomNavProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.bg,
     borderTopWidth: 1,
-    borderTopColor: '#E8E6E0',
+    borderTopColor: T.border,
     paddingTop: 8,
     ...Platform.select({
       ios: {
-        shadowColor: '#090D14',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.05,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.06,
         shadowRadius: 10,
       },
       android: { elevation: 10 },
-      web: {
-        boxShadow: '0 -4px 16px rgba(9, 13, 20, 0.04)',
-      } as any,
     }),
   },
   navItem: {
@@ -147,26 +147,35 @@ const styles = StyleSheet.create({
   navItemInner: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
     position: 'relative',
+    paddingVertical: 2,
   },
   activeDot: {
-    position: 'absolute',
-    top: -6,
-    width: 16,
-    height: 3,
-    backgroundColor: '#0D3B3F',
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: T.activeDot,
+    marginBottom: 4,
+  },
+  iconBg: {
+    width: 36,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  iconBgActive: {
+    backgroundColor: '#EBF3FC',
   },
   navLabel: {
     fontFamily: FontFamily.medium,
     fontSize: 10,
-    color: '#8E99A8',
-    marginTop: 3,
+    color: T.inactive,
+    marginTop: 1,
     letterSpacing: 0.1,
   },
   navLabelActive: {
-    color: '#0D3B3F',
+    color: T.primary,
     fontFamily: FontFamily.bold,
   },
 });

@@ -7,10 +7,9 @@ export {
   GigEasyRating,
   GigEasyTrustScore,
   GigEasyStatusPill,
-  GigEasySkeleton,
   GigEasyEmptyState,
   GigEasyVerifiedBadge,
-  GigEasyMatchBadge,
+  getCategoryVisual,
 } from './GigEasyPrimitives';
 export {
   GigEasyJobCard,

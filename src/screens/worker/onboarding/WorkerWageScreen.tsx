@@ -1,5 +1,5 @@
 // Worker Wage & Expected Daily Rate Screen
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#6497B2) Palette · Simple & Confident
 
 import React from 'react';
 import {
@@ -9,16 +9,30 @@ import {
   SafeAreaView,
   StatusBar,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../../navigation/RootNavigator';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '../../../constants';
+import { FontFamily, FontSize } from '../../../constants';
 import { GigEasyButton } from '../../../components';
 import { CURRENT_WORKER } from '../../../data/mockData';
 import { useOnboardingStore, useWorkerStore, useAuthStore } from '../../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerWage'>;
+
+const B = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  money: '#EA580C',
+  moneyBg: '#FFEDD5',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+};
 
 const WAGE_PRESETS = [700, 800, 900, 1000, 1200, 1500];
 
@@ -35,7 +49,7 @@ export const WorkerWageScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F7F4" />
+      <StatusBar barStyle="dark-content" backgroundColor={B.bg} />
 
       <View style={styles.content}>
         {/* Progress Header */}
@@ -43,17 +57,17 @@ export const WorkerWageScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '100%' }]} />
           </View>
-          <Text style={styles.stepIndicator}>Step 3 of 3 · Daily Wage Benchmark</Text>
+          <Text style={styles.stepIndicator}>Step 3 of 3 · Daily Wage</Text>
 
           <Text style={styles.title}>Expected daily wage?</Text>
           <Text style={styles.subtitle}>
-            Employers use this to match you. You can still negotiate per gig before accepting.
+            This helps us show you relevant jobs in your area.
           </Text>
         </View>
 
         {/* Big Wage Hero Display */}
         <View style={styles.wageHeroCard}>
-          <Text style={styles.wageHeroLabel}>YOUR BENCHMARK</Text>
+          <Text style={styles.wageHeroLabel}>EXPECTED RATE</Text>
           <View style={styles.wageAmountRow}>
             <Text style={styles.currencySymbol}>₹</Text>
             <Text style={styles.wageAmount}>{expectedWage.toLocaleString('en-IN')}</Text>
@@ -63,7 +77,7 @@ export const WorkerWageScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Quick Preset Buttons */}
         <View style={styles.presetsSection}>
-          <Text style={styles.presetsLabel}>Quick Presets:</Text>
+          <Text style={styles.presetsLabel}>Choose a rate:</Text>
           <View style={styles.presetsGrid}>
             {WAGE_PRESETS.map((w) => {
               const isSelected = expectedWage === w;
@@ -100,7 +114,7 @@ export const WorkerWageScreen: React.FC<Props> = ({ navigation }) => {
           >
             <Text style={styles.stepBtnText}>− ₹50</Text>
           </TouchableOpacity>
-          <Text style={styles.stepperHint}>Adjust precisely</Text>
+          <Text style={styles.stepperHint}>Adjust rate</Text>
           <TouchableOpacity
             onPress={() => setExpectedWage(Math.min(5000, expectedWage + 50))}
             style={styles.stepBtn}
@@ -109,18 +123,10 @@ export const WorkerWageScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Market Benchmark Hint */}
-        <View style={styles.benchmarkNote}>
-          <Feather name="trending-up" size={14} color="#0D3B3F" />
-          <Text style={styles.benchmarkText}>
-            Average verified wage in Noida: ₹850 – ₹1,200/day
-          </Text>
-        </View>
-
         {/* Complete Profile CTA */}
         <View style={styles.ctaSection}>
           <GigEasyButton
-            label="Complete Profile & Launch Gigs"
+            label="Complete & Find Work"
             onPress={handleComplete}
             variant="primary"
             size="lg"
@@ -134,64 +140,66 @@ export const WorkerWageScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: B.bg },
   content: {
     flex: 1,
-    paddingHorizontal: Spacing[6],
-    paddingTop: Spacing[5],
+    paddingHorizontal: 24,
+    paddingTop: 24,
     justifyContent: 'space-between',
-    paddingBottom: Spacing[8],
+    paddingBottom: Platform.OS === 'android' ? 28 : 36,
   },
   header: {
-    marginBottom: Spacing[4],
+    marginBottom: 24,
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#E8E6E0',
+    backgroundColor: B.border,
     borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#0D3B3F',
+    backgroundColor: B.primary,
     borderRadius: 2,
   },
   stepIndicator: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#5A6578',
-    marginBottom: Spacing[4],
+    fontSize: 12,
+    color: B.textSecondary,
+    marginBottom: 16,
   },
   title: {
     fontFamily: FontFamily.bold,
     fontSize: 32,
-    color: '#090D14',
+    color: B.ink,
     lineHeight: 38,
     letterSpacing: -1,
-    marginBottom: Spacing[2],
+    marginBottom: 8,
   },
   subtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: '#5A6578',
-    lineHeight: 20,
+    fontSize: FontSize.base,
+    color: B.textSecondary,
+    lineHeight: 22,
   },
   wageHeroCard: {
-    backgroundColor: '#090D14',
-    padding: Spacing[5],
-    borderRadius: BorderRadius.xl,
+    backgroundColor: B.primary,
+    padding: 24,
+    borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#090D14',
-    ...Shadow.sm,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
   wageHeroLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#C8F135',
+    fontSize: 11,
+    color: B.primaryMuted,
     letterSpacing: 0.8,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   wageAmountRow: {
     flexDirection: 'row',
@@ -199,8 +207,8 @@ const styles = StyleSheet.create({
   },
   currencySymbol: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize['2xl'],
-    color: '#C8F135',
+    fontSize: 28,
+    color: '#FFFFFF',
     marginRight: 4,
   },
   wageAmount: {
@@ -212,39 +220,39 @@ const styles = StyleSheet.create({
   perDayText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.md,
-    color: '#8E99A8',
+    color: B.primaryMuted,
     marginLeft: 4,
   },
   presetsSection: {
-    marginTop: Spacing[3],
+    marginTop: 18,
   },
   presetsLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#090D14',
-    marginBottom: Spacing[2],
+    color: B.ink,
+    marginBottom: 10,
   },
   presetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing[2],
+    gap: 8,
   },
   presetBtn: {
-    paddingHorizontal: Spacing[3.5],
-    paddingVertical: Spacing[2],
-    borderRadius: BorderRadius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#E8E6E0',
-    backgroundColor: '#FFFFFF',
+    borderColor: B.border,
+    backgroundColor: B.white,
   },
   presetBtnSelected: {
-    borderColor: '#0D3B3F',
-    backgroundColor: '#0D3B3F',
+    borderColor: B.primary,
+    backgroundColor: B.primary,
   },
   presetText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#090D14',
+    fontSize: 13,
+    color: B.ink,
   },
   presetTextSelected: {
     color: '#FFFFFF',
@@ -253,40 +261,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing[1.5],
+    paddingVertical: 12,
   },
   stepBtn: {
-    paddingHorizontal: Spacing[3.5],
-    paddingVertical: Spacing[2],
-    backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: B.white,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: B.border,
   },
   stepBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: '#090D14',
+    fontSize: 12,
+    color: B.ink,
   },
   stepperHint: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#8E99A8',
-  },
-  benchmarkNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-    backgroundColor: '#E8F3F4',
-    padding: Spacing[3],
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: '#C0DFE2',
-  },
-  benchmarkText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#0D3B3F',
+    fontSize: 12,
+    color: B.textSecondary,
   },
   ctaSection: {
     marginTop: 'auto',

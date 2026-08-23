@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   brandDot: {
-    color: '#C8F135', // Electric Lime
+    color: '#1A68D5',
     fontFamily: FontFamily.extraBold,
   },
   tagline: {
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#C8F135',
+    backgroundColor: '#1A68D5',
     marginRight: 8,
   },
   footerText: {

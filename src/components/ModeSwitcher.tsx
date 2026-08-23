@@ -1,5 +1,5 @@
-// GigEasy ModeSwitcher — Segmented Top Mode Switcher
-// "Find Work" | "Hire Workers" — Deep Teal + Electric Lime accent
+// GigEasy ModeSwitcher — "Find Work" | "Hire Workers"
+// Smooth spring-animated sliding pill · Brand #6497B2 · Equal visual weight
 
 import React, { useRef, useEffect } from 'react';
 import {
@@ -9,7 +9,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
-import { FontFamily, FontSize, Colors } from '../constants';
+import { FontFamily, FontSize } from '../constants';
 
 type Mode = 'worker' | 'employer';
 
@@ -17,6 +17,16 @@ interface ModeSwitcherProps {
   activeMode: Mode;
   onSwitch: (mode: Mode) => void;
 }
+
+const T = {
+  primary: '#1A68D5',
+  primaryMuted: '#EBF3FC',
+  ink: '#0F172A',
+  muted: '#64748B',
+  bg: '#F1F5F9',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+};
 
 export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
   const isWorker = activeMode === 'worker';
@@ -26,47 +36,33 @@ export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
     Animated.spring(slideAnim, {
       toValue: isWorker ? 0 : 1,
       useNativeDriver: false,
-      tension: 280,
-      friction: 24,
+      tension: 260,
+      friction: 22,
     }).start();
-  }, [activeMode, isWorker, slideAnim]);
+  }, [activeMode]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.segmentBackground}>
-        {/* Sliding Active Pill */}
+      <View style={styles.track}>
+        {/* Animated sliding pill */}
         <Animated.View
           style={[
-            styles.activeSlider,
+            styles.pill,
             {
               left: slideAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: ['2%', '51%'],
+                outputRange: ['1.5%', '50%'],
               }),
             },
           ]}
         />
 
-        {/* Tab 1: Find Work */}
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onSwitch('worker')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.tabText, isWorker && styles.tabTextActive]}>
-            Find Work
-          </Text>
+        <TouchableOpacity style={styles.tab} onPress={() => onSwitch('worker')} activeOpacity={0.8}>
+          <Text style={[styles.tabText, isWorker && styles.tabTextActive]}>Find Work</Text>
         </TouchableOpacity>
 
-        {/* Tab 2: Hire Workers */}
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => onSwitch('employer')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.tabText, !isWorker && styles.tabTextActive]}>
-            Hire Workers
-          </Text>
+        <TouchableOpacity style={styles.tab} onPress={() => onSwitch('employer')} activeOpacity={0.8}>
+          <Text style={[styles.tabText, !isWorker && styles.tabTextActive]}>Hire Workers</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -78,29 +74,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  segmentBackground: {
+  track: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F0EB',
-    borderRadius: 20,
+    backgroundColor: T.bg,
+    borderRadius: 22,
     padding: 3,
     position: 'relative',
-    width: 210,
-    height: 36,
+    width: 220,
+    height: 38,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
+    borderColor: T.border,
   },
-  activeSlider: {
+  pill: {
     position: 'absolute',
     top: 3,
     bottom: 3,
-    width: '47%',
-    backgroundColor: '#0D3B3F', // Deep Teal
-    borderRadius: 16,
-    shadowColor: '#090D14',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
+    width: '48%',
+    backgroundColor: T.primary,
+    borderRadius: 18,
+    shadowColor: T.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     elevation: 2,
   },
   tab: {
@@ -111,13 +107,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   tabText: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.xs,
-    color: '#5A6578',
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: T.muted,
     letterSpacing: 0.1,
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: T.white,
     fontFamily: FontFamily.bold,
   },
 });

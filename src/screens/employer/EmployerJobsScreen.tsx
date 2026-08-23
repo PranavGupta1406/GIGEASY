@@ -1,5 +1,5 @@
 // Employer Jobs Screen — Manage posted gigs with progress bars
-// Deep Teal + Electric Lime + Warm Ivory
+// Brand Blue (#6497B2) Palette · Simple & Confident
 
 import React, { useState } from 'react';
 import {
@@ -9,16 +9,33 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize, BorderRadius, Spacing, Shadow, Colors } from '../../constants';
+import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { CURRENT_EMPLOYER, MOCK_JOBS, formatWage, formatDate } from '../../data/mockData';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
 type FilterTab = 'all' | 'hiring' | 'full';
+
+const T = {
+  bg: '#F8FAFC',
+  primary: '#1A68D5',
+  primaryDark: '#124FA8',
+  primaryLight: '#D6E6FA',
+  primaryMuted: '#EBF3FC',
+  money: '#EA580C',
+  moneyBg: '#FFEDD5',
+  ink: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  success: '#10B981',
+  successLight: '#D1FAE5',
+};
 
 export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -37,7 +54,7 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.screenTitle}>My Posted Gigs</Text>
+            <Text style={styles.screenTitle}>My Posted Jobs</Text>
             <Text style={styles.screenSubtitle}>{employerJobs.length} active listings · {employer.businessName}</Text>
           </View>
           <TouchableOpacity
@@ -45,8 +62,8 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
             onPress={() => shellNavigation.navigate('PostJob')}
             activeOpacity={0.88}
           >
-            <Feather name="plus" size={16} color="#090D14" />
-            <Text style={styles.postBtnText}>Post Gig</Text>
+            <Feather name="plus" size={16} color={T.white} />
+            <Text style={styles.postBtnText}>Post Job</Text>
           </TouchableOpacity>
         </View>
 
@@ -60,7 +77,7 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
               activeOpacity={0.8}
             >
               <Text style={[styles.filterText, activeTab === tab && styles.filterTextActive]}>
-                {tab === 'all' ? 'All Gigs' : tab === 'hiring' ? 'Active Hiring' : 'Fully Staffed'}
+                {tab === 'all' ? 'All Jobs' : tab === 'hiring' ? 'Active Hiring' : 'Fully Staffed'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -102,12 +119,12 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
                       styles.progressFill,
                       {
                         width: `${Math.min(pct * 100, 100)}%` as any,
-                        backgroundColor: isFull ? '#10B981' : '#0D3B3F',
+                        backgroundColor: isFull ? T.success : T.primary,
                       },
                     ]}
                   />
                 </View>
-                <Text style={[styles.progressText, isFull && { color: '#10B981', fontFamily: FontFamily.bold }]}>
+                <Text style={[styles.progressText, isFull && { color: T.success, fontFamily: FontFamily.bold }]}>
                   {job.workersHired}/{job.workersRequired} hired
                 </Text>
               </View>
@@ -115,7 +132,7 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
               {/* Footer */}
               <View style={styles.cardFooter}>
                 <View style={styles.footerLeft}>
-                  <Feather name="users" size={12} color="#5A6578" />
+                  <Feather name="users" size={12} color={T.textSecondary} />
                   <Text style={styles.footerText}>3 applicants in review</Text>
                 </View>
                 <View style={isFull ? styles.fullPill : styles.hiringPill}>
@@ -134,13 +151,13 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F7F4' },
+  container: { flex: 1, backgroundColor: T.bg },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E0',
+    borderBottomColor: T.border,
   },
   headerTop: {
     flexDirection: 'row',
@@ -149,19 +166,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 12,
   },
-  screenTitle: { fontFamily: FontFamily.bold, fontSize: FontSize['2xl'], color: '#090D14', letterSpacing: -0.5 },
-  screenSubtitle: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578', marginTop: 2 },
+  screenTitle: { fontFamily: FontFamily.bold, fontSize: FontSize['2xl'], color: T.ink, letterSpacing: -0.5 },
+  screenSubtitle: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary, marginTop: 2 },
   postBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C8F135',
+    backgroundColor: T.primary,
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: BorderRadius.full,
-    ...Shadow.xs,
   },
-  postBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#090D14' },
+  postBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: T.white },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -171,53 +187,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#F2F0EB',
+    backgroundColor: '#F0F4F8',
   },
-  filterTabActive: { backgroundColor: '#0D3B3F' },
-  filterText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#5A6578' },
-  filterTextActive: { color: '#FFFFFF', fontFamily: FontFamily.bold },
+  filterTabActive: { backgroundColor: T.primary },
+  filterText: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary },
+  filterTextActive: { color: T.white, fontFamily: FontFamily.bold },
   list: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24 },
   jobCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: T.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E8E6E0',
-    ...Shadow.xs,
+    borderColor: T.border,
+    shadowColor: '#1C2B3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
   cardTitleBlock: { flex: 1, marginRight: 12 },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F2F0EB',
+    backgroundColor: T.primaryMuted,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginBottom: 3,
   },
-  cardCategory: { fontFamily: FontFamily.bold, fontSize: 8, color: '#0D3B3F', letterSpacing: 0.5 },
-  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: '#090D14', marginBottom: 2, letterSpacing: -0.3 },
-  cardMeta: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578' },
+  cardCategory: { fontFamily: FontFamily.bold, fontSize: 8, color: T.primary, letterSpacing: 0.5 },
+  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: T.ink, marginBottom: 2, letterSpacing: -0.3 },
+  cardMeta: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
   cardWageBlock: { alignItems: 'flex-end' },
-  cardWage: { fontFamily: FontFamily.extraBold, fontSize: 18, color: '#0D3B3F', letterSpacing: -0.3 },
-  cardWageUnit: { fontFamily: FontFamily.medium, fontSize: 10, color: '#8E99A8' },
+  cardWage: { fontFamily: FontFamily.extraBold, fontSize: 18, color: T.primary, letterSpacing: -0.3 },
+  cardWageUnit: { fontFamily: FontFamily.medium, fontSize: 10, color: T.textMuted },
   progressSection: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  progressBar: { flex: 1, height: 4, backgroundColor: '#F2F0EB', borderRadius: 2, overflow: 'hidden' },
+  progressBar: { flex: 1, height: 4, backgroundColor: '#F0F4F8', borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 2 },
-  progressText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#5A6578', minWidth: 60 },
+  progressText: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary, minWidth: 60 },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F2F0EB',
+    borderTopColor: '#F0F4F8',
   },
   footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  footerText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5A6578' },
-  fullPill: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
-  fullPillText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#047857' },
-  hiringPill: { backgroundColor: '#090D14', paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
-  hiringPillText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFFFFF' },
+  footerText: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
+  fullPill: { backgroundColor: T.successLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
+  fullPillText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#1F7A59' },
+  hiringPill: { backgroundColor: T.primaryMuted, borderWidth: 1, borderColor: T.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
+  hiringPillText: { fontFamily: FontFamily.bold, fontSize: 10, color: T.primary },
 });
