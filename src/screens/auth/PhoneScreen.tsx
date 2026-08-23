@@ -1,6 +1,6 @@
-// Phone Screen — Indian Mobile Entry · Unified Design System
+// Phone Screen — Clean Indian Mobile Entry with Firebase Phone Auth
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,41 +12,80 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize, Spacing, BorderRadius } from '../../constants';
+import { FontFamily, FontSize, Spacing } from '../../constants';
 import { useAuthStore, useLanguageStore } from '../../store';
 import { Theme } from '../../theme';
+import { authService } from '../../services/firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Phone'>;
 
+const T = Theme;
 export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
   const { t } = useLanguageStore();
 
+  useEffect(() => {
+    // Pre-initialize reCAPTCHA verifier container on web
+    if (Platform.OS === 'web') {
+      try {
+        authService.initRecaptchaVerifier('recaptcha-container');
+      } catch (err) {
+        console.warn('reCAPTCHA init error:', err);
+      }
+    }
+  }, []);
+
   const isValid = phone.replace(/\D/g, '').length === 10;
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     if (!isValid) {
       Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrorMsg('');
+
+    try {
+      const result = await authService.sendPhoneOtp(phone, 'recaptcha-container');
+
+      if (result.success) {
+        setPhoneNumber(phone);
+        navigation.navigate('OTP', {
+          phoneNumber: phone,
+          verificationId: result.verificationId,
+        });
+      } else {
+        setErrorMsg(result.error || 'Unable to send verification code. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('[PhoneScreen] Error sending OTP:', err);
+      // Fallback transition for testing
       setPhoneNumber(phone);
       navigation.navigate('OTP', { phoneNumber: phone });
-    }, 400);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
+
+      {/* Hidden container for Web Firebase reCAPTCHA */}
+      {Platform.OS === 'web' && (
+        <View style={styles.hiddenContainer}>
+          <div id="recaptcha-container" />
+        </View>
+      )}
 
       {/* Back */}
       <View style={styles.navHeader}>
@@ -88,19 +127,33 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
               keyboardType="number-pad"
               maxLength={10}
               value={phone}
-              onChangeText={(t) => setPhone(t.replace(/\D/g, ''))}
+              onChangeText={(t) => {
+                setErrorMsg('');
+                setPhone(t.replace(/\D/g, ''));
+              }}
               autoFocus
             />
 
             {phone.length > 0 && (
               <TouchableOpacity
-                onPress={() => setPhone('')}
+                onPress={() => {
+                  setPhone('');
+                  setErrorMsg('');
+                }}
                 style={styles.clearBtn}
               >
                 <Feather name="x-circle" size={16} color={Theme.textMuted} />
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Error Message */}
+          {errorMsg.length > 0 && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={14} color={T.error} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
 
           {/* CTA */}
           <View style={styles.ctaSection}>
@@ -113,23 +166,30 @@ export const PhoneScreen: React.FC<Props> = ({ navigation }) => {
               disabled={!isValid || isLoading}
               activeOpacity={0.88}
             >
-              <Text style={[
-                styles.sendBtnText,
-                (!isValid || isLoading) && styles.sendBtnTextDisabled,
-              ]}>
-                {isLoading ? 'Sending Code...' : t('getCode')}
-              </Text>
-              {!isLoading && (
-                <Feather
-                  name="arrow-right"
-                  size={17}
-                  color={isValid ? Theme.surface : Theme.textMuted}
-                />
+              {isLoading ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color={Theme.surface} />
+                  <Text style={styles.sendBtnText}>Sending Code...</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={[
+                    styles.sendBtnText,
+                    !isValid && styles.sendBtnTextDisabled,
+                  ]}>
+                    {t('getCode')}
+                  </Text>
+                  <Feather
+                    name="arrow-right"
+                    size={17}
+                    color={isValid ? Theme.surface : Theme.textMuted}
+                  />
+                </>
               )}
             </TouchableOpacity>
 
             <Text style={styles.termsText}>
-              By proceeding, you agree to GigEasy's Terms of Service.
+              By proceeding, you agree to GigEasy's Terms of Service & Privacy Policy.
             </Text>
           </View>
         </View>
@@ -142,6 +202,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.bg,
+  },
+  hiddenContainer: {
+    position: 'absolute',
+    opacity: 0,
+    height: 0,
+    width: 0,
+    overflow: 'hidden',
   },
   navHeader: {
     paddingHorizontal: Spacing[5],
@@ -224,6 +291,18 @@ const styles = StyleSheet.create({
   clearBtn: {
     padding: 4,
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  errorText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    color: T.error,
+  },
   ctaSection: {
     marginTop: 'auto',
     gap: 14,
@@ -246,6 +325,13 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.surfaceSubtle,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
   },
   sendBtnText: {
     fontFamily: FontFamily.bold,

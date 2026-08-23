@@ -40,6 +40,8 @@ const T = {
   successLight: Theme.successLight,
 };
 
+import { authService } from '../../services/firebase';
+
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
   const storeProfile = useWorkerStore((s) => s.profile);
   const authName = useAuthStore((s) => s.name);
@@ -51,7 +53,8 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
 
   const worker = storeProfile ?? {
     ...CURRENT_WORKER,
-    name: authName || CURRENT_WORKER.name,
+    id: authUserId || CURRENT_WORKER.id,
+    name: authName || (authPhone ? 'New Worker' : CURRENT_WORKER.name),
     phoneNumber: authPhone || CURRENT_WORKER.phoneNumber,
     verificationStatus: (authKyc as any) || CURRENT_WORKER.verificationStatus,
   };
@@ -62,7 +65,8 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          await authService.signOutFirebase();
           logout();
           shellNavigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
         },

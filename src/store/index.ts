@@ -31,6 +31,9 @@ interface AuthState {
   phoneNumber: string;
   role: UserRole | null;
   userId: string | null;
+  firebaseUid: string | null;
+  idToken: string | null;
+  authProvider: string | null;
   kycStatus: VerificationStatus;
   isOnboarded: boolean;
   setPhoneNumber: (phone: string) => void;
@@ -40,8 +43,18 @@ interface AuthState {
     name?: string,
     email?: string,
     phoneNumber?: string,
-    kycStatus?: VerificationStatus
+    kycStatus?: VerificationStatus,
+    firebaseUid?: string,
+    idToken?: string
   ) => void;
+  setFirebaseSession: (session: {
+    uid: string;
+    token?: string;
+    phoneNumber?: string;
+    email?: string;
+    name?: string;
+    role?: UserRole;
+  }) => void;
   setOnboarded: () => void;
   switchRole: (role: UserRole) => void;
   logout: () => void;
@@ -54,10 +67,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   phoneNumber: '',
   role: null,
   userId: null,
+  firebaseUid: null,
+  idToken: null,
+  authProvider: null,
   kycStatus: 'unverified',
   isOnboarded: false,
   setPhoneNumber: (phone) => set({ phoneNumber: phone }),
-  setAuthenticated: (userId, role, name = '', email = '', phoneNumber = '', kycStatus = 'unverified') =>
+  setAuthenticated: (
+    userId,
+    role,
+    name = '',
+    email = '',
+    phoneNumber = '',
+    kycStatus = 'unverified',
+    firebaseUid = '',
+    idToken = ''
+  ) =>
     set({
       isAuthenticated: true,
       userId,
@@ -66,7 +91,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       email,
       phoneNumber,
       kycStatus,
+      firebaseUid: firebaseUid || userId,
+      idToken: idToken || null,
     }),
+  setFirebaseSession: ({ uid, token, phoneNumber, email, name, role }) =>
+    set((state) => ({
+      isAuthenticated: true,
+      userId: uid,
+      firebaseUid: uid,
+      idToken: token || state.idToken,
+      phoneNumber: phoneNumber || state.phoneNumber,
+      email: email || state.email,
+      name: name || state.name,
+      role: role || state.role || 'worker',
+    })),
   setOnboarded: () => set({ isOnboarded: true }),
   switchRole: (role) => set({ role }),
   logout: () =>
@@ -77,6 +115,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       phoneNumber: '',
       role: null,
       userId: null,
+      firebaseUid: null,
+      idToken: null,
+      authProvider: null,
       kycStatus: 'unverified',
       isOnboarded: false,
     }),

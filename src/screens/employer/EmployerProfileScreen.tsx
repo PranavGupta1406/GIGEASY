@@ -39,6 +39,8 @@ const T = {
   success: Theme.success,
 };
 
+import { authService } from '../../services/firebase';
+
 export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
   const storeProfile = useEmployerStore((s) => s.profile);
   const authName = useAuthStore((s) => s.name);
@@ -50,8 +52,9 @@ export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwit
 
   const employer = storeProfile ?? {
     ...CURRENT_EMPLOYER,
-    businessName: authName || CURRENT_EMPLOYER.businessName,
-    contactName: authName || CURRENT_EMPLOYER.contactName,
+    id: authUserId || CURRENT_EMPLOYER.id,
+    businessName: authName || (authPhone ? 'New Business' : CURRENT_EMPLOYER.businessName),
+    contactName: authName || (authPhone ? 'New Employer' : CURRENT_EMPLOYER.contactName),
     contactEmail: authEmail || CURRENT_EMPLOYER.contactEmail,
     contactPhone: authPhone || CURRENT_EMPLOYER.contactPhone,
     verificationStatus: (authKyc as any) || CURRENT_EMPLOYER.verificationStatus,
@@ -65,7 +68,8 @@ export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwit
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          await authService.signOutFirebase();
           logout();
           shellNavigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
         },

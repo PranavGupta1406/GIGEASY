@@ -53,7 +53,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Role: undefined;
   Phone: undefined;
-  OTP: { phoneNumber: string };
+  OTP: { phoneNumber: string; verificationId?: string };
   WorkerName: undefined;
   WorkerSkills: undefined;
   WorkerCategory: undefined;
@@ -168,41 +168,52 @@ function MainAppScreen({ route, navigation }: any) {
   );
 }
 
+import { useAuthStore } from '../store';
+
 export function RootNavigator() {
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Welcome"
-        screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: BRAND.background } }}
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: BRAND.background },
+        }}
       >
-        <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="Role" component={RoleScreen} />
-        <Stack.Screen name="Phone" component={PhoneScreen} />
-        <Stack.Screen name="OTP" component={OTPScreen} />
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        
-        <Stack.Screen name="WorkerName" component={WorkerNameScreen} />
-        <Stack.Screen name="WorkerSkills" component={WorkerSkillsScreen} />
-        <Stack.Screen name="WorkerCategory" component={WorkerCategoryScreen} />
-        <Stack.Screen name="WorkerCategoryJobs" component={WorkerCategoryJobsScreen} />
+        {!isAuthenticated ? (
+          <>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Role" component={RoleScreen} />
+            <Stack.Screen name="Phone" component={PhoneScreen} />
+            <Stack.Screen name="OTP" component={OTPScreen} />
+            <Stack.Screen name="Splash" component={SplashScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="WorkerName" component={WorkerNameScreen} />
+            <Stack.Screen name="WorkerSkills" component={WorkerSkillsScreen} />
+            <Stack.Screen name="WorkerCategory" component={WorkerCategoryScreen} />
+            <Stack.Screen name="WorkerCategoryJobs" component={WorkerCategoryJobsScreen} />
 
-        {/* Employer Onboarding */}
-        <Stack.Screen name="EmployerName" component={EmployerNameScreen} />
-        
-        <Stack.Screen name="MainApp" component={MainAppScreen} options={{ animation: 'fade' }} />
-        <Stack.Screen name="WorkerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
-        <Stack.Screen name="EmployerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="EmployerName" component={EmployerNameScreen} />
+            
+            <Stack.Screen name="MainApp" component={MainAppScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="WorkerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="EmployerTabs" component={MainAppScreen} options={{ animation: 'fade' }} />
 
-        {/* New Employer Marketplace Screens */}
-        <Stack.Screen name="CategoryServices" component={CategoryServicesScreen} />
-        <Stack.Screen name="ServiceConfig" component={ServiceConfigScreen} />
-        <Stack.Screen name="EmployerCart" component={EmployerCartScreen} options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="ActiveOrderTracking" component={ActiveOrderTrackingScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="CategoryServices" component={CategoryServicesScreen} />
+            <Stack.Screen name="ServiceConfig" component={ServiceConfigScreen} />
+            <Stack.Screen name="EmployerCart" component={EmployerCartScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="ActiveOrderTracking" component={ActiveOrderTrackingScreen} options={{ animation: 'slide_from_bottom' }} />
 
-        <Stack.Screen name="JobDetail" component={JobDetailScreen} options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="JobApply" component={JobApplyScreen} />
-        <Stack.Screen name="JobApplicants" component={JobApplicantsScreen} />
-        <Stack.Screen name="WorkerDetail" component={WorkerDetailScreen} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="JobApply" component={JobApplyScreen} />
+            <Stack.Screen name="JobApplicants" component={JobApplicantsScreen} />
+            <Stack.Screen name="WorkerDetail" component={WorkerDetailScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

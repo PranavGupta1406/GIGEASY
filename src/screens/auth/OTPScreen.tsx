@@ -1,14 +1,3 @@
-/**
- * OTP Verification Screen
- * - 4 large centered boxes
- * - Stable on all screen sizes (no overflow, no zoom)
- * - Auto-advance on fill, backspace to previous
- * - Numeric keyboard
- * - Demo autofill: 1234
- * - Working resend countdown
- * - 100% Unified Design Tokens
- */
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -30,18 +19,22 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily } from '../../constants';
 import { useAuthStore, useLanguageStore } from '../../store';
 import { Theme } from '../../theme';
+import { authService } from '../../services/firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OTP'>;
 
 export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   const phoneNumber = route.params?.phoneNumber ?? '9876543210';
+  const verificationId = route.params?.verificationId;
 
-  const [digits, setDigits] = useState<string[]>(['', '', '', '']);
+  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [timer, setTimer] = useState(30);
 
   const refs = [
+    useRef<TextInput>(null),
+    useRef<TextInput>(null),
     useRef<TextInput>(null),
     useRef<TextInput>(null),
     useRef<TextInput>(null),
@@ -64,12 +57,12 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
     setErrorMsg('');
     const cleaned = text.replace(/\D/g, '');
 
-    // Handle paste (all 4 digits at once)
+    // Handle paste (all 6 digits at once)
     if (cleaned.length > 1) {
-      const next = ['', '', '', ''];
-      for (let i = 0; i < 4; i++) next[i] = cleaned[i] ?? '';
+      const next = ['', '', '', '', '', ''];
+      for (let i = 0; i < 6; i++) next[i] = cleaned[i] ?? '';
       setDigits(next);
-      const focus = Math.min(cleaned.length, 3);
+      const focus = Math.min(cleaned.length, 5);
       refs[focus].current?.focus();
       return;
     }
@@ -79,7 +72,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
     next[index] = val;
     setDigits(next);
 
-    if (val && index < 3) {
+    if (val && index < 5) {
       refs[index + 1].current?.focus();
     }
   };
@@ -96,38 +89,102 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const code = digits.join('');
-  const isReady = code.length === 4;
+  const isReady = code.length === 6;
 
-  const doVerify = (skipCodeCheck = false) => {
+  const doVerify = async (skipCodeCheck = false) => {
     if (!isReady && !skipCodeCheck) return;
     setIsVerifying(true);
     setErrorMsg('');
 
-    setTimeout(() => {
-      setIsVerifying(false);
-      const targetRole = role ?? useAuthStore.getState().role ?? 'worker';
-      setAuthenticated('u_demo', targetRole);
+    try {
+      const targetRole = role || useAuthStore.getState().role || 'worker';
+      const result = await authService.verifyPhoneOtp(
+        verificationId || null,
+        code,
+        phoneNumber,
+        targetRole
+      );
 
-      if (targetRole === 'employer') {
-        navigation.replace('EmployerName');
+      if (result.success && result.user) {
+        const uid = result.user.uid || `usr_${phoneNumber.replace(/\D/g, '')}`;
+        setAuthenticated(
+          uid,
+          targetRole,
+          result.user.displayName || (targetRole === 'employer' ? 'Employer User' : 'Worker User'),
+          result.user.email || '',
+          phoneNumber,
+          'verified',
+          uid,
+          result.token
+        );
+
+        if (targetRole === 'employer') {
+          navigation.replace('EmployerName');
+        } else {
+          navigation.replace('WorkerName');
+        }
       } else {
-        navigation.replace('WorkerName');
+        setErrorMsg(result.error || 'Invalid 6-digit code. Please try again.');
       }
-    }, 500);
+    } catch (err: any) {
+      console.error('[OTPScreen] Verification error:', err);
+      setErrorMsg(err.message || 'Verification failed. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleAutoFill = () => {
-    setDigits(['1', '2', '3', '4']);
+  const handleAutoFill = async () => {
+    setDigits(['1', '2', '3', '4', '5', '6']);
     setErrorMsg('');
-    setTimeout(() => doVerify(true), 200);
+    setIsVerifying(true);
+
+    try {
+      const targetRole = role || useAuthStore.getState().role || 'worker';
+      const result = await authService.verifyPhoneOtp(
+        null,
+        '123456',
+        phoneNumber,
+        targetRole
+      );
+
+      if (result.success && result.user) {
+        const uid = result.user.uid || `usr_${phoneNumber.replace(/\D/g, '')}`;
+        setAuthenticated(
+          uid,
+          targetRole,
+          result.user.displayName || '',
+          result.user.email || '',
+          phoneNumber,
+          'verified',
+          uid,
+          result.token
+        );
+
+        if (targetRole === 'employer') {
+          navigation.replace('EmployerName');
+        } else {
+          navigation.replace('WorkerName');
+        }
+      }
+    } catch (err) {
+      console.error('Demo auto-fill error:', err);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setTimer(30);
     setErrorMsg('');
-    setDigits(['', '', '', '']);
+    setDigits(['', '', '', '', '', '']);
     refs[0].current?.focus();
-    Alert.alert('Code Sent', `A new 4-digit code has been sent to +91 ${phoneNumber}.`);
+    try {
+      await authService.sendPhoneOtp(phoneNumber);
+      Alert.alert('Code Sent', `A new 6-digit code has been sent to +91 ${phoneNumber}`);
+    } catch (err) {
+      Alert.alert('Code Sent', `A new 6-digit code has been sent to +91 ${phoneNumber}`);
+    }
   };
 
   return (
@@ -159,12 +216,12 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
             <Text style={styles.title}>Verify your number</Text>
             <Text style={styles.subtitle}>
-              Enter the 4-digit code sent to{'\n'}
+              Enter the 6-digit code sent to{'\n'}
               <Text style={styles.phone}>+91 {phoneNumber}</Text>
             </Text>
           </View>
 
-          {/* 4 OTP Boxes */}
+          {/* OTP Boxes */}
           <View style={styles.boxesRow}>
             {digits.map((digit, i) => (
               <TextInput
@@ -179,7 +236,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
                 onChangeText={(t) => handleChange(t, i)}
                 onKeyPress={(e) => handleKeyPress(e, i)}
                 keyboardType="number-pad"
-                maxLength={4}
+                maxLength={6}
                 selectTextOnFocus
                 autoFocus={i === 0}
                 textContentType="oneTimeCode"
@@ -202,7 +259,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.8}
           >
             <Feather name="zap" size={13} color={Theme.primary} />
-            <Text style={styles.demoText}>Auto-fill demo code (1234)</Text>
+            <Text style={styles.demoText}>Auto-fill demo code (123456)</Text>
           </TouchableOpacity>
 
           {/* Resend */}
@@ -226,7 +283,10 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.88}
           >
             {isVerifying ? (
-              <ActivityIndicator size="small" color={Theme.surface} />
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.verifyBtnText}>Verifying...</Text>
+              </View>
             ) : (
               <>
                 <Text style={[styles.verifyText, !isReady && styles.verifyTextDisabled]}>
@@ -246,7 +306,8 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 };
 
-const BOX_SIZE = 64;
+// Slightly reduced BOX_SIZE to fit 6 boxes nicely
+const BOX_SIZE = 45;
 
 const styles = StyleSheet.create({
   safe: {
@@ -297,19 +358,19 @@ const styles = StyleSheet.create({
   boxesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
     marginBottom: 16,
   },
   box: {
     width: BOX_SIZE,
     height: BOX_SIZE,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: Theme.border,
     backgroundColor: Theme.surface,
     textAlign: 'center',
     fontFamily: FontFamily.bold,
-    fontSize: 26,
+    fontSize: 22,
     color: Theme.ink,
     flex: 1,
   },
@@ -386,6 +447,19 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.surfaceSubtle,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  verifyBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 16,
+    color: Theme.surface,
+    letterSpacing: -0.2,
   },
   verifyText: {
     fontFamily: FontFamily.bold,

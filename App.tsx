@@ -17,6 +17,8 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { authService } from './src/services/firebase/authService';
+import { useAuthStore } from './src/store';
 
 // Keep the splash screen visible while fonts are loaded (native only)
 if (Platform.OS !== 'web') {
@@ -25,6 +27,8 @@ if (Platform.OS !== 'web') {
 
 export default function App() {
   const { width } = useWindowDimensions();
+  const setFirebaseSession = useAuthStore(s => s.setFirebaseSession);
+  const logout = useAuthStore(s => s.logout);
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -32,6 +36,24 @@ export default function App() {
     Inter_700Bold,
     Inter_800ExtraBold,
   });
+
+  // Firebase Auth persistence
+  useEffect(() => {
+    const unsubscribe = authService.onAuthStateChangedListener((user) => {
+      if (user) {
+        setFirebaseSession({
+          uid: user.uid,
+          phoneNumber: user.phoneNumber || undefined,
+          email: user.email || undefined,
+          name: user.displayName || undefined,
+        });
+      }
+      // If user is null, we can optionally call logout() or just leave them in their current state
+      // until they explicitly log out, but true persistence would log them out:
+      // else { logout(); }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Mobile Web Viewport Lockdown & Anti-Zoom Configuration
   useEffect(() => {
