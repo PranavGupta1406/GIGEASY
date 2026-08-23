@@ -1,0 +1,19 @@
+{
+  "name": "gigeasy-backend",
+  "version": "1.0.0",
+  "description": "GigEasy Node.js Express + PostgreSQL Backend Server",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "db:init": "node src/scripts/initDb.js",
+    "db:seed": "node src/scripts/seedDb.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "pg": "^8.13.1"
+  }
+}

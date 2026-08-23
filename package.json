@@ -17,6 +17,11 @@
     "expo-linear-gradient": "^57.0.1",
     "expo-splash-screen": "^57.0.6",
     "expo-status-bar": "~57.0.1",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express-validator": "^7.2.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
@@ -38,7 +43,10 @@
     "dev": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "server": "node server/src/index.js",
+    "db:init": "node server/src/scripts/initDb.js",
+    "db:seed": "node server/src/scripts/seedDb.js"
   },
   "private": true
 }
