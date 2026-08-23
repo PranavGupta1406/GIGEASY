@@ -49,9 +49,9 @@ export const WorkerNameScreen: React.FC<Props> = ({ navigation }) => {
         {/* Progress */}
         <View style={styles.progressSection}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '33%' }]} />
+            <View style={[styles.progressFill, { width: '50%' }]} />
           </View>
-          <Text style={styles.stepIndicator}>Step 1 of 3 · Your Details</Text>
+          <Text style={styles.stepIndicator}>Step 1 of 2 · Your Details</Text>
         </View>
 
         {/* Title */}

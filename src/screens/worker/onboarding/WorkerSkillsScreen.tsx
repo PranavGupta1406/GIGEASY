@@ -1,5 +1,5 @@
-// Worker Skills Selection Screen — Visual Category & Subcategory Matrix
-// 5 Major Work Groups with Visual Subcategory Grid & Search Filter
+// Worker Skills Selection Screen — Category-First Grid & Direct App Navigation
+// 5 Major Work Groups with Visual Grid · No Expected Wage screen
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -19,9 +19,9 @@ import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../../constants';
 import { GigEasyButton } from '../../../components';
-import { WORK_GROUPS, MOCK_SKILLS } from '../../../data/mockData';
+import { WORK_GROUPS, MOCK_SKILLS, CURRENT_WORKER } from '../../../data/mockData';
 import { getCategoryVisual } from '../../../components/GigEasyPrimitives';
-import { useOnboardingStore, useLanguageStore } from '../../../store';
+import { useOnboardingStore, useLanguageStore, useWorkerStore, useAuthStore } from '../../../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerSkills'>;
 
@@ -39,8 +39,12 @@ const T = {
 };
 
 export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
-  const { selectedSkillIds, toggleSkill } = useOnboardingStore();
+  const { selectedSkillIds, toggleSkill, workerName } = useOnboardingStore();
   const { language, t } = useLanguageStore();
+  const { setProfile } = useWorkerStore();
+  const { setOnboarded } = useAuthStore();
+  
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [search, setSearch] = useState('');
 
   const handleNext = () => {
@@ -48,15 +52,36 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Skill Required', 'Please select at least one skill you can perform.');
       return;
     }
-    navigation.navigate('WorkerWage');
+
+    const selectedSkills = MOCK_SKILLS.filter(s => selectedSkillIds.includes(s.id));
+    
+    // Create/update worker profile in store
+    setProfile({
+      ...CURRENT_WORKER,
+      name: workerName.trim() || CURRENT_WORKER.name,
+      skills: selectedSkills.length > 0 ? selectedSkills : CURRENT_WORKER.skills,
+    });
+
+    setOnboarded();
+
+    // Direct transition to MainApp (worker mode)
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'MainApp', params: { initialMode: 'worker' } }],
+    });
   };
 
-  // Filter skills by search query
+  // Filter skills by selected category & search query
   const filteredGroups = useMemo(() => {
-    if (!search.trim()) return WORK_GROUPS;
+    let groups = WORK_GROUPS;
+    if (selectedGroupId !== 'all') {
+      groups = groups.filter(g => g.id === selectedGroupId);
+    }
+
+    if (!search.trim()) return groups;
 
     const q = search.toLowerCase();
-    return WORK_GROUPS.map((grp) => ({
+    return groups.map((grp) => ({
       ...grp,
       skills: grp.skills.filter(
         (s) =>
@@ -64,34 +89,64 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
           s.category.toLowerCase().includes(q)
       ),
     })).filter((grp) => grp.skills.length > 0);
-  }, [search]);
+  }, [selectedGroupId, search]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={T.bg} />
 
-      {/* Progress Header */}
+      {/* Header */}
       <View style={styles.headerWrap}>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '66%' }]} />
+          <View style={[styles.progressFill, { width: '100%' }]} />
         </View>
-        <Text style={styles.stepIndicator}>Step 2 of 3 · Skills</Text>
+        <Text style={styles.stepIndicator}>Step 2 of 2 · Select Skills</Text>
 
         <Text style={styles.title}>
           {language === 'hi' ? 'आप क्या काम करते हैं?' : 'What work do you do?'}
         </Text>
         <Text style={styles.subtitle}>
           {language === 'hi'
-            ? 'अपने अनुभव के अनुसार एक या अधिक कौशल चुनें।'
-            : 'Select one or more skills that match your experience.'}
+            ? 'अपने अनुभव के अनुसार कौशल चुनें और काम शुरू करें।'
+            : 'Select the skills you can perform to see matching gigs nearby.'}
         </Text>
 
-        {/* Search Input Bar */}
+        {/* Category Pills Slider */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryPillsScroll}
+        >
+          <TouchableOpacity
+            style={[styles.catPill, selectedGroupId === 'all' && styles.catPillActive]}
+            onPress={() => setSelectedGroupId('all')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.catPillText, selectedGroupId === 'all' && styles.catPillTextActive]}>
+              All Categories
+            </Text>
+          </TouchableOpacity>
+
+          {WORK_GROUPS.map((grp) => (
+            <TouchableOpacity
+              key={grp.id}
+              style={[styles.catPill, selectedGroupId === grp.id && styles.catPillActive]}
+              onPress={() => setSelectedGroupId(grp.id)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.catPillText, selectedGroupId === grp.id && styles.catPillTextActive]}>
+                {language === 'hi' ? grp.nameHi : grp.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Search Bar */}
         <View style={styles.searchBar}>
           <Feather name="search" size={16} color="#94A3B8" />
           <TextInput
             style={styles.searchInput}
-            placeholder={language === 'hi' ? 'काम खोजें...' : 'Search work / skills...'}
+            placeholder={language === 'hi' ? 'काम खोजें...' : 'Search skills...'}
             placeholderTextColor="#94A3B8"
             value={search}
             onChangeText={setSearch}
@@ -119,7 +174,7 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
       >
         {filteredGroups.map((group) => (
           <View key={group.id} style={styles.groupSection}>
-            {/* Group Title Header */}
+            {/* Group Title */}
             <View style={styles.groupHeaderRow}>
               <Text style={styles.groupTitle}>
                 {language === 'hi' ? group.nameHi.toUpperCase() : group.name.toUpperCase()}
@@ -143,7 +198,6 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
                     onPress={() => toggleSkill(skill.id)}
                     activeOpacity={0.82}
                   >
-                    {/* Visual Illustration / Thumbnail Box */}
                     <View
                       style={[
                         styles.visualBox,
@@ -157,7 +211,6 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
                       />
                     </View>
 
-                    {/* Skill Label Below */}
                     <Text
                       style={[
                         styles.skillName,
@@ -168,7 +221,6 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
                       {skill.name}
                     </Text>
 
-                    {/* Selected Indicator Checkmark */}
                     {isSelected && (
                       <View style={styles.checkBadge}>
                         <Feather name="check" size={10} color={T.white} strokeWidth={3} />
@@ -182,10 +234,10 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
         ))}
       </ScrollView>
 
-      {/* Sticky Bottom Next CTA */}
+      {/* Sticky Bottom Complete Onboarding CTA */}
       <View style={styles.bottomBar}>
         <GigEasyButton
-          label={`Continue ${selectedSkillIds.length > 0 ? `(${selectedSkillIds.length} Selected)` : ''}`}
+          label={`Get Started ${selectedSkillIds.length > 0 ? `(${selectedSkillIds.length} Selected)` : ''}`}
           onPress={handleNext}
           variant="primary"
           size="lg"
@@ -243,7 +295,30 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: T.textSecondary,
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  categoryPillsScroll: {
+    gap: 8,
+    paddingVertical: 6,
+    marginBottom: 10,
+  },
+  catPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+  },
+  catPillActive: {
+    backgroundColor: T.primary,
+  },
+  catPillText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: T.textSecondary,
+  },
+  catPillTextActive: {
+    color: T.white,
+    fontFamily: FontFamily.bold,
   },
   searchBar: {
     flexDirection: 'row',
@@ -259,7 +334,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 16,
+    fontSize: 15,
     color: T.ink,
   },
   selectedCountPill: {

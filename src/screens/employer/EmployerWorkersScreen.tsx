@@ -131,8 +131,8 @@ export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
             </View>
 
             <View style={styles.wageColumn}>
-              <Text style={styles.wageText}>{formatWage(worker.expectedDailyWage)}</Text>
-              <Text style={styles.wageUnit}>/day</Text>
+              <Text style={styles.wageText}>{worker.trustScore}%</Text>
+              <Text style={styles.wageUnit}>Trust Score</Text>
             </View>
           </TouchableOpacity>
         ))}

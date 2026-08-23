@@ -24,8 +24,9 @@ import {
 } from '../../constants';
 import { GigEasyButton } from '../../components';
 import { MOCK_JOBS, formatWage } from '../../data/mockData';
-import { useWorkerStore, useLanguageStore } from '../../store';
+import { useSharedApplicationsStore, useWorkerStore, useLanguageStore } from '../../store';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
+import { CURRENT_WORKER } from '../../data/mockData';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApply'>;
 
@@ -46,7 +47,8 @@ const T = {
 export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
   const { jobId } = route.params;
   const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-  const applyForJob = useWorkerStore((s) => s.applyForJob);
+  const { applyForJob } = useSharedApplicationsStore();
+  const workerProfile = useWorkerStore((s) => s.profile);
   const { t } = useLanguageStore();
 
   const [proposedWage, setProposedWage] = useState<number>(job.maxWage);
@@ -66,7 +68,8 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      applyForJob(job.id, proposedWage, note);
+      const worker = workerProfile ?? CURRENT_WORKER;
+      applyForJob(job.id, proposedWage, worker, job);
       Alert.alert(
         'Application Sent',
         `Your daily wage proposal of ${formatWage(proposedWage)} has been submitted to ${job.employer.businessName}. You'll receive real-time notifications on status updates.`,

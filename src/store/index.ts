@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication, VerificationStatus } from '../types';
-import { MOCK_JOBS, MOCK_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
+import { UserRole, WorkerProfile, EmployerProfile, Job, JobFilters, JobApplication, VerificationStatus, ApplicationStatus } from '../types';
+import { MOCK_JOBS, SEED_EMPLOYER_APPLICATIONS, SEED_WORKER_APPLICATIONS, CURRENT_WORKER } from '../data/mockData';
 import { TRANSLATIONS, LanguageCode, TranslationKey } from '../i18n/translations';
 
 // ─── Language Store ───────────────────────────────────────────────────────────
@@ -82,46 +82,136 @@ export const useAuthStore = create<AuthState>((set) => ({
     }),
 }));
 
+// ─── Shared Applications Store ────────────────────────────────────────────────
+// Single source of truth for ALL applications. Both worker and employer read here.
+// This ensures cross-sync: employer accept → worker sees status change immediately.
+
+interface SharedApplicationsState {
+  applications: JobApplication[];
+  // Worker actions
+  applyForJob: (jobId: string, wage: number, worker: WorkerProfile, job: Job) => void;
+  checkIn: (appId: string) => void;
+  markComplete: (appId: string) => void;
+  confirmPaymentReceived: (appId: string) => void;
+  // Employer actions
+  acceptApplication: (appId: string) => void;
+  rejectApplication: (appId: string) => void;
+  payWorker: (appId: string) => void;
+  // Selectors
+  getWorkerApplications: (workerId: string) => JobApplication[];
+  getJobApplications: (jobId: string) => JobApplication[];
+  hasApplied: (jobId: string, workerId: string) => boolean;
+}
+
+export const useSharedApplicationsStore = create<SharedApplicationsState>((set, get) => ({
+  // Seed with demo data for both worker and employer views
+  applications: [...SEED_EMPLOYER_APPLICATIONS, ...SEED_WORKER_APPLICATIONS],
+
+  applyForJob: (jobId, wage, worker, job) => {
+    const already = get().applications.find(
+      (a) => a.jobId === jobId && a.workerId === worker.id
+    );
+    if (already) return; // Duplicate guard
+
+    const newApp: JobApplication = {
+      id: `app_${Date.now()}`,
+      jobId,
+      job,
+      workerId: worker.id,
+      worker,
+      proposedWage: wage,
+      status: 'APPLIED',
+      paymentStatus: 'PENDING',
+      negotiations: [],
+      appliedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    set((state) => ({ applications: [newApp, ...state.applications] }));
+  },
+
+  checkIn: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'CHECKED_IN' as ApplicationStatus, checkedInAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  markComplete: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'IN_PROGRESS' as ApplicationStatus, updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  confirmPaymentReceived: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'PAID' as ApplicationStatus, paymentStatus: 'PAID' as const, paidAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  acceptApplication: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'ACCEPTED' as ApplicationStatus, updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  rejectApplication: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'REJECTED' as ApplicationStatus, updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  payWorker: (appId) =>
+    set((state) => ({
+      applications: state.applications.map((a) =>
+        a.id === appId
+          ? { ...a, status: 'COMPLETED' as ApplicationStatus, paymentStatus: 'PAID' as const, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+          : a
+      ),
+    })),
+
+  getWorkerApplications: (workerId) =>
+    get().applications.filter((a) => a.workerId === workerId),
+
+  getJobApplications: (jobId) =>
+    get().applications.filter((a) => a.jobId === jobId),
+
+  hasApplied: (jobId, workerId) =>
+    get().applications.some((a) => a.jobId === jobId && a.workerId === workerId),
+}));
+
 // ─── Worker Store ─────────────────────────────────────────────────────────────
 
 interface WorkerState {
   profile: WorkerProfile | null;
   isAvailable: boolean;
-  applications: JobApplication[];
   setProfile: (profile: WorkerProfile) => void;
   setAvailability: (available: boolean) => void;
   updateProfile: (updates: Partial<WorkerProfile>) => void;
-  applyForJob: (jobId: string, proposedWage: number, note?: string) => void;
 }
 
 export const useWorkerStore = create<WorkerState>((set) => ({
   profile: null,
   isAvailable: true,
-  applications: [],
   setProfile: (profile) => set({ profile }),
   setAvailability: (available) => set({ isAvailable: available }),
   updateProfile: (updates) =>
     set((state) => {
       const updated = state.profile ? { ...state.profile, ...updates } : null;
       return { profile: updated };
-    }),
-  applyForJob: (jobId, proposedWage, note) =>
-    set((state) => {
-      const job = MOCK_JOBS.find((j) => j.id === jobId) ?? MOCK_JOBS[0];
-      const newApp: JobApplication = {
-        id: `app_${Date.now()}`,
-        jobId,
-        job,
-        workerId: state.profile?.id ?? 'w1',
-        worker: state.profile ?? CURRENT_WORKER,
-        proposedWage,
-        status: 'APPLIED',
-        note,
-        negotiations: [],
-        appliedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return { applications: [newApp, ...state.applications] };
     }),
 }));
 
@@ -130,18 +220,14 @@ export const useWorkerStore = create<WorkerState>((set) => ({
 interface EmployerState {
   profile: EmployerProfile | null;
   jobs: Job[];
-  applications: JobApplication[];
   setProfile: (profile: EmployerProfile) => void;
   updateProfile: (updates: Partial<EmployerProfile>) => void;
   postJob: (jobData: Partial<Job>) => void;
-  acceptApplicant: (appId: string) => void;
-  counterOffer: (appId: string, wage: number, message?: string) => void;
 }
 
 export const useEmployerStore = create<EmployerState>((set) => ({
   profile: null,
   jobs: MOCK_JOBS,
-  applications: MOCK_APPLICATIONS,
   setProfile: (profile) => set({ profile }),
   updateProfile: (updates) =>
     set((state) => {
@@ -158,7 +244,7 @@ export const useEmployerStore = create<EmployerState>((set) => ({
         description: jobData.description ?? '',
         skillRequired: jobData.skillRequired ?? MOCK_JOBS[0].skillRequired,
         location: jobData.location ?? MOCK_JOBS[0].location,
-        startDate: jobData.startDate ?? '2026-08-15',
+        startDate: jobData.startDate ?? '2026-08-25',
         startTime: jobData.startTime ?? '08:00 AM',
         endTime: jobData.endTime ?? '05:00 PM',
         workersRequired: jobData.workersRequired ?? 5,
@@ -172,24 +258,6 @@ export const useEmployerStore = create<EmployerState>((set) => ({
       };
       return { jobs: [newJob, ...state.jobs] };
     }),
-  acceptApplicant: (appId) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId ? { ...a, status: 'ACCEPTED' as const } : a
-      ),
-    })),
-  counterOffer: (appId, wage, message) =>
-    set((state) => ({
-      applications: state.applications.map((a) =>
-        a.id === appId
-          ? {
-              ...a,
-              status: 'NEGOTIATING' as const,
-              proposedWage: wage,
-            }
-          : a
-      ),
-    })),
 }));
 
 // ─── Jobs Store ───────────────────────────────────────────────────────────────
@@ -219,19 +287,17 @@ interface OnboardingState {
   step: number;
   workerName: string;
   selectedSkillIds: string[];
-  expectedWage: number;
   setStep: (step: number) => void;
   nextStep: () => void;
   setWorkerName: (name: string) => void;
   toggleSkill: (skillId: string) => void;
-  setExpectedWage: (wage: number) => void;
+  clearSkills: () => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
   step: 0,
   workerName: '',
   selectedSkillIds: [],
-  expectedWage: 800,
   setStep: (step) => set({ step }),
   nextStep: () => set((state) => ({ step: state.step + 1 })),
   setWorkerName: (name) => set({ workerName: name }),
@@ -241,5 +307,5 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
         ? state.selectedSkillIds.filter((id) => id !== skillId)
         : [...state.selectedSkillIds, skillId],
     })),
-  setExpectedWage: (wage) => set({ expectedWage: wage }),
+  clearSkills: () => set({ selectedSkillIds: [] }),
 }));

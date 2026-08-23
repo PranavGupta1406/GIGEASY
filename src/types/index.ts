@@ -20,10 +20,15 @@ export type ApplicationStatus =
   | 'NEGOTIATING'
   | 'ACCEPTED'
   | 'CONFIRMED'
+  | 'CHECKED_IN'
+  | 'IN_PROGRESS'
   | 'COMPLETED'
+  | 'PAID'
   | 'REJECTED'
   | 'WITHDRAWN'
   | 'EXPIRED';
+
+export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
 
 export type AvailabilityStatus = 'available' | 'unavailable' | 'busy';
 
@@ -90,7 +95,7 @@ export interface WorkerProfile {
   location: Location;
   skills: Skill[];
   experienceYears: number;
-  expectedDailyWage: number;
+  // expectedDailyWage removed — workers see the posted wage on jobs
   availabilityStatus: AvailabilityStatus;
   preferredRadius: number; // km
   languages: string[];
@@ -179,9 +184,13 @@ export interface JobApplication {
   worker: WorkerProfile;
   proposedWage: number;
   status: ApplicationStatus;
+  paymentStatus?: PaymentStatus;
   note?: string;
   negotiations: NegotiationStep[];
   appliedAt: string;
+  checkedInAt?: string;
+  completedAt?: string;
+  paidAt?: string;
   updatedAt: string;
 }
 

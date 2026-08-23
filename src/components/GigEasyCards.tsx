@@ -37,8 +37,8 @@ const T = {
   primary: '#1A68D5',
   primaryLight: '#D6E6FA',
   primaryMuted: '#EBF3FC',
-  money: '#EA580C',
-  moneyBg: '#FFEDD5',
+  money: '#1A68D5',
+  moneyBg: '#EBF3FC',
   ink: '#0F172A',
   textSecondary: '#475569',
   textMuted: '#64748B',
@@ -206,10 +206,10 @@ export const GigEasyWorkerCard: React.FC<WorkerCardProps> = ({
           </View>
         </View>
 
-        {/* Expected daily wage */}
+        {/* Worker Trust Score */}
         <View style={styles.workerWageBlock}>
-          <Text style={styles.workerWageAmount}>{formatWage(worker.expectedDailyWage)}</Text>
-          <Text style={styles.workerWagePeriod}>/day</Text>
+          <Text style={styles.workerWageAmount}>{worker.trustScore}%</Text>
+          <Text style={styles.workerWagePeriod}>Trust Score</Text>
         </View>
       </View>
 

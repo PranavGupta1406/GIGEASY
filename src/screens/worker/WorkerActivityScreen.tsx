@@ -1,7 +1,7 @@
-// Worker Activity Screen — Earnings, Applications, GPS Check-in
-// Uber/Zomato-style earnings dashboard with payout status pills
+// Worker Activity Screen — Live Applications + Earnings + Lifecycle Actions
+// Reads from shared store so employer accept instantly updates this screen
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,265 +9,320 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize } from '../../constants';
-import {
-  WORKER_APPLICATIONS,
-  CURRENT_WORKER,
-  formatWage,
-  formatDate,
-  getStatusColor,
-  getStatusLabel,
-} from '../../data/mockData';
-import { calculatePaymentBreakdown } from '../../services/payments/paymentEscrowService';
-import { attendanceService } from '../../services/attendance/attendanceService';
-import { GigEasyApplicationCard } from '../../components/GigEasyCards';
-import { GigEasyStatusPill } from '../../components/GigEasyPrimitives';
-import { useLanguageStore } from '../../store';
+import { FontFamily } from '../../constants';
+import { formatWage, formatDate, getStatusLabel, getStatusColor, CURRENT_WORKER } from '../../data/mockData';
+import { useSharedApplicationsStore, useWorkerStore, useLanguageStore } from '../../store';
+import { JobApplication } from '../../types';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
-type TabKey = 'earnings' | 'applications';
+type TabKey = 'applications' | 'earnings';
 
 const T = {
   bg: '#F8FAFC',
   primary: '#1A68D5',
   primaryMuted: '#EBF3FC',
-  money: '#EA580C',
-  moneyBg: '#FFEDD5',
   ink: '#0F172A',
   textSecondary: '#475569',
   textMuted: '#64748B',
   border: '#E2E8F0',
   white: '#FFFFFF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
-  warning: '#F59E0B',
+  success: '#16A34A',
+  successLight: '#DCFCE7',
+  warning: '#D97706',
   warningBg: '#FEF3C7',
+  error: '#DC2626',
+  errorBg: '#FEE2E2',
 };
 
-// Mock weekly earning records for demo
-const MOCK_PAYOUTS = [
-  {
-    id: 'p1',
-    jobTitle: 'Warehouse Loading Helper',
-    employer: 'Bharat Logistics Pvt Ltd',
-    date: '2026-08-22',
-    wage: 1000,
-    status: 'RELEASED_TO_WORKER' as const,
-  },
-  {
-    id: 'p2',
-    jobTitle: 'Event Setup Crew',
-    employer: 'Grand Palace Banquets',
-    date: '2026-08-20',
-    wage: 1200,
-    status: 'RELEASED_TO_WORKER' as const,
-  },
-  {
-    id: 'p3',
-    jobTitle: 'Factory Line Worker',
-    employer: 'TechnoFab Industries',
-    date: '2026-08-18',
-    wage: 950,
-    status: 'HELD_IN_ESCROW' as const,
-  },
-];
-
-const payoutStatusLabel = (status: string): { label: string; color: string; bg: string } => {
-  if (status === 'RELEASED_TO_WORKER') return { label: 'Paid', color: T.success, bg: T.successLight };
-  if (status === 'HELD_IN_ESCROW') return { label: 'In Escrow', color: T.warning, bg: T.warningBg };
-  if (status === 'PENDING') return { label: 'Pending', color: T.textMuted, bg: '#F1F5F9' };
-  return { label: status, color: T.textMuted, bg: '#F1F5F9' };
+const STATUS_ORDER: Record<string, number> = {
+  CHECKED_IN: 0,
+  IN_PROGRESS: 1,
+  ACCEPTED: 2,
+  UNDER_REVIEW: 3,
+  APPLIED: 4,
+  COMPLETED: 5,
+  PAID: 6,
+  REJECTED: 7,
+  WITHDRAWN: 8,
+  EXPIRED: 9,
 };
 
 export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('earnings');
-  const [checkedIn, setCheckedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('applications');
   const { t } = useLanguageStore();
 
-  const totalEarned = MOCK_PAYOUTS
-    .filter((p) => p.status === 'RELEASED_TO_WORKER')
-    .reduce((sum, p) => sum + p.wage, 0);
+  const workerProfile = useWorkerStore((s) => s.profile);
+  const workerId = workerProfile?.id ?? CURRENT_WORKER.id;
 
-  const inEscrow = MOCK_PAYOUTS
-    .filter((p) => p.status === 'HELD_IN_ESCROW')
-    .reduce((sum, p) => sum + p.wage, 0);
+  const { getWorkerApplications, checkIn, markComplete, confirmPaymentReceived } = useSharedApplicationsStore();
+  const myApplications = getWorkerApplications(workerId);
 
-  const handleCheckIn = () => {
+  // Sort by priority (active first)
+  const sortedApps = [...myApplications].sort((a, b) =>
+    (STATUS_ORDER[a.status] ?? 10) - (STATUS_ORDER[b.status] ?? 10)
+  );
+
+  const activeApps = sortedApps.filter(a =>
+    !['PAID', 'REJECTED', 'WITHDRAWN', 'EXPIRED'].includes(a.status)
+  );
+  const completedApps = sortedApps.filter(a =>
+    ['PAID', 'COMPLETED'].includes(a.status)
+  );
+  const totalEarned = myApplications
+    .filter(a => a.status === 'PAID')
+    .reduce((sum, a) => sum + a.proposedWage, 0);
+
+  const worker = workerProfile ?? CURRENT_WORKER;
+
+  const handleCheckIn = (app: JobApplication) => {
     Alert.alert(
-      checkedIn ? 'Check Out' : 'GPS Check-In',
-      checkedIn
-        ? 'Are you sure you want to check out? This will end your shift.'
-        : 'This will record your GPS location for attendance verification.',
+      'GPS Check-In',
+      `Check in for ${app.job.title} at ${app.job.location.city}?\n\nYour location will be recorded.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: checkedIn ? 'Check Out' : 'Check In',
-          onPress: () => setCheckedIn(!checkedIn),
-        },
+        { text: 'Check In Now', onPress: () => checkIn(app.id) },
       ]
     );
   };
 
-  const handleWithdraw = () => {
-    Alert.alert('Instant UPI Payout', 'Your earnings will be transferred to your UPI ID within minutes.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Confirm', style: 'default' },
-    ]);
+  const handleMarkComplete = (app: JobApplication) => {
+    Alert.alert(
+      'Mark Work as Complete',
+      `Have you finished your shift at ${app.job.title}?`,
+      [
+        { text: 'Not Yet', style: 'cancel' },
+        { text: 'Yes, Work Done', onPress: () => markComplete(app.id) },
+      ]
+    );
   };
 
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+  const handleViewJob = (jobId: string) => {
+    shellNavigation.navigate('JobDetail', { jobId });
+  };
 
-      {/* ─── Earnings Hero Block ─── */}
-      <View style={styles.earningsHero}>
-        <View style={styles.earningsTopRow}>
-          <View>
-            <Text style={styles.earningsLabel}>This Month's Earnings</Text>
-            <Text style={styles.earningsAmount}>{formatWage(totalEarned)}</Text>
+  const renderApplicationCard = (app: JobApplication) => {
+    const statusColor = getStatusColor(app.status);
+    const statusLabel = getStatusLabel(app.status);
+    const isPaid = app.status === 'PAID';
+    const isCompleted = app.status === 'COMPLETED' || app.status === 'IN_PROGRESS';
+    const isAccepted = app.status === 'ACCEPTED';
+    const isCheckedIn = app.status === 'CHECKED_IN';
+    const isRejected = app.status === 'REJECTED';
+
+    return (
+      <TouchableOpacity
+        key={app.id}
+        style={[
+          styles.appCard,
+          isPaid && styles.appCardPaid,
+          isRejected && styles.appCardRejected,
+        ]}
+        onPress={() => handleViewJob(app.jobId)}
+        activeOpacity={0.85}
+      >
+        {/* Status pill */}
+        <View style={styles.appCardHeader}>
+          <View style={[styles.statusPill, { backgroundColor: statusColor + '18' }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
           </View>
-          <TouchableOpacity style={styles.withdrawBtn} onPress={handleWithdraw} activeOpacity={0.85}>
-            <MaterialCommunityIcons name="bank-transfer-out" size={16} color={T.white} />
-            <Text style={styles.withdrawText}>{t('withdrawEarnings')}</Text>
-          </TouchableOpacity>
+          <Text style={styles.appDate}>{formatDate(app.appliedAt)}</Text>
         </View>
 
-        {/* Escrow Notice */}
-        {inEscrow > 0 && (
-          <View style={styles.escrowBanner}>
-            <MaterialCommunityIcons name="shield-lock" size={14} color={T.warning} />
-            <Text style={styles.escrowBannerText}>
-              {formatWage(inEscrow)} {t('paymentInEscrow')} — will be released after shift verification.
-            </Text>
+        {/* Job info */}
+        <Text style={styles.appJobTitle} numberOfLines={1}>{app.job.title}</Text>
+        <View style={styles.appMeta}>
+          <Feather name="map-pin" size={11} color={T.textSecondary} />
+          <Text style={styles.appMetaText}>{app.job.location.city}</Text>
+          <View style={styles.metaDot} />
+          <Feather name="calendar" size={11} color={T.textSecondary} />
+          <Text style={styles.appMetaText}>{formatDate(app.job.startDate)}</Text>
+        </View>
+
+        {/* Wage */}
+        <View style={styles.appWageRow}>
+          <Text style={styles.appWage}>{formatWage(app.proposedWage)}</Text>
+          <Text style={styles.appWageUnit}>/ day</Text>
+        </View>
+
+        {/* Employer */}
+        <Text style={styles.appEmployer} numberOfLines={1}>
+          {app.job.employer.businessName}
+        </Text>
+
+        {/* Action buttons based on status */}
+        {isAccepted && (
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => handleCheckIn(app)}
+            activeOpacity={0.85}
+          >
+            <Feather name="map-pin" size={14} color={T.white} />
+            <Text style={styles.actionBtnText}>GPS Check In</Text>
+          </TouchableOpacity>
+        )}
+
+        {isCheckedIn && (
+          <View style={styles.actionBtnGroup}>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Shift in Progress</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: T.success }]}
+              onPress={() => handleMarkComplete(app)}
+              activeOpacity={0.85}
+            >
+              <Feather name="check" size={14} color={T.white} />
+              <Text style={styles.actionBtnText}>Mark Complete</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Stat Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{MOCK_PAYOUTS.length}</Text>
-            <Text style={styles.statLabel}>Shifts Worked</Text>
+        {isCompleted && (
+          <View style={styles.paymentPendingBanner}>
+            <Feather name="clock" size={13} color={T.warning} />
+            <Text style={styles.paymentPendingText}>Payment Pending — employer will pay shortly</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{CURRENT_WORKER.rating.toFixed(1)} ★</Text>
-            <Text style={styles.statLabel}>Rating</Text>
+        )}
+
+        {isPaid && (
+          <View style={styles.paidBanner}>
+            <Feather name="check-circle" size={14} color={T.success} />
+            <Text style={styles.paidText}>{formatWage(app.proposedWage)} Received ✓</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{CURRENT_WORKER.completedJobs}</Text>
-            <Text style={styles.statLabel}>Jobs Done</Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scroll}
+    >
+
+      {/* Earnings Hero */}
+      <View style={styles.earningsHero}>
+        <View style={styles.earningsTopRow}>
+          <View>
+            <Text style={styles.earningsLabel}>Total Earned</Text>
+            <Text style={styles.earningsAmount}>{formatWage(totalEarned || (47 * 1100))}</Text>
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{worker.completedJobs}</Text>
+              <Text style={styles.statLabel}>Jobs Done</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{worker.rating} ★</Text>
+              <Text style={styles.statLabel}>Rating</Text>
+            </View>
           </View>
         </View>
       </View>
 
-      {/* ─── GPS Check-In Card ─── */}
-      <TouchableOpacity
-        style={[styles.checkInCard, checkedIn && styles.checkInCardActive]}
-        onPress={handleCheckIn}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.checkInIcon, checkedIn && styles.checkInIconActive]}>
-          <Feather name="map-pin" size={20} color={checkedIn ? T.white : T.primary} />
-        </View>
-        <View style={styles.checkInInfo}>
-          <Text style={[styles.checkInTitle, checkedIn && styles.checkInTitleActive]}>
-            {checkedIn ? t('statusCheckedIn') : t('checkInGps')}
-          </Text>
-          <Text style={styles.checkInSub}>
-            {checkedIn ? 'Shift in progress — tap to check out' : 'Tap to start your shift & mark attendance'}
-          </Text>
-        </View>
-        <View style={[styles.checkInBadge, checkedIn && styles.checkInBadgeActive]}>
-          <Text style={[styles.checkInBadgeText, checkedIn && { color: T.white }]}>
-            {checkedIn ? 'Live' : 'Tap'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* ─── Tabs ─── */}
+      {/* Tabs */}
       <View style={styles.tabRow}>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'earnings' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('earnings')}
-        >
-          <Text style={[styles.tabText, activeTab === 'earnings' && styles.tabTextActive]}>
-            {t('payoutHistory')}
-          </Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'applications' && styles.tabBtnActive]}
           onPress={() => setActiveTab('applications')}
         >
           <Text style={[styles.tabText, activeTab === 'applications' && styles.tabTextActive]}>
-            {t('recentApplicants') !== 'recentApplicants' ? 'My Applications' : 'Applications'}
+            My Applications {myApplications.length > 0 ? `(${myApplications.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'earnings' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('earnings')}
+        >
+          <Text style={[styles.tabText, activeTab === 'earnings' && styles.tabTextActive]}>
+            Work History
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* ─── Tab Content ─── */}
-      {activeTab === 'earnings' && (
-        <View style={styles.sectionContent}>
-          {MOCK_PAYOUTS.map((payout) => {
-            const breakdown = calculatePaymentBreakdown(payout.wage);
-            const statusInfo = payoutStatusLabel(payout.status);
-
-            return (
-              <View key={payout.id} style={styles.payoutCard}>
-                <View style={styles.payoutTopRow}>
-                  <View style={styles.payoutIcon}>
-                    <Feather name="briefcase" size={16} color={T.primary} />
-                  </View>
-                  <View style={styles.payoutInfo}>
-                    <Text style={styles.payoutJobTitle} numberOfLines={1}>{payout.jobTitle}</Text>
-                    <Text style={styles.payoutEmployer}>{payout.employer}</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.payoutAmount}>{formatWage(breakdown.netWorkerPayout)}</Text>
-                    <Text style={styles.payoutAmountSub}>net payout</Text>
-                  </View>
+      {/* Applications Tab */}
+      {activeTab === 'applications' && (
+        <View style={styles.tabContent}>
+          {myApplications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Feather name="inbox" size={36} color="#CBD5E1" />
+              <Text style={styles.emptyTitle}>No Applications Yet</Text>
+              <Text style={styles.emptySub}>
+                Browse jobs and tap Apply to get started.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyBtn}
+                onPress={() => shellNavigation.navigate('MainApp', { initialMode: 'worker' })}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.emptyBtnText}>Browse Jobs</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {activeApps.length > 0 && (
+                <View style={styles.groupSection}>
+                  <Text style={styles.groupLabel}>Active</Text>
+                  {activeApps.map(renderApplicationCard)}
                 </View>
-
-                <View style={styles.payoutFooter}>
-                  <Text style={styles.payoutDate}>{formatDate(payout.date)}</Text>
-                  <View style={[styles.payoutStatusPill, { backgroundColor: statusInfo.bg }]}>
-                    <View style={[styles.payoutStatusDot, { backgroundColor: statusInfo.color }]} />
-                    <Text style={[styles.payoutStatusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
-                  </View>
+              )}
+              {completedApps.length > 0 && (
+                <View style={styles.groupSection}>
+                  <Text style={styles.groupLabel}>Completed</Text>
+                  {completedApps.map(renderApplicationCard)}
                 </View>
-
-                {/* Breakdown tooltip */}
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownItem}>Agreed: {formatWage(payout.wage)}</Text>
-                  <Text style={styles.breakdownItem}>TDS: -{formatWage(breakdown.tdsDeduction)}</Text>
-                  <Text style={styles.breakdownItem}>Net: {formatWage(breakdown.netWorkerPayout)}</Text>
-                </View>
-              </View>
-            );
-          })}
+              )}
+            </>
+          )}
         </View>
       )}
 
-      {activeTab === 'applications' && (
-        <View style={styles.sectionContent}>
-          {WORKER_APPLICATIONS.length === 0 ? (
+      {/* Work History Tab */}
+      {activeTab === 'earnings' && (
+        <View style={styles.tabContent}>
+          {worker.workHistory.length === 0 && completedApps.length === 0 ? (
             <View style={styles.emptyState}>
-              <Feather name="inbox" size={24} color="#94A3B8" />
-              <Text style={styles.emptyText}>No applications yet</Text>
-              <Text style={styles.emptySub}>Jobs you apply for will appear here</Text>
+              <Feather name="award" size={36} color="#CBD5E1" />
+              <Text style={styles.emptyTitle}>No Completed Work Yet</Text>
+              <Text style={styles.emptySub}>Completed jobs and payments will appear here.</Text>
             </View>
           ) : (
-            WORKER_APPLICATIONS.map((app) => (
-              <GigEasyApplicationCard
-                key={app.id}
-                application={app}
-                onPress={() => shellNavigation.navigate('JobDetail', { jobId: app.jobId })}
-              />
+            [...worker.workHistory, ...completedApps.map(a => ({
+              id: a.id,
+              jobTitle: a.job.title,
+              employerName: a.job.employer.businessName,
+              wage: a.proposedWage,
+              date: a.completedAt ?? a.updatedAt,
+              rating: 5,
+              status: 'completed' as const,
+            }))].map((item) => (
+              <View key={item.id} style={styles.historyCard}>
+                <View style={styles.historyIcon}>
+                  <Feather name="briefcase" size={16} color={T.primary} />
+                </View>
+                <View style={styles.historyInfo}>
+                  <Text style={styles.historyTitle} numberOfLines={1}>{item.jobTitle}</Text>
+                  <Text style={styles.historyEmployer}>{item.employerName}</Text>
+                  <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
+                </View>
+                <View style={styles.historyWageCol}>
+                  <Text style={styles.historyWage}>{formatWage(item.wage)}</Text>
+                  <View style={styles.paidTag}>
+                    <Text style={styles.paidTagText}>Paid ✓</Text>
+                  </View>
+                </View>
+              </View>
             ))
           )}
         </View>
@@ -278,20 +333,18 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bg },
-  scroll: { paddingBottom: 32 },
+  scroll: { paddingBottom: 40 },
 
   // Earnings Hero
   earningsHero: {
     backgroundColor: T.primary,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingVertical: 20,
   },
   earningsTopRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   earningsLabel: {
     fontFamily: FontFamily.medium,
@@ -301,155 +354,62 @@ const styles = StyleSheet.create({
   },
   earningsAmount: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
+    fontSize: 30,
     color: T.white,
     letterSpacing: -1,
-  },
-  withdrawBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  withdrawText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: T.white,
-  },
-  escrowBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.30)',
-  },
-  escrowBannerText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#FDE68A',
-    flex: 1,
-    lineHeight: 16,
   },
   statsRow: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 14,
-    padding: 12,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 4,
-  },
-  statValue: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 18,
-    color: T.white,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.70)',
-  },
-
-  // GPS Check-in Card
-  checkInCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: T.white,
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: T.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  checkInCardActive: {
-    borderColor: T.success,
-    backgroundColor: T.successLight,
-  },
-  checkInIcon: {
-    width: 44,
-    height: 44,
     borderRadius: 12,
-    backgroundColor: T.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 12,
+    gap: 16,
   },
-  checkInIconActive: {
-    backgroundColor: T.success,
-  },
-  checkInInfo: { flex: 1 },
-  checkInTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: T.ink,
-    marginBottom: 2,
-  },
-  checkInTitleActive: { color: '#047857' },
-  checkInSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: T.textSecondary,
-    lineHeight: 15,
-  },
-  checkInBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: T.primaryMuted,
-  },
-  checkInBadgeActive: { backgroundColor: T.success },
-  checkInBadgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: T.primary,
-  },
+  statCard: { alignItems: 'center' },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  statValue: { fontFamily: FontFamily.extraBold, fontSize: 16, color: T.white },
+  statLabel: { fontFamily: FontFamily.regular, fontSize: 10, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
 
   // Tabs
   tabRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginTop: 16,
+    marginTop: 14,
     backgroundColor: '#F1F5F9',
     borderRadius: 12,
     padding: 3,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 10,
     alignItems: 'center',
   },
-  tabBtnActive: { backgroundColor: T.white, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
+  tabBtnActive: {
+    backgroundColor: T.white,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
   tabText: { fontFamily: FontFamily.medium, fontSize: 12.5, color: T.textSecondary },
   tabTextActive: { fontFamily: FontFamily.bold, color: T.ink },
+  tabContent: { paddingHorizontal: 16, paddingTop: 14 },
 
-  // Content
-  sectionContent: { paddingHorizontal: 16, paddingTop: 14 },
+  // Group
+  groupSection: { marginBottom: 8 },
+  groupLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: T.textMuted,
+    letterSpacing: 0.4,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
 
-  // Payout Cards
-  payoutCard: {
+  // Application Card
+  appCard: {
     backgroundColor: T.white,
     borderRadius: 16,
     padding: 14,
@@ -457,28 +417,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: T.border,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
-  payoutTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  payoutIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: T.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
+  appCardPaid: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
   },
-  payoutInfo: { flex: 1 },
-  payoutJobTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: T.ink, marginBottom: 2 },
-  payoutEmployer: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
-  payoutAmount: { fontFamily: FontFamily.extraBold, fontSize: 15, color: T.money, textAlign: 'right' },
-  payoutAmountSub: { fontFamily: FontFamily.regular, fontSize: 9.5, color: T.textMuted, textAlign: 'right' },
-  payoutFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  payoutDate: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary },
-  payoutStatusPill: {
+  appCardRejected: {
+    opacity: 0.6,
+    backgroundColor: '#FAFAFA',
+  },
+  appCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -486,23 +444,129 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 20,
   },
-  payoutStatusDot: { width: 5, height: 5, borderRadius: 2.5 },
-  payoutStatusText: { fontFamily: FontFamily.bold, fontSize: 10.5 },
-  breakdownRow: {
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontFamily: FontFamily.bold, fontSize: 11 },
+  appDate: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textMuted },
+  appJobTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 15,
+    color: T.ink,
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  appMeta: {
     flexDirection: 'row',
-    gap: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
   },
-  breakdownItem: {
+  appMetaText: { fontFamily: FontFamily.regular, fontSize: 11.5, color: T.textSecondary },
+  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#CBD5E1', marginHorizontal: 2 },
+  appWageRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3, marginBottom: 4 },
+  appWage: { fontFamily: FontFamily.extraBold, fontSize: 20, color: T.primary, letterSpacing: -0.5 },
+  appWageUnit: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary },
+  appEmployer: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary, marginBottom: 10 },
+
+  // Action buttons
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: T.primary,
+    borderRadius: 12,
+    paddingVertical: 11,
+    marginTop: 4,
+  },
+  actionBtnText: { fontFamily: FontFamily.bold, fontSize: 13.5, color: T.white },
+  actionBtnGroup: { gap: 8, marginTop: 4 },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D97706',
+  },
+  liveText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#92400E' },
+  paymentPendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: T.warningBg,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+  },
+  paymentPendingText: {
     fontFamily: FontFamily.medium,
-    fontSize: 10.5,
-    color: T.textMuted,
+    fontSize: 11.5,
+    color: T.warning,
+    flex: 1,
   },
+  paidBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  paidText: { fontFamily: FontFamily.bold, fontSize: 13, color: T.success },
+
+  // History Card
+  historyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: T.white,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
+  historyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: T.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyInfo: { flex: 1 },
+  historyTitle: { fontFamily: FontFamily.bold, fontSize: 13.5, color: T.ink, marginBottom: 2 },
+  historyEmployer: { fontFamily: FontFamily.regular, fontSize: 11.5, color: T.textSecondary, marginBottom: 2 },
+  historyDate: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textMuted },
+  historyWageCol: { alignItems: 'flex-end' },
+  historyWage: { fontFamily: FontFamily.extraBold, fontSize: 16, color: T.primary, marginBottom: 4 },
+  paidTag: {
+    backgroundColor: T.successLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  paidTagText: { fontFamily: FontFamily.bold, fontSize: 10, color: T.success },
 
   // Empty
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
-  emptyText: { fontFamily: FontFamily.bold, fontSize: 15, color: T.ink, marginTop: 12 },
-  emptySub: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary, marginTop: 4 },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 52,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: T.ink, marginTop: 14, marginBottom: 6 },
+  emptySub: { fontFamily: FontFamily.regular, fontSize: 13, color: T.textSecondary, textAlign: 'center', lineHeight: 19 },
+  emptyBtn: {
+    marginTop: 16,
+    backgroundColor: T.primary,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  emptyBtnText: { fontFamily: FontFamily.bold, fontSize: 14, color: T.white },
 });

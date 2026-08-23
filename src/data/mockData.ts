@@ -15,6 +15,7 @@ export interface WorkGroup {
   name: string;
   nameHi: string;
   icon: string;
+  color: string;
   skills: Skill[];
 }
 
@@ -66,20 +67,23 @@ export const WORK_GROUPS: WorkGroup[] = [
     name: 'Construction & Infrastructure',
     nameHi: 'निर्माण और बुनियादी ढांचा',
     icon: 'tool',
+    color: '#EA580C',
     skills: MOCK_SKILLS.slice(0, 10),
   },
   {
     id: 'grp_factory',
-    name: 'Factory & Industrial Workers',
-    nameHi: 'फैक्ट्री और औद्योगिक श्रमिक',
+    name: 'Factory & Industrial',
+    nameHi: 'फैक्ट्री और औद्योगिक',
     icon: 'cpu',
+    color: '#7C3AED',
     skills: MOCK_SKILLS.slice(10, 15),
   },
   {
     id: 'grp_transport',
-    name: 'Transportation & Delivery',
+    name: 'Transport & Delivery',
     nameHi: 'परिवहन और डिलीवरी',
     icon: 'truck',
+    color: '#0891B2',
     skills: MOCK_SKILLS.slice(15, 20),
   },
   {
@@ -87,6 +91,7 @@ export const WORK_GROUPS: WorkGroup[] = [
     name: 'Retail & Logistics',
     nameHi: 'रिटेल और लॉजिस्टिक्स',
     icon: 'package',
+    color: '#16A34A',
     skills: MOCK_SKILLS.slice(20, 24),
   },
   {
@@ -94,6 +99,7 @@ export const WORK_GROUPS: WorkGroup[] = [
     name: 'Event & Hospitality',
     nameHi: 'इवेंट और हॉस्पिटैलिटी',
     icon: 'coffee',
+    color: '#DB2777',
     skills: MOCK_SKILLS.slice(24, 30),
   },
 ];
@@ -195,7 +201,7 @@ export const MOCK_JOBS: Job[] = [
     title: 'Warehouse Loading Helper',
     description:
       'Need experienced loading and package handlers for morning logistics shift. Work involves handling parcel inventory and staging for dispatch. Steel toe shoes recommended.',
-    skillRequired: MOCK_SKILLS[0],
+    skillRequired: MOCK_SKILLS[12], // Warehouse Loader
     location: {
       lat: 28.6139,
       lng: 77.209,
@@ -203,7 +209,7 @@ export const MOCK_JOBS: Job[] = [
       city: 'Noida',
       state: 'Uttar Pradesh',
     },
-    startDate: '2026-08-15',
+    startDate: '2026-08-25',
     startTime: '08:00 AM',
     endTime: '05:00 PM',
     workersRequired: 15,
@@ -213,8 +219,8 @@ export const MOCK_JOBS: Job[] = [
     requirements: ['Physical stamina', 'Punctual arrival', 'Package handling experience'],
     status: 'HIRING',
     distanceKm: 2.4,
-    createdAt: '2026-08-13T06:00:00Z',
-    updatedAt: '2026-08-13T06:00:00Z',
+    createdAt: '2026-08-23T06:00:00Z',
+    updatedAt: '2026-08-23T06:00:00Z',
   },
   {
     id: 'j2',
@@ -223,7 +229,7 @@ export const MOCK_JOBS: Job[] = [
     title: 'Construction Site Helper',
     description:
       'Site helpers required for residential framing project. Tasks include material movement, staging, and supporting masons.',
-    skillRequired: MOCK_SKILLS[5],
+    skillRequired: MOCK_SKILLS[0], // Mason
     location: {
       lat: 28.5355,
       lng: 77.391,
@@ -231,7 +237,7 @@ export const MOCK_JOBS: Job[] = [
       city: 'Ghaziabad',
       state: 'Uttar Pradesh',
     },
-    startDate: '2026-08-14',
+    startDate: '2026-08-24',
     startTime: '07:30 AM',
     endTime: '04:30 PM',
     workersRequired: 5,
@@ -241,8 +247,8 @@ export const MOCK_JOBS: Job[] = [
     requirements: ['Hard hat compliance', 'Prior site work preferred'],
     status: 'HIRING',
     distanceKm: 1.8,
-    createdAt: '2026-08-12T08:00:00Z',
-    updatedAt: '2026-08-13T00:00:00Z',
+    createdAt: '2026-08-22T08:00:00Z',
+    updatedAt: '2026-08-23T00:00:00Z',
   },
   {
     id: 'j3',
@@ -251,7 +257,7 @@ export const MOCK_JOBS: Job[] = [
     title: 'Event Setup Crew',
     description:
       'Corporate banquet setup crew needed for lighting, stage arrangement, and banquet service. Smart presentation mandatory.',
-    skillRequired: MOCK_SKILLS[10],
+    skillRequired: MOCK_SKILLS[24], // Decorator
     location: {
       lat: 28.6304,
       lng: 77.2177,
@@ -259,7 +265,7 @@ export const MOCK_JOBS: Job[] = [
       city: 'New Delhi',
       state: 'Delhi',
     },
-    startDate: '2026-08-16',
+    startDate: '2026-08-26',
     startTime: '10:00 AM',
     endTime: '08:00 PM',
     workersRequired: 20,
@@ -269,17 +275,17 @@ export const MOCK_JOBS: Job[] = [
     requirements: ['Presentable attire', 'Team coordination', 'Hindi/English'],
     status: 'HIRING',
     distanceKm: 4.2,
-    createdAt: '2026-08-11T10:00:00Z',
-    updatedAt: '2026-08-13T00:00:00Z',
+    createdAt: '2026-08-21T10:00:00Z',
+    updatedAt: '2026-08-23T00:00:00Z',
   },
   {
     id: 'j4',
-    employerId: 'e1',
-    employer: MOCK_EMPLOYERS[0],
+    employerId: 'e4',
+    employer: MOCK_EMPLOYERS[3],
     title: 'Industrial Electrician',
     description:
       'Certified electrician needed for warehouse distribution board wiring and 3-phase connection testing.',
-    skillRequired: MOCK_SKILLS[1],
+    skillRequired: MOCK_SKILLS[3], // Electrician
     location: {
       lat: 28.6139,
       lng: 77.209,
@@ -287,7 +293,7 @@ export const MOCK_JOBS: Job[] = [
       city: 'Noida',
       state: 'Uttar Pradesh',
     },
-    startDate: '2026-08-15',
+    startDate: '2026-08-25',
     startTime: '09:00 AM',
     endTime: '06:00 PM',
     workersRequired: 3,
@@ -297,8 +303,36 @@ export const MOCK_JOBS: Job[] = [
     requirements: ['3+ years industrial wiring', 'Own multimeter & basic tools'],
     status: 'HIRING',
     distanceKm: 3.1,
-    createdAt: '2026-08-13T07:00:00Z',
-    updatedAt: '2026-08-13T07:00:00Z',
+    createdAt: '2026-08-23T07:00:00Z',
+    updatedAt: '2026-08-23T07:00:00Z',
+  },
+  {
+    id: 'j5',
+    employerId: 'e1',
+    employer: MOCK_EMPLOYERS[0],
+    title: 'Packing & Assembly Worker',
+    description:
+      'Packing line workers required for daily consumer goods packaging at our Noida facility. Training provided on day one.',
+    skillRequired: MOCK_SKILLS[10], // Packing Worker
+    location: {
+      lat: 28.6039,
+      lng: 77.199,
+      address: 'Sector 58, Noida',
+      city: 'Noida',
+      state: 'Uttar Pradesh',
+    },
+    startDate: '2026-08-25',
+    startTime: '07:00 AM',
+    endTime: '04:00 PM',
+    workersRequired: 25,
+    workersHired: 10,
+    minWage: 800,
+    maxWage: 950,
+    requirements: ['Good hand speed', 'No experience required'],
+    status: 'HIRING',
+    distanceKm: 5.0,
+    createdAt: '2026-08-23T05:00:00Z',
+    updatedAt: '2026-08-23T05:00:00Z',
   },
 ];
 
@@ -317,9 +351,8 @@ export const MOCK_WORKERS: WorkerProfile[] = [
       city: 'Noida',
       state: 'Uttar Pradesh',
     },
-    skills: [MOCK_SKILLS[1], MOCK_SKILLS[5]],
+    skills: [MOCK_SKILLS[3], MOCK_SKILLS[12]],
     experienceYears: 6,
-    expectedDailyWage: 1100,
     availabilityStatus: 'available',
     preferredRadius: 15,
     languages: ['Hindi', 'English'],
@@ -350,7 +383,7 @@ export const MOCK_WORKERS: WorkerProfile[] = [
       },
     ],
     createdAt: '2025-02-10T00:00:00Z',
-    updatedAt: '2026-08-13T00:00:00Z',
+    updatedAt: '2026-08-23T00:00:00Z',
   },
   {
     id: 'w2',
@@ -364,9 +397,8 @@ export const MOCK_WORKERS: WorkerProfile[] = [
       city: 'Ghaziabad',
       state: 'Uttar Pradesh',
     },
-    skills: [MOCK_SKILLS[7], MOCK_SKILLS[10]],
+    skills: [MOCK_SKILLS[29], MOCK_SKILLS[10]],
     experienceYears: 4,
-    expectedDailyWage: 850,
     availabilityStatus: 'available',
     preferredRadius: 10,
     languages: ['Hindi'],
@@ -377,7 +409,7 @@ export const MOCK_WORKERS: WorkerProfile[] = [
     completedJobs: 29,
     workHistory: [],
     createdAt: '2025-06-20T00:00:00Z',
-    updatedAt: '2026-08-13T00:00:00Z',
+    updatedAt: '2026-08-23T00:00:00Z',
   },
   {
     id: 'w3',
@@ -391,9 +423,8 @@ export const MOCK_WORKERS: WorkerProfile[] = [
       city: 'New Delhi',
       state: 'Delhi',
     },
-    skills: [MOCK_SKILLS[2], MOCK_SKILLS[3]],
+    skills: [MOCK_SKILLS[1], MOCK_SKILLS[2]],
     experienceYears: 8,
-    expectedDailyWage: 950,
     availabilityStatus: 'available',
     preferredRadius: 20,
     languages: ['Hindi', 'English'],
@@ -404,16 +435,18 @@ export const MOCK_WORKERS: WorkerProfile[] = [
     completedJobs: 62,
     workHistory: [],
     createdAt: '2024-11-01T00:00:00Z',
-    updatedAt: '2026-08-13T00:00:00Z',
+    updatedAt: '2026-08-23T00:00:00Z',
   },
 ];
 
 export const CURRENT_WORKER: WorkerProfile = MOCK_WORKERS[0];
 export const CURRENT_EMPLOYER: EmployerProfile = MOCK_EMPLOYERS[0];
 
-// ─── Applications ────────────────────────────────────────────────────────────
+// ─── Seed Applications (for employer dashboard demo) ────────────────────────
+// NOTE: These are seeded into the shared store on startup.
+// They represent worker applications visible to the employer.
 
-export const MOCK_APPLICATIONS: JobApplication[] = [
+export const SEED_EMPLOYER_APPLICATIONS: JobApplication[] = [
   {
     id: 'a1',
     jobId: 'j1',
@@ -422,9 +455,10 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     worker: MOCK_WORKERS[1],
     proposedWage: 900,
     status: 'APPLIED',
+    paymentStatus: 'PENDING',
     negotiations: [],
-    appliedAt: '2026-08-13T10:00:00Z',
-    updatedAt: '2026-08-13T10:00:00Z',
+    appliedAt: '2026-08-23T10:00:00Z',
+    updatedAt: '2026-08-23T10:00:00Z',
   },
   {
     id: 'a2',
@@ -433,37 +467,28 @@ export const MOCK_APPLICATIONS: JobApplication[] = [
     workerId: 'w3',
     worker: MOCK_WORKERS[2],
     proposedWage: 1000,
-    status: 'NEGOTIATING',
+    status: 'UNDER_REVIEW',
+    paymentStatus: 'PENDING',
     negotiations: [],
-    appliedAt: '2026-08-13T07:30:00Z',
-    updatedAt: '2026-08-13T09:00:00Z',
+    appliedAt: '2026-08-23T07:30:00Z',
+    updatedAt: '2026-08-23T09:00:00Z',
   },
 ];
 
-export const WORKER_APPLICATIONS: JobApplication[] = [
+// Seed worker's own applications (visible to logged-in worker w1)
+export const SEED_WORKER_APPLICATIONS: JobApplication[] = [
   {
     id: 'wa1',
-    jobId: 'j1',
-    job: MOCK_JOBS[0],
+    jobId: 'j3',
+    job: MOCK_JOBS[2],
     workerId: 'w1',
     worker: MOCK_WORKERS[0],
-    proposedWage: 950,
-    status: 'UNDER_REVIEW',
-    negotiations: [],
-    appliedAt: '2026-08-13T10:30:00Z',
-    updatedAt: '2026-08-13T10:30:00Z',
-  },
-  {
-    id: 'wa2',
-    jobId: 'j4',
-    job: MOCK_JOBS[3],
-    workerId: 'w1',
-    worker: MOCK_WORKERS[0],
-    proposedWage: 1400,
+    proposedWage: 1100,
     status: 'ACCEPTED',
+    paymentStatus: 'PENDING',
     negotiations: [],
-    appliedAt: '2026-08-13T06:30:00Z',
-    updatedAt: '2026-08-13T11:00:00Z',
+    appliedAt: '2026-08-22T10:30:00Z',
+    updatedAt: '2026-08-23T08:00:00Z',
   },
 ];
 
@@ -497,11 +522,14 @@ export function getStatusColor(status: string): string {
     NEGOTIATING: '#7C3AED',
     ACCEPTED: '#16A34A',
     CONFIRMED: '#16A34A',
+    CHECKED_IN: '#0891B2',
+    IN_PROGRESS: '#7C3AED',
     COMPLETED: '#059669',
+    PAID: '#059669',
     REJECTED: '#DC2626',
     WITHDRAWN: '#64748B',
     EXPIRED: '#64748B',
-    HIRING: '#FA4616',
+    HIRING: '#1A68D5',
     FULL: '#16A34A',
     ACTIVE: '#7C3AED',
     PUBLISHED: '#2563EB',
@@ -515,9 +543,12 @@ export function getStatusLabel(status: string): string {
     APPLIED: 'Applied',
     UNDER_REVIEW: 'In Review',
     NEGOTIATING: 'Counter-Offer',
-    ACCEPTED: 'Hired',
+    ACCEPTED: 'Accepted ✓',
     CONFIRMED: 'Confirmed',
-    COMPLETED: 'Completed',
+    CHECKED_IN: 'Checked In',
+    IN_PROGRESS: 'Work in Progress',
+    COMPLETED: 'Work Done',
+    PAID: 'Paid ✓',
     REJECTED: 'Declined',
     WITHDRAWN: 'Withdrawn',
     EXPIRED: 'Expired',

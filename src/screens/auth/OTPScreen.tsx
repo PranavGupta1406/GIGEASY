@@ -1,5 +1,5 @@
-// OTP Verification Screen — 6-digit segmented mobile verification
-// Vibrant Brand Blue (#1A68D5) · Fast Auto-fill (123456) · Real validation
+// OTP Verification Screen — 4-digit segmented mobile verification
+// Vibrant Brand Blue (#1A68D5) · Fast Auto-fill (1234) · Real validation
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -36,7 +36,7 @@ const T = {
 
 export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   const phoneNumber = route.params?.phoneNumber ?? '9876543210';
-  const [digits, setDigits] = useState(['', '', '', '', '', '']);
+  const [digits, setDigits] = useState(['', '', '', '']);
   const [timer, setTimer] = useState(30);
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,8 +46,6 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   const { t } = useLanguageStore();
 
   const inputRefs = [
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
     useRef<TextInput>(null),
     useRef<TextInput>(null),
     useRef<TextInput>(null),
@@ -68,13 +66,13 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
     // Multi-digit paste or autofill
     if (cleaned.length > 1) {
       const nextDigits = [...digits];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 4; i++) {
         if (cleaned[i]) {
           nextDigits[i] = cleaned[i];
         }
       }
       setDigits(nextDigits);
-      const focusIndex = Math.min(cleaned.length, 5);
+      const focusIndex = Math.min(cleaned.length, 3);
       inputRefs[focusIndex].current?.focus();
       return;
     }
@@ -84,7 +82,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
     nextDigits[index] = val;
     setDigits(nextDigits);
 
-    if (val && index < 5) {
+    if (val && index < 3) {
       inputRefs[index + 1].current?.focus();
     }
   };
@@ -101,7 +99,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const otpCode = digits.join('');
-  const isComplete = otpCode.length === 6;
+  const isComplete = otpCode.length === 4;
 
   const handleVerify = () => {
     if (!isComplete) return;
@@ -111,7 +109,6 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
 
     setTimeout(() => {
       setIsVerifying(false);
-      // Valid if 123456 or test code
       const targetRole = role || useAuthStore.getState().role || 'worker';
       setAuthenticated('u_demo', targetRole);
 
@@ -124,7 +121,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const autoFillDemo = () => {
-    setDigits(['1', '2', '3', '4', '5', '6']);
+    setDigits(['1', '2', '3', '4']);
     setErrorMessage('');
     setTimeout(() => {
       const targetRole = role || useAuthStore.getState().role || 'worker';
@@ -140,7 +137,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleResend = () => {
     setTimer(30);
     setErrorMessage('');
-    Alert.alert('Code Sent', `A new 6-digit code has been sent to +91 ${phoneNumber}`);
+    Alert.alert('Code Sent', `A new 4-digit code has been sent to +91 ${phoneNumber}`);
   };
 
   return (
@@ -161,13 +158,13 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Enter 6-digit code</Text>
+          <Text style={styles.title}>{t('verifyOtp')}</Text>
           <Text style={styles.subtitle}>
             Code sent to <Text style={styles.phoneBold}>+91 {phoneNumber}</Text>
           </Text>
         </View>
 
-        {/* 6 OTP boxes */}
+        {/* 4 OTP boxes */}
         <View style={styles.otpGrid}>
           {digits.map((digit, i) => (
             <TextInput
@@ -179,7 +176,7 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
                 errorMessage.length > 0 && styles.otpBoxError,
               ]}
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={4}
               value={digit}
               onChangeText={(t) => handleDigitChange(t, i)}
               onKeyPress={(e) => handleKeyPress(e, i)}
@@ -204,21 +201,21 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
           activeOpacity={0.8}
         >
           <Feather name="zap" size={13} color={T.primary} />
-          <Text style={styles.demoPillText}>Auto-fill test code (123456)</Text>
+          <Text style={styles.demoPillText}>{t('autoFillDemo')}</Text>
         </TouchableOpacity>
 
         {/* Resend */}
         <View style={styles.resendRow}>
           {timer > 0 ? (
             <Text style={styles.resendTimerText}>
-              Resend code in <Text style={styles.timerCount}>{timer}s</Text>
+              {t('resendIn')} <Text style={styles.timerCount}>{timer}s</Text>
             </Text>
           ) : (
             <TouchableOpacity
               onPress={handleResend}
               activeOpacity={0.7}
             >
-              <Text style={styles.resendActionText}>Resend code</Text>
+              <Text style={styles.resendActionText}>{t('resend')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -272,12 +269,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingTop: 14,
     paddingBottom: Platform.OS === 'android' ? 24 : 32,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   title: {
     fontFamily: FontFamily.bold,
@@ -299,20 +296,20 @@ const styles = StyleSheet.create({
   },
   otpGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    gap: 6,
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 14,
   },
   otpBox: {
-    flex: 1,
-    height: 56,
-    borderRadius: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     backgroundColor: T.white,
     borderWidth: 1.5,
     borderColor: T.border,
     textAlign: 'center',
     fontFamily: FontFamily.bold,
-    fontSize: 22,
+    fontSize: 24,
     color: T.ink,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
@@ -347,15 +344,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: T.primaryMuted,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignSelf: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   demoPillText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: 12.5,
     color: T.primary,
   },
   resendRow: {

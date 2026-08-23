@@ -140,8 +140,8 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
           </View>
           <View style={styles.statDivider} />
           <View style={styles.stat}>
-            <Text style={[styles.statNum, { color: T.primary }]}>{formatWage(worker.expectedDailyWage)}</Text>
-            <Text style={styles.statLabel}>Benchmark</Text>
+            <Text style={[styles.statNum, { color: T.primary }]}>{worker.trustScore}%</Text>
+            <Text style={styles.statLabel}>Trust Score</Text>
           </View>
         </View>
       </View>

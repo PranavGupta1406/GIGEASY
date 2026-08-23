@@ -86,20 +86,12 @@ export function computeJobWorkerMatch(
     distanceScore = Math.max(2, 25 - distanceKm * 1.5);
   }
 
-  // 3. Wage Overlap Score (20 pts max)
-  let wageScore = 0;
-  const expected = worker.expectedDailyWage;
-  if (expected >= job.minWage && expected <= job.maxWage) {
-    wageScore = 20;
-    reasons.push('Expected wage matches employer budget');
-  } else if (expected < job.minWage) {
-    wageScore = 18;
-    reasons.push('Highly competitive wage requirement');
-  } else if (expected <= job.maxWage * 1.15) {
-    wageScore = 12; // Within 15% negotiable range
-    reasons.push('Wage within negotiation range');
+  // 3. Wage & Budget Compatibility Score (20 pts max)
+  let wageScore = 20;
+  if (job.maxWage >= 1000) {
+    reasons.push('High-value daily wage opportunity');
   } else {
-    wageScore = 5;
+    reasons.push('Standard fair-wage budget');
   }
 
   // 4. Trust & Reliability Score (15 pts max)

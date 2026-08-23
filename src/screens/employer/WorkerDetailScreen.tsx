@@ -54,7 +54,7 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleDirectOffer = () => {
     Alert.alert(
       'Send Direct Job Offer',
-      `Dispatch instant job offer to ${worker.name} at their benchmark rate of ${formatWage(worker.expectedDailyWage)}/day?`,
+      `Dispatch instant job offer to ${worker.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -119,10 +119,10 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </View>
 
-          {/* Wage Benchmark */}
+          {/* Trust Score Banner */}
           <View style={styles.wageBox}>
-            <Text style={styles.wageLabel}>BENCHMARK DAILY RATE</Text>
-            <Text style={styles.wageValue}>{formatWage(worker.expectedDailyWage)}/day</Text>
+            <Text style={styles.wageLabel}>VERIFIED TRUST SCORE</Text>
+            <Text style={styles.wageValue}>{worker.trustScore}% Score · {worker.trustLabel}</Text>
           </View>
         </View>
 
@@ -187,7 +187,7 @@ export const WorkerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Sticky Bottom Offer Action */}
       <View style={styles.bottomBar}>
         <GigEasyButton
-          label={`Send Direct Offer (${formatWage(worker.expectedDailyWage)}/day)`}
+          label="Send Direct Job Offer"
           onPress={handleDirectOffer}
           variant="primary"
           size="lg"
