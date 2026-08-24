@@ -16,6 +16,7 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
 import { CURRENT_WORKER, formatWage } from '../../data/mockData';
 import { useWorkerStore, useAuthStore } from '../../store';
+import { authService } from '../../services/firebase';
 
 import { Theme } from '../../theme';
 
