@@ -324,14 +324,85 @@ app.get('/api/employers/stats', verifyToken, async (req, res) => {
 // Create gig
 app.post('/api/gigs', verifyToken, async (req, res) => {
   const uid = (req as any).user.uid;
+  if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized: employer login required' });
+
   const {
     title, description, skill_id, skill_name, skill_category,
     workers_required, min_wage, max_wage, start_date, start_time, end_time,
     duration_hours, address, latitude, longitude, city, state, requirements,
   } = req.body;
 
-  if (!title || !skill_name || !min_wage || !max_wage || !start_date || !start_time || !address || !latitude || !longitude || !city) {
+  if (!title || !skill_name || min_wage == null || max_wage == null || !start_date || !start_time || !address || latitude == null || longitude == null || !city) {
     return res.status(400).json({ success: false, error: 'Missing required gig fields' });
+  }
+
+  // Backend Date Validation — prevent past dates
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const normalizedDate = String(start_date).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+    return res.status(400).json({ success: false, error: 'Invalid start_date format. Must be YYYY-MM-DD.' });
+  }
+  if (normalizedDate < todayIso) {
+    return res.status(400).json({ success: false, error: 'Gig start date cannot be in the past.' });
+  }
+
+  // Backend Numeric Validation
+  const numWorkers = parseInt(String(workers_required || 1), 10);
+  if (isNaN(numWorkers) || numWorkers < 1) {
+    return res.status(400).json({ success: false, error: 'workers_required must be a positive integer.' });
+  }
+
+  const numMinWage = parseFloat(String(min_wage));
+  const numMaxWage = parseFloat(String(max_wage));
+  if (isNaN(numMinWage) || isNaN(numMaxWage) || numMinWage < 100) {
+    return res.status(400).json({ success: false, error: 'Daily wage must be at least ₹100.' });
+  }
+  if (numMinWage > numMaxWage) {
+    return res.status(400).json({ success: false, error: 'min_wage cannot exceed max_wage.' });
+  }
+
+  // Normalize 12-hour or 24-hour time strings to SQL TIME format (HH:mm:ss)
+  const sqlStartTime = (() => {
+    if (!start_time) return '09:00:00';
+    const s = String(start_time).trim();
+    const match24 = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (match24) return `${match24[1].padStart(2, '0')}:${match24[2]}:${match24[3] || '00'}`;
+    const match12 = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (match12) {
+      let hh = parseInt(match12[1], 10);
+      const mm = match12[2];
+      const ss = match12[3] || '00';
+      if (match12[4].toUpperCase() === 'PM' && hh < 12) hh += 12;
+      if (match12[4].toUpperCase() === 'AM' && hh === 12) hh = 0;
+      return `${String(hh).padStart(2, '0')}:${mm}:${ss}`;
+    }
+    return s;
+  })();
+
+  const sqlEndTime = (() => {
+    if (!end_time) return null;
+    const s = String(end_time).trim();
+    const match24 = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (match24) return `${match24[1].padStart(2, '0')}:${match24[2]}:${match24[3] || '00'}`;
+    const match12 = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (match12) {
+      let hh = parseInt(match12[1], 10);
+      const mm = match12[2];
+      const ss = match12[3] || '00';
+      if (match12[4].toUpperCase() === 'PM' && hh < 12) hh += 12;
+      if (match12[4].toUpperCase() === 'AM' && hh === 12) hh = 0;
+      return `${String(hh).padStart(2, '0')}:${mm}:${ss}`;
+    }
+    return s;
+  })();
+
+  let computedDuration = duration_hours ? parseFloat(String(duration_hours)) : null;
+  if (!computedDuration && sqlEndTime) {
+    const [sh, sm] = sqlStartTime.split(':').map(Number);
+    const [eh, em] = sqlEndTime.split(':').map(Number);
+    let diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff < 0) diff += 24 * 60;
+    computedDuration = Math.round((diff / 60) * 10) / 10;
   }
 
   try {
@@ -351,15 +422,15 @@ app.post('/api/gigs', verifyToken, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
          NOW() + INTERVAL '7 days')
        RETURNING *`,
-      [newGigId, uid, title, description, skill_id || skill_name.toLowerCase().replace(/\s+/g, '_'),
-       skill_name, skill_category, workers_required || 1, min_wage, max_wage,
-       start_date, start_time, end_time, duration_hours, address, latitude, longitude,
-       city, state, requirements || [], fp?.p25_wage || null, fp?.p75_wage || null]
+      [newGigId, uid, title.trim(), description || null, skill_id || skill_name.toLowerCase().replace(/\s+/g, '_'),
+       skill_name.trim(), skill_category || 'General', numWorkers, numMinWage, numMaxWage,
+       normalizedDate, sqlStartTime, sqlEndTime, computedDuration, address.trim(), latitude, longitude,
+       city.trim(), state || null, requirements || [], fp?.p25_wage || null, fp?.p75_wage || null]
     );
 
     const gig = result.rows[0];
     await auditLog('gig', gig.gig_id, 'CREATED', uid, null, gig);
-    broadcastAll('GIG_CREATED', { gigId: gig.gig_id, title, city, skill_category, min_wage, max_wage, latitude, longitude });
+    broadcastAll('GIG_CREATED', { gigId: gig.gig_id, title, city, skill_category, min_wage: numMinWage, max_wage: numMaxWage, latitude, longitude });
     res.json({ success: true, data: gig });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -368,7 +439,7 @@ app.post('/api/gigs', verifyToken, async (req, res) => {
 
 // List gigs with filters
 app.get('/api/gigs', async (req, res) => {
-  const { lat, lng, radius_km = 50, skill_category, city, status = 'PUBLISHED', date } = req.query;
+  const { lat, lng, radius_km = 50, skill_category, city, status = 'PUBLISHED', date, employer_id } = req.query;
   try {
     let query = `SELECT g.*, 
       ep.business_name as employer_name, ep.verification_status as employer_verified,
@@ -386,6 +457,7 @@ app.get('/api/gigs', async (req, res) => {
       params.push(...statuses);
       p += statuses.length;
     }
+    if (employer_id) { query += ` AND g.employer_id = $${p}`; params.push(employer_id); p++; }
     if (skill_category) { query += ` AND g.skill_category = $${p}`; params.push(skill_category); p++; }
     if (city) { query += ` AND g.city ILIKE $${p}`; params.push(`%${city}%`); p++; }
     if (date) { query += ` AND g.start_date = $${p}`; params.push(date); p++; }

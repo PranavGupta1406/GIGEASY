@@ -958,7 +958,7 @@ export const useEmployerStore = create<EmployerState>((set, get) => ({
   postJob: (jobData) => {
     const activeProfile = get().profile ?? CURRENT_EMPLOYER;
     const newJob: Job = {
-      id: `j_${Date.now()}`,
+      id: jobData.id ?? `j_${Date.now()}`,
       employerId: activeProfile.id,
       employer: activeProfile,
       title: jobData.title ?? 'Warehouse Loader',

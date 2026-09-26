@@ -26,6 +26,12 @@ import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { getEmployerMatchStats, EmployerMatchStats } from '../../services/recommendation/recommendationService';
 import { Job, WorkerProfile } from '../../types';
 import { api } from '../../services/api';
+import {
+  GigDatePickerModal,
+  GigTimePickerModal,
+  getLocalTodayIso,
+  formatIsoToHuman,
+} from '../../components/GigDateTimePicker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostJob'>;
 
@@ -117,8 +123,36 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
   const [locationCity, setLocationCity] = useState('Sector 62, Noida');
   const [wage, setWage] = useState('1000');
   const [workersNeeded, setWorkersNeeded] = useState(2);
-  const [shiftDate, setShiftDate] = useState(getRelativeDateString(1));
-  const [shiftTime, setShiftTime] = useState('09:00 AM - 06:00 PM');
+  // Production Date Picker State (Local Timezone Safe — zero manual typing)
+  const [shiftDateIso, setShiftDateIso] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+  const [shiftDateDisplay, setShiftDateDisplay] = useState<string>(() => formatIsoToHuman(
+    (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })()
+  ));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Production Time Picker State
+  const [startTimeStr, setStartTimeStr] = useState('09:00 AM');
+  const [endTimeStr, setEndTimeStr] = useState('06:00 PM');
+  const [shiftTimeDisplay, setShiftTimeDisplay] = useState('09:00 AM - 06:00 PM');
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Payment Settlement Method
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'ONLINE'>('CASH');
+
   const [description, setDescription] = useState(
     'Urgent requirement for dependable daily shift work. Immediate hiring upon application.'
   );
@@ -132,9 +166,21 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [fairPayRange, setFairPayRange] = useState<{ min: number; max: number } | null>(null);
 
-  // Form errors
-  const [errors, setErrors] = useState<{ title?: string; wage?: string; location?: string }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Production Form errors & submission states
+  interface FormErrors {
+    title?: string;
+    category?: string;
+    wage?: string;
+    location?: string;
+    date?: string;
+    time?: string;
+    workers?: string;
+    description?: string;
+    requirements?: string;
+    submit?: string;
+  }
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   // Success state
   const [postedJob, setPostedJob] = useState<Job | null>(null);
@@ -201,28 +247,44 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const validateForm = () => {
-    const newErrors: { title?: string; wage?: string; location?: string } = {};
-    if (!title.trim()) {
-      newErrors.title = 'Please enter a job or trade title';
+    const newErrors: FormErrors = {};
+    if (!title.trim() || title.trim().length < 3) {
+      newErrors.title = 'Please enter a trade/job title (min 3 characters)';
     }
     const numWage = parseInt(wage.replace(/\D/g, ''), 10);
     if (!numWage || numWage < 200) {
       newErrors.wage = 'Please enter a daily wage of at least ₹200';
     }
-    if (!locationCity.trim()) {
+    if (!locationCity.trim() || locationCity.trim().length < 3) {
       newErrors.location = 'Please enter the work address or sector';
+    }
+    const today = getLocalTodayIso();
+    if (!shiftDateIso || shiftDateIso < today) {
+      newErrors.date = 'Shift date cannot be in the past';
+    }
+    if (!startTimeStr || !endTimeStr) {
+      newErrors.time = 'Please select shift start and end timings';
+    }
+    if (!workersNeeded || workersNeeded < 1) {
+      newErrors.workers = 'At least 1 worker required';
+    }
+    if (!description.trim() || description.trim().length < 10) {
+      newErrors.description = 'Please provide shift details (minimum 10 characters)';
+    }
+    if (selectedRequirements.length === 0) {
+      newErrors.requirements = 'Please select or add at least 1 requirement';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
+    setSubmitStatus('loading');
+    setErrors({});
 
     const numWage = parseInt(wage.replace(/\D/g, ''), 10);
-
     const matchingSkill = MOCK_SKILLS.find(
       (s) => s.name.toLowerCase() === title.trim().toLowerCase()
     ) ?? {
@@ -232,68 +294,83 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
       icon: 'package',
     };
 
-    const newJob = postJob({
-      title: title.trim(),
-      description: description.trim(),
-      skillRequired: matchingSkill,
-      location: {
-        lat: 28.6139,
-        lng: 77.209,
+    const city = locationCity.includes(',') ? locationCity.split(',')[1].trim() : locationCity.trim();
+
+    try {
+      // 1. Real Backend Creation (validated, authenticated API request)
+      const res = await api.createGig({
+        title: title.trim(),
+        description: description.trim(),
+        skill_category: selectedCategory,
+        skill_name: title.trim(),
+        workers_required: workersNeeded,
+        min_wage: numWage,
+        max_wage: numWage,
+        start_date: shiftDateIso,
+        start_time: startTimeStr,
+        end_time: endTimeStr,
         address: locationCity.trim(),
-        city: locationCity.includes(',') ? locationCity.split(',')[1].trim() : locationCity.trim(),
+        latitude: 28.6139,
+        longitude: 77.209,
+        city: city || 'Noida',
         state: 'Uttar Pradesh',
-        pincode: '201301',
-      },
-      startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      startTime: shiftTime.split('-')[0]?.trim() || '09:00 AM',
-      endTime: shiftTime.split('-')[1]?.trim() || '06:00 PM',
-      workersRequired: workersNeeded,
-      minWage: numWage,
-      maxWage: numWage,
-      requirements: selectedRequirements.length > 0 ? selectedRequirements : ['Aadhaar Card', 'Immediate Joiner'],
-    });
+        requirements: selectedRequirements,
+      });
 
-    // Real API call to persist the gig to backend PostgreSQL
-    api.createGig({
-      title: title.trim(),
-      description: description.trim(),
-      skill_category: selectedCategory,
-      skill_name: title.trim(),
-      workers_required: workersNeeded,
-      min_wage: numWage,
-      max_wage: numWage,
-      start_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      start_time: '09:00:00',
-      address: locationCity.trim(),
-      latitude: 28.6139,
-      longitude: 77.209,
-      city: locationCity.includes(',') ? locationCity.split(',')[1].trim() : locationCity.trim(),
-      requirements: selectedRequirements.length > 0 ? selectedRequirements : ['Aadhaar Card', 'Immediate Joiner'],
-    }).catch((err) => {
-      console.log('API createGig background note:', err.message);
-    });
+      const realGigId = res?.data?.gig_id || res?.gig_id || res?.id;
+      if (!realGigId) {
+        throw new Error(res?.error || 'Server did not return a valid gig ID.');
+      }
 
-    // Compute real worker match stats
-    const stats = getEmployerMatchStats(newJob, MOCK_WORKERS);
+      // 2. Persist to store with real backend ID
+      const newJob = postJob({
+        id: realGigId,
+        title: title.trim(),
+        description: description.trim(),
+        skillRequired: matchingSkill,
+        location: {
+          lat: 28.6139,
+          lng: 77.209,
+          address: locationCity.trim(),
+          city: city || 'Noida',
+          state: 'Uttar Pradesh',
+          pincode: '201301',
+        },
+        startDate: shiftDateIso,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        workersRequired: workersNeeded,
+        minWage: numWage,
+        maxWage: numWage,
+        requirements: selectedRequirements,
+      });
 
-    // Find top suitable workers from MOCK_WORKERS
-    const eligibleWorkers = MOCK_WORKERS.filter(
-      (w) =>
-        w.availabilityStatus === 'available' &&
-        (w.skills.some((s) => s.category.toLowerCase() === selectedCategory.toLowerCase()) ||
-          w.skills.some((s) => s.name.toLowerCase().includes(title.trim().toLowerCase())))
-    );
-    const candidates = eligibleWorkers.length >= 2 ? eligibleWorkers.slice(0, 2) : MOCK_WORKERS.slice(0, 2);
+      // 3. Worker match stats & seeded pipeline
+      const stats = getEmployerMatchStats(newJob, MOCK_WORKERS);
+      const eligibleWorkers = MOCK_WORKERS.filter(
+        (w) =>
+          w.availabilityStatus === 'available' &&
+          (w.skills.some((s) => s.category.toLowerCase() === selectedCategory.toLowerCase()) ||
+            w.skills.some((s) => s.name.toLowerCase().includes(title.trim().toLowerCase())))
+      );
+      const candidates = eligibleWorkers.length >= 2 ? eligibleWorkers.slice(0, 2) : MOCK_WORKERS.slice(0, 2);
 
-    // Seed instant applications so the employer can immediately accept, counter, or hire
-    candidates.forEach((worker) => {
-      applyForJob(newJob.id, newJob.maxWage, worker, newJob);
-    });
+      candidates.forEach((worker) => {
+        applyForJob(newJob.id, newJob.maxWage, worker, newJob);
+      });
 
-    setNotifiedWorkersList(candidates);
-    setPostedJob(newJob);
-    setMatchStats(stats);
-    setIsSubmitting(false);
+      setNotifiedWorkersList(candidates);
+      setPostedJob(newJob);
+      setMatchStats(stats);
+      setSubmitStatus('success');
+    } catch (err: any) {
+      console.error('Post Gig error:', err);
+      setSubmitStatus('error');
+      setErrors((prev) => ({
+        ...prev,
+        submit: err.message || 'Server failed to publish gig. Please try again.',
+      }));
+    }
   };
 
   // ── Post-Success Screen ──────────────────────────────────────────────────
@@ -602,26 +679,40 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             {!!errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
 
+            {/* Date & Timing Selection (Zero manual typing — Booking-style calendar & shift selector) */}
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Shift Date</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={shiftDate}
-                  onChangeText={setShiftDate}
-                  placeholder="Date"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Shift Timing</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={shiftTime}
-                  onChangeText={setShiftTime}
-                  placeholder="Timings"
-                />
-              </View>
+              <TouchableOpacity
+                style={[styles.pickerBox, !!errors.date && styles.pickerBoxError]}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.pickerBoxHeader}>
+                  <Feather name="calendar" size={15} color={Theme.accent} />
+                  <Text style={styles.pickerBoxLabel}>Shift Date *</Text>
+                </View>
+                <Text style={styles.pickerBoxValue} numberOfLines={1}>
+                  {shiftDateDisplay}
+                </Text>
+                <Text style={styles.pickerBoxHint}>Tap to pick date</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.pickerBox, !!errors.time && styles.pickerBoxError]}
+                onPress={() => setShowTimePicker(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.pickerBoxHeader}>
+                  <Feather name="clock" size={15} color={Theme.accent} />
+                  <Text style={styles.pickerBoxLabel}>Shift Timing *</Text>
+                </View>
+                <Text style={styles.pickerBoxValue} numberOfLines={1}>
+                  {shiftTimeDisplay}
+                </Text>
+                <Text style={styles.pickerBoxHint}>Tap to choose hours</Text>
+              </TouchableOpacity>
             </View>
+            {!!errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
+            {!!errors.time && <Text style={styles.errorText}>{errors.time}</Text>}
           </View>
 
           {/* Workers Needed Stepper */}
@@ -700,16 +791,65 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Description */}
           <View style={styles.card}>
-            <Text style={styles.inputLabel}>Work Description</Text>
+            <Text style={styles.inputLabel}>Work Description *</Text>
             <TextInput
-              style={styles.textArea}
+              style={[styles.textArea, !!errors.description && styles.inputError]}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={(d) => {
+                setDescription(d);
+                if (errors.description) setErrors({ ...errors, description: undefined });
+              }}
               multiline
               numberOfLines={3}
-              placeholder="Brief details about work duties, transport, lunch, etc."
+              placeholder="Brief details about work duties, transport, lunch, etc. (min 10 chars)"
               placeholderTextColor={Theme.textMuted}
             />
+            {!!errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+          </View>
+
+          {/* Payment Settlement Preference */}
+          <View style={styles.card}>
+            <Text style={styles.inputLabel}>Payment Method</Text>
+            <Text style={styles.cardHelperText}>How you will settle wages with the hired workers</Text>
+            <View style={styles.payOptionGrid}>
+              <TouchableOpacity
+                style={[styles.payOptionCard, paymentMethod === 'CASH' && styles.payOptionCardActive]}
+                onPress={() => setPaymentMethod('CASH')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.payOptionHeader}>
+                  <View style={[styles.payIconWrap, paymentMethod === 'CASH' && styles.payIconWrapActive]}>
+                    <Feather name="dollar-sign" size={17} color={paymentMethod === 'CASH' ? Theme.surface : Theme.accent} />
+                  </View>
+                  {paymentMethod === 'CASH' && <Feather name="check-circle" size={16} color={Theme.accent} />}
+                </View>
+                <Text style={[styles.payOptionTitle, paymentMethod === 'CASH' && { color: Theme.accent }]}>
+                  Cash on Site
+                </Text>
+                <Text style={styles.payOptionDesc}>
+                  Pay cash at work site. Worker verifies receipt via 6-digit OTP code.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.payOptionCard, paymentMethod === 'ONLINE' && styles.payOptionCardActive]}
+                onPress={() => setPaymentMethod('ONLINE')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.payOptionHeader}>
+                  <View style={[styles.payIconWrap, paymentMethod === 'ONLINE' && styles.payIconWrapActive]}>
+                    <Feather name="credit-card" size={17} color={paymentMethod === 'ONLINE' ? Theme.surface : Theme.primary} />
+                  </View>
+                  {paymentMethod === 'ONLINE' && <Feather name="check-circle" size={16} color={Theme.primary} />}
+                </View>
+                <Text style={[styles.payOptionTitle, paymentMethod === 'ONLINE' && { color: Theme.primary }]}>
+                  Online Escrow
+                </Text>
+                <Text style={styles.payOptionDesc}>
+                  UPI / NetBanking / Razorpay gateway settlement upon job completion.
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={{ height: 20 }} />
@@ -718,14 +858,27 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Sticky Bottom Post Button — Natural Flex Layout, Guaranteed Clickable */}
       <View style={styles.bottomBar}>
+        {!!errors.submit && (
+          <View style={styles.submitErrorBanner}>
+            <Feather name="alert-triangle" size={15} color={Theme.error} />
+            <Text style={styles.submitErrorText}>{errors.submit}</Text>
+          </View>
+        )}
         <TouchableOpacity
-          style={[styles.postButton, isSubmitting && { opacity: 0.7 }]}
+          style={[
+            styles.postButton,
+            submitStatus === 'loading' && { opacity: 0.7 },
+            submitStatus === 'error' && { backgroundColor: Theme.error },
+          ]}
           onPress={handleSubmit}
           activeOpacity={0.85}
-          disabled={isSubmitting}
+          disabled={submitStatus === 'loading'}
         >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color={Theme.surface} />
+          {submitStatus === 'loading' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color={Theme.surface} />
+              <Text style={styles.postButtonText}>PUBLISHING TO SERVER...</Text>
+            </View>
           ) : (
             <>
               <Feather name="plus-circle" size={18} color={Theme.surface} />
@@ -734,6 +887,31 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Production Date & Time Modals (No manual keyboard typing) */}
+      <GigDatePickerModal
+        visible={showDatePicker}
+        selectedDate={shiftDateIso}
+        onSelectDate={(iso, display) => {
+          setShiftDateIso(iso);
+          setShiftDateDisplay(display);
+          if (errors.date) setErrors((prev) => ({ ...prev, date: undefined }));
+        }}
+        onClose={() => setShowDatePicker(false)}
+      />
+
+      <GigTimePickerModal
+        visible={showTimePicker}
+        startTime={startTimeStr}
+        endTime={endTimeStr}
+        onSelectTiming={(start, end, display) => {
+          setStartTimeStr(start);
+          setEndTimeStr(end);
+          setShiftTimeDisplay(display);
+          if (errors.time) setErrors((prev) => ({ ...prev, time: undefined }));
+        }}
+        onClose={() => setShowTimePicker(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -1298,5 +1476,107 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: 14,
     color: Theme.textSecondary,
+  },
+  pickerBox: {
+    flex: 1,
+    backgroundColor: Theme.surfaceSubtle,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Theme.border,
+    padding: 12,
+  },
+  pickerBoxError: {
+    borderColor: Theme.error,
+    backgroundColor: Theme.errorLight,
+  },
+  pickerBoxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  pickerBoxLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: Theme.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  pickerBoxValue: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13.5,
+    color: Theme.ink,
+    marginBottom: 4,
+  },
+  pickerBoxHint: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Theme.accent,
+  },
+  payOptionGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  payOptionCard: {
+    flex: 1,
+    backgroundColor: Theme.surfaceSubtle,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Theme.border,
+    padding: 12,
+  },
+  payOptionCardActive: {
+    borderColor: Theme.accent,
+    backgroundColor: Theme.accentLight,
+  },
+  payOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  payIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: Theme.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  payIconWrapActive: {
+    backgroundColor: Theme.accent,
+    borderColor: Theme.accent,
+  },
+  payOptionTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12.5,
+    color: Theme.ink,
+    marginBottom: 4,
+  },
+  payOptionDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: 10.5,
+    color: Theme.textSecondary,
+    lineHeight: 14,
+  },
+  submitErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Theme.errorLight,
+    borderWidth: 1,
+    borderColor: Theme.error,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  submitErrorText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Theme.error,
   },
 });

@@ -83,7 +83,7 @@ export const api = {
 
   async getGigs(params?: {
     lat?: number; lng?: number; radius_km?: number;
-    skill_category?: string; city?: string; status?: string; date?: string;
+    skill_category?: string; city?: string; status?: string; date?: string; employer_id?: string;
   }) {
     const q = params ? '?' + new URLSearchParams(Object.entries(params).filter(([,v]) => v != null).map(([k,v]) => [k, String(v)])) : '';
     return request<any[]>(`/gigs${q}`);
