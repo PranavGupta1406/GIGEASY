@@ -63,7 +63,7 @@ export const SplashScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#090D14', // Ink Slate
+    backgroundColor: Theme.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -78,13 +78,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   brandDot: {
-    color: Theme.primaryVibrant,
+    color: Theme.accent,
     fontFamily: FontFamily.extraBold,
   },
   tagline: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.base,
-    color: '#8E99A8',
+    color: Theme.sand,
     letterSpacing: 0.2,
   },
   footerWrap: {
@@ -94,24 +94,24 @@ const styles = StyleSheet.create({
   liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#121822',
+    backgroundColor: Theme.primaryVibrant,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#293547',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Theme.primaryVibrant,
+    backgroundColor: Theme.accent,
     marginRight: 8,
   },
   footerText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: '#CBD5E1',
+    color: Theme.textOnDark,
     letterSpacing: 0.3,
   },
 });

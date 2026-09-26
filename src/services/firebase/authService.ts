@@ -20,6 +20,7 @@ import {
 } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { auth } from './firebase';
+import { UserRole } from '../../types';
 
 export interface AuthSessionUser {
   uid: string;
@@ -27,7 +28,7 @@ export interface AuthSessionUser {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  role?: 'worker' | 'employer' | 'admin';
+  role?: UserRole;
 }
 
 export interface PhoneOtpSendResult {
@@ -161,7 +162,7 @@ class FirebaseAuthService {
     confirmationResultOrVerificationId: ConfirmationResult | string | null,
     otpCode: string,
     phoneNumber?: string,
-    role: 'worker' | 'employer' = 'worker'
+    role: UserRole = 'worker'
   ): Promise<AuthActionResult> {
     try {
       let firebaseUser: User | null = null;

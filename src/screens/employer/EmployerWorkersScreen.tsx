@@ -1,228 +1,593 @@
-// Employer Workers Screen — Worker discovery directory
-// Brand Blue (#6497B2) Palette · Simple & Confident
+// Employer Workers Screen — Real API Worker Discovery
+// Hire Workers · Search · Filter · View Profiles · Send Direct Offers
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { FontFamily, FontSize, BorderRadius, Spacing } from '../../constants';
-import { MOCK_WORKERS, formatWage } from '../../data/mockData';
-
+import { FontFamily, FontSize, BorderRadius } from '../../constants';
+import { MOCK_WORKERS } from '../../data/mockData';
 import { Theme } from '../../theme';
+import { api } from '../../services/api';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
 
-const T = {
-  bg: Theme.bg,
-  primary: Theme.primary,
-  primaryDark: Theme.primaryDark,
-  primaryLight: Theme.primaryLight,
-  primaryMuted: Theme.primaryLight,
-  ink: Theme.ink,
-  textSecondary: Theme.textSecondary,
-  textMuted: Theme.textMuted,
-  border: Theme.border,
-  white: Theme.surface,
-  success: Theme.success,
-  money: Theme.primary,
-  moneyBg: Theme.primaryLight,
-};
+const SKILL_FILTERS = [
+  'All', 'Electrician', 'Plumber', 'Construction', 'Warehouse', 'Driving', 'Cleaning', 'Hospitality',
+];
+
+function workerInitials(name: string) {
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function mapApiWorker(w: any) {
+  return {
+    id: w.user_id || w.id,
+    name: w.name || 'Unknown Worker',
+    skills: (() => {
+      try {
+        const raw = typeof w.skills === 'string' ? JSON.parse(w.skills) : (w.skills || []);
+        return Array.isArray(raw) ? raw : [];
+      } catch { return []; }
+    })(),
+    city: w.city || '',
+    rating: Number(w.rating) || 0,
+    completedJobs: Number(w.completed_jobs) || 0,
+    verificationStatus: (w.user_verification || w.verification_status || '').toLowerCase() === 'verified' ? 'verified' : 'unverified',
+    availabilityStatus: (w.availability_status || 'AVAILABLE').toLowerCase(),
+    trustScore: Math.min(100, Math.round(
+      (Number(w.rating) / 5) * 50 +
+      Math.min(Number(w.completed_jobs), 50)
+    )),
+  };
+}
 
 export const EmployerWorkersScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [search, setSearch] = useState('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState('All');
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filtered = MOCK_WORKERS.filter((w) => {
+  const loadWorkers = useCallback(async (refresh = false) => {
+    if (refresh) setIsRefreshing(true);
+    else setIsLoading(true);
+    setHasError(false);
+    try {
+      const params: any = {};
+      if (verifiedOnly) params.verified_only = true;
+      if (availableOnly) params.available = true;
+      if (selectedSkill !== 'All') params.skill = selectedSkill;
+      const data = await api.getWorkers(params);
+      setWorkers((data || []).map(mapApiWorker));
+    } catch {
+      // Fallback to mock data when backend not running
+      setWorkers(MOCK_WORKERS.map((w: any) => ({
+        id: w.id,
+        name: w.name,
+        skills: w.skills || [],
+        city: w.location?.city || '',
+        rating: w.rating || 0,
+        completedJobs: w.completedJobs || 0,
+        verificationStatus: w.verificationStatus || 'unverified',
+        availabilityStatus: w.availabilityStatus || 'available',
+        trustScore: w.trustScore || 70,
+      })));
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [verifiedOnly, availableOnly, selectedSkill]);
+
+  useEffect(() => {
+    loadWorkers();
+  }, [loadWorkers]);
+
+  // Debounced search
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      // Search is client-side filtered for snappiness
+    }, 300);
+  };
+
+  const filtered = workers.filter((w) => {
+    const q = search.toLowerCase();
     const matchSearch =
-      search.length === 0 ||
-      w.name.toLowerCase().includes(search.toLowerCase()) ||
-      w.skills.some((s) => s.name.toLowerCase().includes(search.toLowerCase())) ||
-      w.location.city.toLowerCase().includes(search.toLowerCase());
-    const matchVerified = !verifiedOnly || w.verificationStatus === 'verified';
-    return matchSearch && matchVerified;
+      q.length === 0 ||
+      w.name.toLowerCase().includes(q) ||
+      w.city.toLowerCase().includes(q) ||
+      w.skills.some((s: any) => (s.name || s.category || s || '').toLowerCase().includes(q));
+    return matchSearch;
   });
+
+  const renderWorkerCard = ({ item: worker }: { item: any }) => {
+    const skillLabels = worker.skills
+      .slice(0, 2)
+      .map((s: any) => s.name || s.category || s || '')
+      .filter(Boolean)
+      .join(' · ');
+    const isVerified = worker.verificationStatus === 'verified';
+    const isAvailable = ['available', 'AVAILABLE'].includes(worker.availabilityStatus);
+
+    return (
+      <TouchableOpacity
+        style={styles.workerCard}
+        onPress={() => shellNavigation.navigate('WorkerDetail', { workerId: worker.id })}
+        activeOpacity={0.88}
+      >
+        {/* Avatar */}
+        <View style={[styles.avatar, isVerified && styles.avatarVerified]}>
+          <Text style={styles.avatarText}>{workerInitials(worker.name)}</Text>
+          {isVerified && (
+            <View style={styles.verifiedBadge}>
+              <MaterialCommunityIcons name="check-decagram" size={12} color="#FFFFFF" />
+            </View>
+          )}
+        </View>
+
+        {/* Info */}
+        <View style={styles.workerInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.workerName} numberOfLines={1}>{worker.name}</Text>
+            {isAvailable && (
+              <View style={styles.availDot} />
+            )}
+          </View>
+
+          <Text style={styles.workerSkills} numberOfLines={1}>
+            {skillLabels || 'General Labour'}
+          </Text>
+
+          <View style={styles.metaRow}>
+            {worker.rating > 0 && (
+              <>
+                <Ionicons name="star" size={11} color="#D97706" />
+                <Text style={styles.ratingText}>{Number(worker.rating).toFixed(1)}</Text>
+                <Text style={styles.metaDot}>·</Text>
+              </>
+            )}
+            {worker.completedJobs > 0 && (
+              <>
+                <Text style={styles.metaText}>{worker.completedJobs} jobs</Text>
+                <Text style={styles.metaDot}>·</Text>
+              </>
+            )}
+            <Feather name="map-pin" size={10} color={Theme.textMuted} />
+            <Text style={styles.metaText}>{worker.city || 'Nearby'}</Text>
+          </View>
+        </View>
+
+        {/* Right column */}
+        <View style={styles.rightCol}>
+          {worker.trustScore > 0 && (
+            <View style={[
+              styles.trustPill,
+              { backgroundColor: worker.trustScore >= 80 ? Theme.successLight : Theme.warningLight }
+            ]}>
+              <Text style={[
+                styles.trustText,
+                { color: worker.trustScore >= 80 ? Theme.success : Theme.warning }
+              ]}>
+                {worker.trustScore}%
+              </Text>
+            </View>
+          )}
+          <Feather name="chevron-right" size={16} color={Theme.textMuted} style={{ marginTop: 4 }} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.screenTitle}>Discover Workers</Text>
+        <Text style={styles.screenTitle}>Find Workers</Text>
 
+        {/* Search bar */}
         <View style={styles.searchBar}>
-          <Feather name="search" size={16} color={T.textMuted} />
+          <Feather name="search" size={16} color={Theme.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by skill, name, location..."
-            placeholderTextColor={T.textMuted}
+            placeholder="Name, skill, or location…"
+            placeholderTextColor={Theme.textMuted}
             value={search}
-            onChangeText={setSearch}
+            onChangeText={handleSearchChange}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Feather name="x" size={16} color={T.textMuted} />
+              <Feather name="x" size={16} color={Theme.textMuted} />
             </TouchableOpacity>
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.verifiedChip, verifiedOnly && styles.verifiedChipActive]}
-          onPress={() => setVerifiedOnly(!verifiedOnly)}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons
-            name="check-decagram"
-            size={13}
-            color={verifiedOnly ? T.white : T.primary}
-          />
-          <Text style={[styles.verifiedText, verifiedOnly && styles.verifiedTextActive]}>
-            Aadhaar Verified Only
-          </Text>
-        </TouchableOpacity>
+        {/* Quick filters */}
+        <View style={styles.filtersRow}>
+          <TouchableOpacity
+            style={[styles.filterChip, verifiedOnly && styles.filterChipActive]}
+            onPress={() => setVerifiedOnly(!verifiedOnly)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name="check-decagram"
+              size={12}
+              color={verifiedOnly ? '#FFFFFF' : Theme.success}
+            />
+            <Text style={[styles.filterChipText, verifiedOnly && styles.filterChipTextActive]}>
+              Verified
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, availableOnly && styles.filterChipActive]}
+            onPress={() => setAvailableOnly(!availableOnly)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.availDotSmall, { backgroundColor: availableOnly ? '#FFFFFF' : Theme.success }]} />
+            <Text style={[styles.filterChipText, availableOnly && styles.filterChipTextActive]}>
+              Available
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Skill filter row */}
+        <FlatList
+          data={SKILL_FILTERS}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.skillFilterList}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.skillChip, selectedSkill === item && styles.skillChipActive]}
+              onPress={() => setSelectedSkill(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.skillChipText, selectedSkill === item && styles.skillChipTextActive]}>
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-        <Text style={styles.count}>Showing {filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</Text>
+      {/* Backend notice */}
+      {hasError && !isLoading && (
+        <View style={styles.offlineBanner}>
+          <Feather name="wifi-off" size={12} color={Theme.warning} />
+          <Text style={styles.offlineText}>Using demo data — backend not reachable</Text>
+        </View>
+      )}
 
-        {filtered.map((worker) => (
+      {/* Worker list */}
+      {isLoading ? (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={Theme.forestGreen} />
+          <Text style={styles.loadingText}>Finding workers…</Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <Feather name="users" size={32} color={Theme.textMuted} />
+          </View>
+          <Text style={styles.emptyTitle}>No workers found</Text>
+          <Text style={styles.emptySubtitle}>
+            Try adjusting your filters or search terms
+          </Text>
           <TouchableOpacity
-            key={worker.id}
-            style={styles.workerRow}
-            onPress={() => shellNavigation.navigate('WorkerDetail', { workerId: worker.id })}
-            activeOpacity={0.88}
+            style={styles.clearBtn}
+            onPress={() => { setSearch(''); setVerifiedOnly(false); setAvailableOnly(false); setSelectedSkill('All'); }}
           >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {worker.name.split(' ').map(n => n[0]).join('')}
-              </Text>
-            </View>
-            <View style={styles.workerInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.workerName}>{worker.name}</Text>
-                {worker.verificationStatus === 'verified' && (
-                  <MaterialCommunityIcons name="check-decagram" size={12} color={T.primary} />
-                )}
-                <View style={[styles.trustPill, { backgroundColor: T.primaryMuted }]}>
-                  <Text style={[styles.trustText, { color: T.primary }]}>
-                    {worker.trustScore}% trust
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.workerSub} numberOfLines={1}>
-                {worker.skills.map(s => s.name).join(', ')}
-              </Text>
-
-              <View style={styles.bottomMeta}>
-                <View style={styles.ratingWrap}>
-                  <Ionicons name="star" size={11} color="#D97706" />
-                  <Text style={styles.ratingText}>{worker.rating.toFixed(1)}</Text>
-                  <Text style={styles.metaCount}>({worker.completedJobs})</Text>
-                </View>
-                <Text style={styles.dot}>·</Text>
-                <Text style={styles.locText}>{worker.location.city}</Text>
-              </View>
-            </View>
-
-            <View style={styles.wageColumn}>
-              <Text style={styles.wageText}>{worker.trustScore}%</Text>
-              <Text style={styles.wageUnit}>Trust Score</Text>
-            </View>
+            <Text style={styles.clearBtnText}>Clear filters</Text>
           </TouchableOpacity>
-        ))}
-        <View style={{ height: 24 }} />
-      </ScrollView>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderWorkerCard}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={styles.resultCount}>
+              {filtered.length} candidate{filtered.length !== 1 ? 's' : ''}
+            </Text>
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => loadWorkers(true)}
+              tintColor={Theme.forestGreen}
+              colors={[Theme.forestGreen]}
+            />
+          }
+        />
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: T.bg },
+  container: { flex: 1, backgroundColor: Theme.bg },
+
+  // Header
   header: {
-    backgroundColor: T.white,
+    backgroundColor: Theme.surface,
     paddingTop: 16,
     paddingBottom: 12,
-    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: T.border,
+    borderBottomColor: Theme.border,
     gap: 10,
+    paddingHorizontal: 16,
   },
-  screenTitle: { fontFamily: FontFamily.bold, fontSize: FontSize['2xl'], color: T.ink, letterSpacing: -0.5 },
+  screenTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize['2xl'],
+    color: Theme.ink,
+    letterSpacing: -0.5,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F4F8',
+    backgroundColor: Theme.sandLight,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,
     gap: 8,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: Theme.border,
   },
-  searchInput: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: T.ink },
-  verifiedChip: {
+  searchInput: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Theme.ink,
+  },
+
+  // Filters
+  filtersRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Theme.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  filterChipActive: {
+    backgroundColor: Theme.forestGreen,
+    borderColor: Theme.forestGreen,
+  },
+  filterChipText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: Theme.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  availDotSmall: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+
+  // Skill filter
+  skillFilterList: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  skillChip: {
+    paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    backgroundColor: T.primaryMuted,
+    backgroundColor: Theme.sandLight,
     borderWidth: 1,
-    borderColor: T.primaryLight,
+    borderColor: Theme.border,
+    marginRight: 6,
   },
-  verifiedChipActive: { backgroundColor: T.primary, borderColor: T.primary },
-  verifiedText: { fontFamily: FontFamily.semiBold, fontSize: 11, color: T.primary },
-  verifiedTextActive: { color: T.white },
-  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
-  count: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary, marginBottom: 10 },
-  workerRow: {
+  skillChipActive: {
+    backgroundColor: Theme.ink,
+    borderColor: Theme.ink,
+  },
+  skillChipText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Theme.textSecondary,
+  },
+  skillChipTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Offline banner
+  offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: T.white,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    backgroundColor: Theme.warningLight,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.warningBorder,
+  },
+  offlineText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Theme.warning,
+  },
+
+  // List
+  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
+  resultCount: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Theme.textMuted,
+    marginBottom: 10,
+  },
+
+  // Worker card
+  workerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.surface,
     borderRadius: 16,
     padding: 14,
-    marginBottom: 8,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: Theme.border,
     gap: 12,
-    shadowColor: '#1C2B3A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: T.primary,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Theme.ink,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-  avatarText: { fontFamily: FontFamily.bold, fontSize: 15, color: T.white },
+  avatarVerified: {
+    backgroundColor: Theme.forestGreen,
+  },
+  avatarText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Theme.forestGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Theme.surface,
+  },
+  availDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: Theme.success,
+    marginLeft: 4,
+  },
+
+  // Info
   workerInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  workerName: { fontFamily: FontFamily.bold, fontSize: 14, color: T.ink },
-  trustPill: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 },
-  trustText: { fontFamily: FontFamily.bold, fontSize: 9 },
-  workerSub: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary, marginBottom: 3 },
-  bottomMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  ratingText: { fontFamily: FontFamily.bold, fontSize: 11, color: T.ink },
-  metaCount: { fontFamily: FontFamily.regular, fontSize: 10, color: T.textMuted },
-  dot: { color: T.textMuted, fontSize: 10 },
-  locText: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
-  wageColumn: { alignItems: 'flex-end' },
-  wageText: { fontFamily: FontFamily.extraBold, fontSize: 16, color: T.primary, letterSpacing: -0.3 },
-  wageUnit: { fontFamily: FontFamily.medium, fontSize: 10, color: T.textMuted },
+  nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
+  workerName: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: Theme.ink,
+    flex: 1,
+  },
+  workerSkills: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11.5,
+    color: Theme.textSecondary,
+    marginBottom: 4,
+  },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { fontFamily: FontFamily.bold, fontSize: 11, color: Theme.ink },
+  metaDot: { color: Theme.textMuted, fontSize: 10 },
+  metaText: { fontFamily: FontFamily.regular, fontSize: 11, color: Theme.textSecondary },
+
+  // Right
+  rightCol: { alignItems: 'flex-end' },
+  trustPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  trustText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+  },
+
+  // Loading/Empty
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    color: Theme.textSecondary,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    gap: 8,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Theme.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 17,
+    color: Theme.ink,
+    letterSpacing: -0.3,
+  },
+  emptySubtitle: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: Theme.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  clearBtn: {
+    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Theme.ink,
+  },
+  clearBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
 });

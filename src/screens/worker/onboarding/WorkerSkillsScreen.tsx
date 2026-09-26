@@ -22,20 +22,21 @@ import { GigEasyButton } from '../../../components';
 import { WORK_GROUPS, MOCK_SKILLS, CURRENT_WORKER } from '../../../data/mockData';
 import { getCategoryVisual } from '../../../components/GigEasyPrimitives';
 import { useOnboardingStore, useLanguageStore, useWorkerStore, useAuthStore } from '../../../store';
+import { Theme } from '../../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkerSkills'>;
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryMuted: '#EBF3FC',
-  primaryLight: '#D6E6FA',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  cardBg: '#FFFFFF',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryMuted: Theme.sandLight,
+  primaryLight: Theme.accentLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  cardBg: Theme.surface,
 };
 
 export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
@@ -143,17 +144,17 @@ export const WorkerSkillsScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Search Bar */}
         <View style={styles.searchBar}>
-          <Feather name="search" size={16} color="#94A3B8" />
+          <Feather name="search" size={16} color={Theme.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder={language === 'hi' ? 'काम खोजें...' : 'Search skills...'}
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={Theme.textMuted}
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Feather name="x" size={16} color="#94A3B8" />
+              <Feather name="x" size={16} color={Theme.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.sandLight,
     borderRadius: 2,
     marginBottom: 10,
     overflow: 'hidden',
@@ -306,7 +307,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.sandLight,
   },
   catPillActive: {
     backgroundColor: T.primary,
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.sandLight,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: T.border,
-    shadowColor: '#0F172A',
+    shadowColor: T.ink,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -396,8 +397,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   skillCardSelected: {
-    borderColor: T.primary,
-    backgroundColor: '#F8FAFF',
+    borderColor: Theme.accent,
+    backgroundColor: Theme.accentLight,
   },
   visualBox: {
     width: 54,
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'android' ? 20 : 30,
     borderTopWidth: 1,
     borderTopColor: T.border,
-    shadowColor: '#0F172A',
+    shadowColor: T.ink,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,

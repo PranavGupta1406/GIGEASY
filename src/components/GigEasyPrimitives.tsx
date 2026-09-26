@@ -1,5 +1,6 @@
-// GigEasy Shared Primitives — Consumer Brand Palette (#1A68D5)
-// Avatar · Visual Badge · Rating · StatusPill · Verified · CategoryIcon
+// GigEasy Shared Primitives — Production Design System v2
+// Warm Ivory · Charcoal · GigEasy Orange · Forest Green Trust Language
+// Icon-first. Text only when essential. No badge overload.
 
 import React from 'react';
 import {
@@ -11,59 +12,59 @@ import {
 } from 'react-native';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { FontFamily, FontSize, BorderRadius } from '../constants';
-
 import { Theme } from '../theme';
 
-const T = {
-  primary: Theme.primary,
-  primaryLight: Theme.primaryLight,
-  primaryMuted: Theme.primaryLight,
-  money: Theme.primary,
-  moneyLight: Theme.primaryLight,
-  ink: Theme.ink,
-  textSecondary: Theme.textSecondary,
-  textMuted: Theme.textMuted,
-  border: Theme.border,
-  white: Theme.surface,
-  success: Theme.success,
-  successLight: Theme.successLight,
-};
-
-// Category icon & color mapping helper
+// ─── Category Visual Mapping ──────────────────────────────────────────────────
+// Icons chosen for immediate physical recognition, not metaphorical abstraction.
 export function getCategoryVisual(category: string): {
   iconName: keyof typeof Feather.glyphMap;
   color: string;
   bg: string;
 } {
   const cat = category.toLowerCase();
-  if (cat.includes('ware') || cat.includes('load') || cat.includes('pack')) {
-    return { iconName: 'package', color: '#EA580C', bg: '#FFEDD5' };
+  if (cat.includes('ware') || cat.includes('load') || cat.includes('pack') || cat.includes('logist')) {
+    return { iconName: 'package', color: Theme.olive, bg: Theme.oliveLight };
   }
-  if (cat.includes('elect')) {
-    return { iconName: 'zap', color: '#D97706', bg: '#FEF3C7' };
+  if (cat.includes('elect') || cat.includes('wiring')) {
+    return { iconName: 'zap', color: '#B45309', bg: '#FEF3C7' };
   }
-  if (cat.includes('plumb')) {
-    return { iconName: 'tool', color: '#0284C7', bg: '#E0F2FE' };
+  if (cat.includes('plumb') || cat.includes('pipe')) {
+    return { iconName: 'droplet', color: '#1A6B3C', bg: Theme.forestGreenLight };
   }
-  if (cat.includes('construct') || cat.includes('mason') || cat.includes('site')) {
-    return { iconName: 'layers', color: '#B45309', bg: '#FEF3C7' };
+  if (cat.includes('construct') || cat.includes('mason') || cat.includes('site') || cat.includes('helper')) {
+    return { iconName: 'tool', color: Theme.olive, bg: Theme.oliveLight };
   }
-  if (cat.includes('deliver') || cat.includes('driv') || cat.includes('fleet')) {
-    return { iconName: 'truck', color: '#16A34A', bg: '#DCFCE7' };
+  if (cat.includes('deliver') || cat.includes('driv') || cat.includes('fleet') || cat.includes('transport')) {
+    return { iconName: 'truck', color: Theme.accent, bg: Theme.accentLight };
   }
-  if (cat.includes('clean') || cat.includes('house')) {
-    return { iconName: 'check-circle', color: '#0D9488', bg: '#CCFBF1' };
+  if (cat.includes('clean') || cat.includes('sweep') || cat.includes('maid') || cat.includes('house')) {
+    return { iconName: 'wind', color: Theme.forestGreen, bg: Theme.forestGreenLight };
   }
-  if (cat.includes('event') || cat.includes('crew')) {
-    return { iconName: 'calendar', color: '#7C3AED', bg: '#F3E8FF' };
+  if (cat.includes('event') || cat.includes('crew') || cat.includes('hospit')) {
+    return { iconName: 'star', color: '#B45309', bg: '#FEF3C7' };
   }
-  if (cat.includes('cook') || cat.includes('hosp') || cat.includes('kitchen')) {
-    return { iconName: 'coffee', color: '#DB2777', bg: '#FCE7F3' };
+  if (cat.includes('paint') || cat.includes('brush')) {
+    return { iconName: 'edit-2', color: Theme.accent, bg: Theme.accentLight };
   }
-  return { iconName: 'briefcase', color: Theme.primary, bg: Theme.primaryLight };
+  if (cat.includes('cook') || cat.includes('kitchen') || cat.includes('catering')) {
+    return { iconName: 'coffee', color: Theme.accent, bg: Theme.accentLight };
+  }
+  if (cat.includes('care') || cat.includes('elder') || cat.includes('child')) {
+    return { iconName: 'heart', color: Theme.accent, bg: Theme.accentLight };
+  }
+  if (cat.includes('security') || cat.includes('guard')) {
+    return { iconName: 'shield', color: Theme.ink, bg: Theme.surfaceSubtle };
+  }
+  if (cat.includes('factory') || cat.includes('industr') || cat.includes('assembl')) {
+    return { iconName: 'settings', color: Theme.olive, bg: Theme.oliveLight };
+  }
+  if (cat.includes('appliance') || cat.includes('repair') || cat.includes('fix')) {
+    return { iconName: 'tool', color: Theme.olive, bg: Theme.oliveLight };
+  }
+  return { iconName: 'briefcase', color: Theme.textSecondary, bg: Theme.surfaceSubtle };
 }
 
-// ─── GigEasyAvatar ────────────────────────────────────────────────────────────
+// ─── GigEasyAvatar ─────────────────────────────────────────────────────────────
 
 interface AvatarProps {
   name: string;
@@ -107,19 +108,20 @@ export const GigEasyAvatar: React.FC<AvatarProps> = ({
         </View>
       )}
       {showVerified && (
-        <View style={[styles.avatarVerifiedBadge, { width: size * 0.34, height: size * 0.34, borderRadius: size * 0.17 }]}>
-          <Feather name="check" size={size * 0.20} color={T.white} strokeWidth={3} />
+        <View style={[styles.avatarVerifiedBadge, { width: size * 0.32, height: size * 0.32, borderRadius: size * 0.16 }]}>
+          <Feather name="check" size={size * 0.18} color="#FFFFFF" strokeWidth={3} />
         </View>
       )}
     </View>
   );
 };
 
-// ─── GigEasyBadge ─────────────────────────────────────────────────────────────
+// ─── GigEasyBadge ──────────────────────────────────────────────────────────────
+// Restrained. Only used when a text label is genuinely necessary.
 
 interface BadgeProps {
   label: string;
-  variant?: 'primary' | 'money' | 'success' | 'warning' | 'error' | 'neutral' | 'verified';
+  variant?: 'primary' | 'accent' | 'money' | 'success' | 'warning' | 'error' | 'neutral' | 'verified' | 'olive';
   size?: 'sm' | 'md';
 }
 
@@ -131,13 +133,15 @@ export const GigEasyBadge: React.FC<BadgeProps> = ({
   const isSm = size === 'sm';
 
   const variantMap: Record<string, { bg: string; text: string; border: string }> = {
-    primary:  { bg: T.primaryMuted, text: T.primary,   border: T.primaryLight },
-    money:    { bg: T.moneyLight,   text: T.money,     border: '#FED7AA' },
-    verified: { bg: T.primaryMuted, text: T.primary,   border: T.primaryLight },
-    success:  { bg: T.successLight, text: '#047857',   border: '#A7F3D0' },
-    warning:  { bg: '#FEF3C7',      text: '#B45309',   border: '#FDE68A' },
-    error:    { bg: '#FEE2E2',      text: '#B91C1C',   border: '#FECACA' },
-    neutral:  { bg: '#F1F5F9',      text: T.textSecondary, border: T.border },
+    primary:  { bg: Theme.sand,           text: Theme.ink,           border: Theme.border },
+    accent:   { bg: Theme.accentLight,    text: Theme.accentDark,    border: Theme.accentMuted },
+    money:    { bg: Theme.amberLight,     text: Theme.amberDark,     border: Theme.amberBorder },
+    verified: { bg: Theme.forestGreenLight, text: Theme.forestGreen, border: Theme.forestGreenBorder },
+    success:  { bg: Theme.forestGreenLight, text: Theme.forestGreen, border: Theme.forestGreenBorder },
+    warning:  { bg: Theme.warningLight,   text: Theme.warning,       border: Theme.warningBorder },
+    error:    { bg: Theme.errorLight,     text: Theme.error,         border: Theme.errorBorder },
+    neutral:  { bg: Theme.surfaceSubtle,  text: Theme.textSecondary, border: Theme.border },
+    olive:    { bg: Theme.oliveLight,     text: Theme.olive,         border: Theme.oliveMuted },
   };
 
   const c = variantMap[variant] ?? variantMap.neutral;
@@ -154,24 +158,25 @@ export const GigEasyBadge: React.FC<BadgeProps> = ({
         },
       ]}
     >
-      <Text style={[styles.badgeText, { color: c.text, fontSize: isSm ? 10 : 11 }]}>
+      <Text style={[styles.badgeText, { color: c.text, fontSize: isSm ? 9.5 : 11 }]}>
         {label}
       </Text>
     </View>
   );
 };
 
-// ─── GigEasyRating ────────────────────────────────────────────────────────────
+// ─── GigEasyRating ─────────────────────────────────────────────────────────────
+// Clean: star + number only. Count shown only when explicitly passed.
 
 export const GigEasyRating: React.FC<{ rating: number; count?: number }> = ({ rating, count }) => (
   <View style={styles.ratingWrap}>
-    <Ionicons name="star" size={12} color="#F59E0B" />
+    <Ionicons name="star" size={11} color="#C07A1A" />
     <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
     {count !== undefined && <Text style={styles.ratingCount}>({count})</Text>}
   </View>
 );
 
-// ─── GigEasyTrustScore ────────────────────────────────────────────────────────
+// ─── GigEasyTrustScore ─────────────────────────────────────────────────────────
 
 export const GigEasyTrustScore: React.FC<{
   score: number;
@@ -179,36 +184,62 @@ export const GigEasyTrustScore: React.FC<{
 }> = ({ score, label }) => {
   return (
     <View style={styles.trustWrap}>
-      <MaterialCommunityIcons name="shield-check" size={13} color={T.primary} />
-      <Text style={[styles.trustScore, { color: T.primary }]}>{score}%</Text>
+      <MaterialCommunityIcons name="shield-check" size={12} color={Theme.forestGreen} />
+      <Text style={[styles.trustScore, { color: Theme.ink }]}>{score}%</Text>
       {label && <Text style={styles.trustLabel}>· {label}</Text>}
     </View>
   );
 };
 
-// ─── GigEasyStatusPill ────────────────────────────────────────────────────────
+// ─── GigEasyStatusPill ─────────────────────────────────────────────────────────
+// Restrained — thin border, small dot, compact padding.
 
 export const GigEasyStatusPill: React.FC<{
   status: string;
   label: string;
   color?: string;
-}> = ({ label, color = T.primary }) => (
-  <View style={[styles.statusPill, { backgroundColor: `${color}14`, borderColor: `${color}30` }]}>
+}> = ({ label, color = Theme.ink }) => (
+  <View style={[styles.statusPill, { backgroundColor: color + '12', borderColor: color + '30' }]}>
     <View style={[styles.statusDot, { backgroundColor: color }]} />
     <Text style={[styles.statusLabel, { color }]}>{label}</Text>
   </View>
 );
 
-// ─── GigEasyVerifiedBadge ─────────────────────────────────────────────────────
+// ─── GigEasyVerifiedBadge ──────────────────────────────────────────────────────
+// Small variant: icon-only green dot. Full variant: icon + "Verified" label.
 
-export const GigEasyVerifiedBadge: React.FC<{ small?: boolean }> = ({ small = false }) => (
-  <View style={[styles.verifiedBadge, small && styles.verifiedBadgeSmall]}>
-    <MaterialCommunityIcons name="check-decagram" size={small ? 12 : 14} color={T.primary} />
-    <Text style={[styles.verifiedText, small && { fontSize: 9.5 }]}>Verified</Text>
+export const GigEasyVerifiedBadge: React.FC<{ small?: boolean }> = ({ small = false }) =>
+  small ? (
+    // Icon-only — no text noise on card surfaces
+    <View style={styles.verifiedDot}>
+      <MaterialCommunityIcons name="check-decagram" size={14} color={Theme.forestGreen} />
+    </View>
+  ) : (
+    <View style={styles.verifiedBadge}>
+      <MaterialCommunityIcons name="check-decagram" size={13} color={Theme.forestGreen} />
+      <Text style={styles.verifiedText}>Verified</Text>
+    </View>
+  );
+
+// ─── GigEasyCertBadge ──────────────────────────────────────────────────────────
+
+export const GigEasyCertBadge: React.FC<{ label: string; small?: boolean }> = ({ label, small = false }) => (
+  <View style={[styles.certBadge, small && styles.certBadgeSmall]}>
+    <MaterialCommunityIcons name="certificate" size={small ? 10 : 12} color={Theme.olive} />
+    <Text style={[styles.certText, small && { fontSize: 9 }]}>{label}</Text>
   </View>
 );
 
-// ─── GigEasyEmptyState ────────────────────────────────────────────────────────
+// ─── GigEasyCoopBadge ──────────────────────────────────────────────────────────
+
+export const GigEasyCoopBadge: React.FC<{ name: string; small?: boolean }> = ({ name, small = false }) => (
+  <View style={[styles.coopBadge, small && styles.coopBadgeSmall]}>
+    <MaterialCommunityIcons name="account-group" size={small ? 10 : 12} color={Theme.accentDark} />
+    <Text style={[styles.coopText, small && { fontSize: 9 }]} numberOfLines={1}>{name}</Text>
+  </View>
+);
+
+// ─── GigEasyEmptyState ─────────────────────────────────────────────────────────
 
 export const GigEasyEmptyState: React.FC<{
   title: string;
@@ -217,36 +248,67 @@ export const GigEasyEmptyState: React.FC<{
 }> = ({ title, subtitle, iconName = 'search' }) => (
   <View style={styles.emptyWrap}>
     <View style={styles.emptyIconWrap}>
-      <Feather name={iconName} size={24} color={T.primary} />
+      <Feather name={iconName} size={22} color={Theme.textMuted} />
     </View>
     <Text style={styles.emptyTitle}>{title}</Text>
     {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
   </View>
 );
 
+// ─── GigEasyDivider ────────────────────────────────────────────────────────────
+
+export const GigEasyDivider: React.FC<{ label?: string }> = ({ label }) => (
+  <View style={styles.dividerWrap}>
+    <View style={styles.dividerLine} />
+    {label && <Text style={styles.dividerLabel}>{label}</Text>}
+    {label && <View style={styles.dividerLine} />}
+  </View>
+);
+
+// ─── LivePulseDot — animated availability/live indicator ───────────────────────
+
+export const LivePulseDot: React.FC<{ color?: string; size?: number }> = ({
+  color = Theme.forestGreen,
+  size = 8,
+}) => (
+  <View style={[styles.liveDotOuter, {
+    width: size + 4,
+    height: size + 4,
+    borderRadius: (size + 4) / 2,
+    backgroundColor: color + '28',
+  }]}>
+    <View style={[styles.liveDotInner, {
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: color,
+    }]} />
+  </View>
+);
+
 const styles = StyleSheet.create({
   avatar: {
-    backgroundColor: T.primaryMuted,
-    borderWidth: 1.5,
-    borderColor: T.primaryLight,
+    backgroundColor: Theme.sandLight,
+    borderWidth: 1,
+    borderColor: Theme.border,
   },
   avatarFallback: {
-    backgroundColor: T.primary,
+    backgroundColor: Theme.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: {
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Theme.textOnDark,
     letterSpacing: -0.5,
   },
   avatarVerifiedBadge: {
     position: 'absolute',
     bottom: -1,
     right: -1,
-    backgroundColor: T.success,
+    backgroundColor: Theme.forestGreen,
     borderWidth: 2,
-    borderColor: T.white,
+    borderColor: Theme.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -266,13 +328,13 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: T.ink,
+    fontSize: 11.5,
+    color: Theme.ink,
   },
   ratingCount: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: T.textMuted,
+    fontSize: 10.5,
+    color: Theme.textMuted,
   },
   trustWrap: {
     flexDirection: 'row',
@@ -286,14 +348,14 @@ const styles = StyleSheet.create({
   trustLabel: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: T.textMuted,
+    color: Theme.textMuted,
   },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
@@ -304,27 +366,70 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 11,
+    fontSize: 10.5,
   },
+  // Verified — icon-only small variant
+  verifiedDot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Verified — full badge
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: T.primaryMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: 3,
+    backgroundColor: Theme.forestGreenLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: T.primaryLight,
-  },
-  verifiedBadgeSmall: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderColor: Theme.forestGreenBorder,
   },
   verifiedText: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 11,
-    color: T.primary,
+    fontSize: 10.5,
+    color: Theme.forestGreen,
+  },
+  certBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Theme.oliveLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Theme.oliveMuted,
+  },
+  certBadgeSmall: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  certText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 10.5,
+    color: Theme.olive,
+  },
+  coopBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Theme.accentLight,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Theme.accentMuted,
+  },
+  coopBadgeSmall: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  coopText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 10.5,
+    color: Theme.accentDark,
+    maxWidth: 110,
   },
   emptyWrap: {
     alignItems: 'center',
@@ -335,8 +440,10 @@ const styles = StyleSheet.create({
   emptyIconWrap: {
     width: 52,
     height: 52,
-    borderRadius: 26,
-    backgroundColor: T.primaryMuted,
+    borderRadius: 16,
+    backgroundColor: Theme.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Theme.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
@@ -344,15 +451,40 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: T.ink,
-    marginBottom: 4,
+    color: Theme.ink,
+    marginBottom: 5,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
     textAlign: 'center',
-    maxWidth: 260,
+    maxWidth: 240,
     lineHeight: 20,
   },
+  dividerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Theme.border,
+  },
+  dividerLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Theme.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  liveDotOuter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  liveDotInner: {},
 });

@@ -1,7 +1,5 @@
-// GigEasy BottomNav — Premium Modern App Navigation
-// Clean white bar with subtle top border.
-// Active tab: compact solid near-black rounded square with pure white icon + bold near-black label.
-// Inactive tabs: direct dark charcoal icon (no background box) + muted grey label.
+// GigEasy BottomNav — Warm Premium Navigation
+// Cream background · Terracotta active indicator · Warm brown inactive icons
 
 import React, { useRef } from 'react';
 import {
@@ -28,17 +26,17 @@ interface NavTab {
 }
 
 const WORKER_TABS: NavTab[] = [
-  { key: 'Home',     labelEn: 'Home',     labelHi: 'होम',       icon: 'home' },
-  { key: 'Jobs',     labelEn: 'Discover', labelHi: 'काम',       icon: 'compass' },
-  { key: 'Activity', labelEn: 'Activity', labelHi: 'गतिविधि',   icon: 'clock' },
-  { key: 'Profile',  labelEn: 'Profile',  labelHi: 'प्रोफ़ाइल', icon: 'user' },
+  { key: 'FindWork', labelEn: 'Find Work', labelHi: 'काम खोजें', icon: 'search' },
+  { key: 'MyWork',   labelEn: 'My Work',   labelHi: 'मेरा काम',   icon: 'briefcase' },
+  { key: 'WorkerId', labelEn: 'Worker ID', labelHi: 'Worker ID',  icon: 'user-check' },
+  { key: 'More',     labelEn: 'More',      labelHi: 'अधिक',       icon: 'grid' },
 ];
 
 const EMPLOYER_TABS: NavTab[] = [
-  { key: 'Dashboard', labelEn: 'Home',    labelHi: 'होम',       icon: 'home' },
-  { key: 'Jobs',      labelEn: 'My Jobs', labelHi: 'नौकरियां', icon: 'briefcase' },
-  { key: 'Workers',   labelEn: 'Workers', labelHi: 'कामगार',   icon: 'users' },
-  { key: 'Profile',   labelEn: 'Profile', labelHi: 'प्रोफ़ाइल', icon: 'user' },
+  { key: 'Dashboard', labelEn: 'Home',    labelHi: 'होम',        icon: 'home' },
+  { key: 'Jobs',      labelEn: 'My Jobs', labelHi: 'नौकरियां',   icon: 'briefcase' },
+  { key: 'Workers',  labelEn: 'Workers',  labelHi: 'कामगार',     icon: 'users' },
+  { key: 'Profile',  labelEn: 'Profile',  labelHi: 'प्रोफ़ाइल',  icon: 'user' },
 ];
 
 interface BottomNavProps {
@@ -80,7 +78,7 @@ function NavItem({
           <Feather
             name={tab.icon}
             size={focused ? 19 : 20}
-            color={focused ? '#FFFFFF' : '#475569'}
+            color={focused ? Theme.accent : Theme.tabInactive}
             strokeWidth={focused ? 2.2 : 1.7}
           />
         </View>
@@ -118,16 +116,16 @@ export function BottomNav({ mode, activeTab, onTabPress }: BottomNavProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: Theme.surface,
+    backgroundColor: Theme.tabBackground,
     borderTopWidth: 1,
-    borderTopColor: Theme.border,
-    paddingTop: 6,
+    borderTopColor: Theme.tabBorder,
+    paddingTop: 8,
     ...Platform.select({
       ios: {
-        shadowColor: Theme.shadowColor,
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 5,
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
       },
       android: { elevation: 4 },
     }),
@@ -144,18 +142,13 @@ const styles = StyleSheet.create({
   },
   iconBox: {
     width: 44,
-    height: 32,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 11,
+    borderRadius: 14,
   },
   iconBoxActive: {
-    backgroundColor: '#0F172A',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: Theme.accentLight,
   },
   iconBoxInactive: {
     backgroundColor: 'transparent',
@@ -163,12 +156,12 @@ const styles = StyleSheet.create({
   navLabel: {
     fontFamily: FontFamily.medium,
     fontSize: 10,
-    color: '#64748B',
+    color: Theme.tabInactive,
     marginTop: 3,
     letterSpacing: 0.1,
   },
   navLabelActive: {
-    color: '#0F172A',
+    color: Theme.tabActive,
     fontFamily: FontFamily.bold,
     fontSize: 10,
   },

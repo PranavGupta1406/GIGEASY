@@ -1,5 +1,5 @@
 // Employer Profile Screen — Business identity + verification + switch mode
-// Brand Blue (#6497B2) Palette · Simple & Confident
+// Warm Premium Palette: Charcoal · Ivory · Terracotta
 
 import React from 'react';
 import {
@@ -39,8 +39,6 @@ const T = {
   white: Theme.surface,
   success: Theme.success,
 };
-
-import { authService } from '../../services/firebase';
 
 export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
   const storeProfile = useEmployerStore((s) => s.profile);
@@ -201,7 +199,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: T.border,
-    shadowColor: '#1C2B3A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -237,7 +235,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     width: '100%',
-    backgroundColor: '#F0F4F8',
+    backgroundColor: T.bg,
     borderRadius: 12,
     paddingVertical: 12,
   },
@@ -268,7 +266,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: T.border,
-    shadowColor: '#1C2B3A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -280,7 +278,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F4F8',
+    borderBottomColor: Theme.borderSubtle,
   },
   detailLabel: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary },
   detailValue: { fontFamily: FontFamily.bold, fontSize: 12, color: T.ink },
@@ -294,8 +292,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: T.primary,
-    shadowColor: '#1C2B3A',
+    borderColor: Theme.accentMuted,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,

@@ -1,104 +1,123 @@
-// GigEasy Design System — Color Tokens
-// Brand: Vibrant Primary Blue (#1A68D5) · Warm Rupee Amber (#EA580C) · Clean Off-White (#F8FAFC)
-// Colourful, consumer-grade, high-energy, premium Indian marketplace design system.
+// GigEasy Design System — White-First Color Tokens
+// Clean White · Deep Charcoal · Muted Terracotta · Soft Sage · Warm Amber · Clean Taupe
+// Philosophy: Real human product, trustworthy, Indian, premium. NO blue. NO neon. NO artificial brown washes.
 
 export const Colors = {
-  // ── Brand Blue Core ────────────────────────────────────────────────────────
-  primary: '#1A68D5',          // Vibrant signature brand blue — energetic & trusted
-  primaryDark: '#124FA8',      // Deep rich blue for pressed / gradient anchor
-  primaryMedium: '#2575E6',    // Mid blue for hover & interaction
-  primaryLight: '#D6E6FA',     // Soft pastel blue for highlights
-  primaryMuted: '#EBF3FC',     // Lightest blue surface wash for icons & badges
-  primarySurface: '#F1F6FD',   // Subtle tint for active rows
+  // ── Primary Actions & Structure ───────────────────────────────────────────
+  primary: '#18181B',          // Deep charcoal — primary structure & high-priority text
+  primaryDark: '#09090B',      // Deepest for pressed states
+  primaryMedium: '#27272A',    // Mid charcoal
+  primaryLight: '#FDF2EE',     // Soft terracotta tint — selection surfaces
+  primaryMuted: '#F4F4F0',     // Clean neutral for borders / dividers
+  primarySurface: '#FFFFFF',   // Pure white canvas
 
-  // ── Money / Payout / Wage Accent (High-Visibility Warm Amber-Orange) ────────
-  money: '#EA580C',            // Warm high-energy orange for ₹ amounts & payouts
-  moneyDark: '#C2410C',
-  moneyLight: '#FFEDD5',
-  moneyMuted: '#FFF7ED',
-  amber: '#F59E0B',
+  // ── Terracotta Accent (Primary CTAs) ──────────────────────────────────────
+  accent: '#C84B26',           // Muted terracotta — CTAs, active states
+  accentDark: '#A93B1B',       // Pressed terracotta
+  accentLight: '#FDF2EE',      // Soft terracotta chip backgrounds
+  accentMuted: '#F0D5CC',      // Warm terracotta border
+  burntOrange: '#E06D3B',
+
+  // ── Value / Wage Accent (Warm Amber) ──────────────────────────────────────
+  money: '#B45309',            // Warm amber for rupee amounts
+  moneyDark: '#92400E',
+  moneyLight: '#FEF3C7',
+  moneyMuted: '#FDE68A',
+  amber: '#B45309',
   amberLight: '#FEF3C7',
+  amberBorder: '#FDE68A',
 
-  // ── Backgrounds & Neutrals ─────────────────────────────────────────────────
-  background: '#F8FAFC',       // Clean, crisp warm off-white main background
-  surface: '#FFFFFF',          // Pure white for cards & elevated components
-  surfaceElevated: '#FFFFFF',
-  surfaceSubtle: '#F1F5F9',    // Soft grey surface for alternate rows
-  border: '#E2E8F0',           // Clean modern border
-  borderLight: '#EDF2F7',      // Very subtle divider
-  borderDark: '#CBD5E1',       // High-contrast border
+  // ── Backgrounds & Surfaces (White-First) ──────────────────────────────────
+  background: '#FFFFFF',       // Pure white canvas
+  surface: '#FFFFFF',          // Pure white card surface
+  surfaceElevated: '#FFFFFF',  // White elevated modals
+  surfaceSubtle: '#FBFBF9',    // Clean subtle neutral for inputs & alternate rows
+  sand: '#F4F4F0',
+  sandLight: '#FAFAF8',
+  sandDark: '#E5E5E0',
+  border: '#E5E5E0',           // Clean taupe border
+  borderLight: '#F0F0EB',      // Subtle divider
+  borderDark: '#D4D4CE',       // Strong border
 
-  // ── Typography / Ink ───────────────────────────────────────────────────────
-  dark: '#0F172A',             // Slate dark primary text (rich & crisp)
-  darkElevated: '#1E293B',
-  textPrimary: '#0F172A',      // Headings & primary labels
-  textSecondary: '#475569',    // Secondary descriptions
-  textTertiary: '#64748B',     // Metadata, location, timestamps
-  textDisabled: '#94A3B8',
-  textMuted: '#64748B',
-  textOnPrimary: '#FFFFFF',
+  // ── Typography / Ink ──────────────────────────────────────────────────────
+  dark: '#18181B',             // Primary text
+  darkElevated: '#27272A',
+  textPrimary: '#18181B',
+  textSecondary: '#52525B',    // Legible neutral secondary
+  textTertiary: '#71717A',     // Muted metadata
+  textDisabled: '#A1A1AA',
+  textMuted: '#71717A',
+  textOnPrimary: '#FFFFFF',    // White on dark buttons
   textOnDark: '#FFFFFF',
+  textOnAccent: '#FFFFFF',
 
-  // ── Category Visual Accents (For Job & Skill Cards) ────────────────────────
-  catWarehouse: '#EA580C',
-  catWarehouseBg: '#FFEDD5',
-  catElectrical: '#D97706',
+  // ── Olive / Cooperative Accent ────────────────────────────────────────────
+  olive: '#5A6349',            // Cooperative, sustainable
+  oliveDark: '#444C36',
+  oliveLight: '#F2F4ED',
+  oliveMuted: '#C2C8B4',
+
+  // ── Category Visual Accents (Restrained) ──────────────────────────────────
+  catWarehouse: '#5A6349',
+  catWarehouseBg: '#F2F4ED',
+  catElectrical: '#B45309',
   catElectricalBg: '#FEF3C7',
-  catPlumbing: '#0284C7',
-  catPlumbingBg: '#E0F2FE',
-  catConstruction: '#B45309',
-  catConstructionBg: '#FEF3C7',
-  catDelivery: '#16A34A',
-  catDeliveryBg: '#DCFCE7',
-  catCleaning: '#0D9488',
-  catCleaningBg: '#CCFBF1',
-  catEvents: '#7C3AED',
-  catEventsBg: '#F3E8FF',
-  catHospitality: '#DB2777',
-  catHospitalityBg: '#FCE7F3',
+  catPlumbing: '#18181B',
+  catPlumbingBg: '#F4F4F0',
+  catConstruction: '#5A6349',
+  catConstructionBg: '#F2F4ED',
+  catDelivery: '#C84B26',
+  catDeliveryBg: '#FDF2EE',
+  catCleaning: '#2E7D5B',
+  catCleaningBg: '#EBF5EF',
+  catEvents: '#B45309',
+  catEventsBg: '#FEF3C7',
+  catHospitality: '#C84B26',
+  catHospitalityBg: '#FDF2EE',
 
-  // ── Semantic ───────────────────────────────────────────────────────────────
-  success: '#10B981',          // Emerald green for verified & completed states
-  successLight: '#D1FAE5',
-  successDark: '#047857',
-  error: '#EF4444',            // Clean alert red
-  errorLight: '#FEE2E2',
-  warning: '#F59E0B',
+  // ── Semantic Statuses (Soft Sage / Amber / Red) ───────────────────────────
+  success: '#2E7D5B',          // Soft Sage for verified / success
+  successLight: '#EBF5EF',
+  successDark: '#1E583F',
+  error: '#C0392B',            // Deep warm red
+  errorLight: '#FDECEA',
+  warning: '#B45309',          // Warm amber
   warningLight: '#FEF3C7',
-  info: '#1A68D5',
-  infoLight: '#EBF3FC',
+  info: '#18181B',
+  infoLight: '#F4F4F0',
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
-  tabActive: '#1A68D5',
-  tabInactive: '#94A3B8',
-  tabBackground: '#FFFFFF',
+  // ── Navigation (Clean White) ──────────────────────────────────────────────
+  tabActive: '#C84B26',        // Terracotta for active tab
+  tabInactive: '#71717A',      // Charcoal neutral
+  tabBackground: '#FFFFFF',    // Pure white nav background
+  tabBorder: '#EAEAE5',
 
-  // ── Cards ──────────────────────────────────────────────────────────────────
+  // ── Cards ─────────────────────────────────────────────────────────────────
   cardBackground: '#FFFFFF',
-  cardBorder: '#E2E8F0',
-  cardShadow: 'rgba(15, 23, 42, 0.05)',
+  cardBorder: '#E5E5E0',
+  cardShadow: 'rgba(24, 24, 27, 0.04)',
 
-  // ── Overlays ───────────────────────────────────────────────────────────────
-  overlay: 'rgba(15, 23, 42, 0.60)',
-  overlayLight: 'rgba(15, 23, 42, 0.06)',
+  // ── Overlays ──────────────────────────────────────────────────────────────
+  overlay: 'rgba(24, 24, 27, 0.5)',
+  overlayLight: 'rgba(24, 24, 27, 0.04)',
 
-  // ── Status Pills ───────────────────────────────────────────────────────────
-  statusApplied: '#1A68D5',
-  statusAccepted: '#10B981',
-  statusRejected: '#EF4444',
-  statusPending: '#F59E0B',
-  statusActive: '#1A68D5',
-  statusCompleted: '#10B981',
+  // ── Status Pills ──────────────────────────────────────────────────────────
+  statusApplied: '#18181B',
+  statusAccepted: '#2E7D5B',
+  statusRejected: '#C0392B',
+  statusPending: '#B45309',
+  statusActive: '#C84B26',
+  statusCompleted: '#2E7D5B',
 
-  // ── Backward-compatible Aliases ────────────────────────────────────────────
-  accent: '#1A68D5',
-  lime: '#1A68D5',
-  teal: '#0D9488',
-  primaryNavy: '#0F172A',
-  verified: '#1A68D5',
-  verifiedBackground: '#EBF3FC',
-  navy: '#0F172A',
-  navyLight: '#EBF3FC',
+  // ── Backward-compatible Aliases ───────────────────────────────────────────
+  accentBlue: '#18181B',       // Mapped to charcoal — NO BLUE
+  lime: '#5A6349',
+  teal: '#2E7D5B',
+  primaryNavy: '#18181B',
+  verified: '#2E7D5B',
+  verifiedBackground: '#EBF5EF',
+  navy: '#18181B',
+  navyLight: '#FDF2EE',
 } as const;
 
 export type ColorKey = keyof typeof Colors;

@@ -1,5 +1,5 @@
 // Employer Onboarding Screen — Business Name & Sector Details
-// Brand Navy (#1E3A5F)
+// Warm Premium Palette (Charcoal & Ivory)
 
 import React, { useState } from 'react';
 import {
@@ -20,18 +20,9 @@ import { FontFamily, FontSize } from '../../../constants';
 import { GigEasyButton } from '../../../components';
 import { CURRENT_EMPLOYER } from '../../../data/mockData';
 import { useEmployerStore, useAuthStore } from '../../../store';
+import { Theme } from '../../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmployerName'>;
-
-const B = {
-  bg: '#F8FAFC',
-  navy: '#1A68D5',
-  navyLight: '#EBF3FC',
-  ink: '#0F172A',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-};
 
 const BUSINESS_TYPES = [
   'Logistics & Warehousing',
@@ -67,7 +58,7 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={B.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={Theme.bg} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -87,8 +78,8 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.inputLabel}>Company / Business Name</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="e.g. Bharat Logistics Pvt Ltd"
-              placeholderTextColor="#8A99AB"
+              placeholder="e.g. Acme Logistics, Verma Builders"
+              placeholderTextColor="#8C7D6E"
               value={businessName}
               onChangeText={setBusinessName}
               autoFocus
@@ -132,7 +123,7 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
             <TextInput
               style={styles.textInput}
               placeholder="e.g. Noida, Gurugram, Delhi"
-              placeholderTextColor="#8A99AB"
+              placeholderTextColor="#8C7D6E"
               value={city}
               onChangeText={setCity}
             />
@@ -157,7 +148,7 @@ export const EmployerNameScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: B.bg },
+  container: { flex: 1, backgroundColor: Theme.bg },
   scrollContent: { flexGrow: 1 },
   content: {
     flex: 1,
@@ -172,7 +163,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FontFamily.bold,
     fontSize: 32,
-    color: B.ink,
+    color: Theme.ink,
     lineHeight: 38,
     letterSpacing: -1,
     marginBottom: 8,
@@ -180,7 +171,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: B.textMuted,
+    color: Theme.textSecondary,
     lineHeight: 20,
   },
   inputGroup: {
@@ -189,19 +180,25 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: B.ink,
+    color: Theme.ink,
     marginBottom: 8,
+    letterSpacing: 0.2,
   },
   textInput: {
-    backgroundColor: B.white,
+    backgroundColor: Theme.surface,
     borderWidth: 1.5,
-    borderColor: B.border,
+    borderColor: Theme.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: B.ink,
+    color: Theme.ink,
+    shadowColor: Theme.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   typeGrid: {
     flexDirection: 'row',
@@ -213,20 +210,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: B.border,
-    backgroundColor: B.white,
+    borderColor: Theme.border,
+    backgroundColor: Theme.surface,
   },
   typeChipSelected: {
-    borderColor: B.navy,
-    backgroundColor: B.navy,
+    borderColor: Theme.accent,
+    backgroundColor: Theme.accent,
   },
   typeText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: B.ink,
+    color: Theme.ink,
   },
   typeTextSelected: {
-    color: '#FFFFFF',
+    color: Theme.textOnAccent,
     fontFamily: FontFamily.semiBold,
   },
   ctaSection: {

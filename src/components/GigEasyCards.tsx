@@ -1,7 +1,9 @@
-// GigEasyCard — High-Scannability Consumer Job & Worker Cards
-// Strict Hierarchy: 1. Visual/Photo -> 2. Job Name -> 3. Pay -> 4. Location/Dist -> 5. Time -> 6. Action
+// GigEasy Cards — Production Design System v2
+// Icon-first. Earnings dominant. Visual match signals. Zero paragraph text.
+// JobCard · WorkerCard · ApplicationCard · PersonalizedJobCard · BestMatchBanner
 
-import React from 'react';
+import React, { useState } from 'react';
+import { MatchScoreBreakdown } from '../services/matching/matchingEngine';
 import {
   View,
   Text,
@@ -32,25 +34,11 @@ import {
   getCategoryVisual,
 } from './GigEasyPrimitives';
 import { useLanguageStore } from '../store';
-
 import { Theme } from '../theme';
 
-const T = {
-  primary: Theme.primary,
-  primaryLight: Theme.primaryLight,
-  primaryMuted: Theme.primaryLight,
-  money: Theme.primary,
-  moneyBg: Theme.primaryLight,
-  ink: Theme.ink,
-  textSecondary: Theme.textSecondary,
-  textMuted: Theme.textMuted,
-  border: Theme.border,
-  white: Theme.surface,
-  success: Theme.success,
-  successLight: Theme.successLight,
-};
-
-// ─── Visual Job Card ──────────────────────────────────────────────────────────
+// ─── Job Card ─────────────────────────────────────────────────────────────────
+// Visual hierarchy: ICON + TITLE / WAGE → TIME • DISTANCE → SPOTS + ACTION
+// Everything communicates in one scan. No paragraph text.
 
 interface JobCardProps {
   job: Job;
@@ -63,90 +51,79 @@ export const GigEasyJobCard: React.FC<JobCardProps> = ({
   onPress,
   style,
 }) => {
-  const { t } = useLanguageStore();
+  const { t, language } = useLanguageStore();
+  const isHi = language === 'hi';
   const catVisual = getCategoryVisual(job.skillRequired.category);
   const isFull = job.workersHired >= job.workersRequired;
+  const spotsLeft = job.workersRequired - job.workersHired;
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.88}
+      activeOpacity={0.87}
       style={[styles.jobCard, style]}
     >
-      <View style={styles.cardMainRow}>
-        {/* 1. Category Visual Thumbnail */}
-        <View style={[styles.visualBox, { backgroundColor: catVisual.bg }]}>
-          <Feather name={catVisual.iconName} size={22} color={catVisual.color} />
-          <Text style={[styles.visualTag, { color: catVisual.color }]} numberOfLines={1}>
-            {job.skillRequired.category}
-          </Text>
-        </View>
-
-        {/* 2. Job Info & 3. Pay */}
-        <View style={styles.cardContent}>
-          <View style={styles.titleWageRow}>
-            <View style={styles.titleBlock}>
-              <Text style={styles.jobTitle} numberOfLines={1}>
-                {job.title}
-              </Text>
-              <Text style={styles.employerName} numberOfLines={1}>
-                {job.employer.businessName}
-              </Text>
-            </View>
-
-            {/* High-Visibility Warm Wage Pill */}
-            <View style={styles.wagePill}>
-              <Text style={styles.wageText}>{formatWage(job.maxWage)}</Text>
-              <Text style={styles.wageUnit}>/day</Text>
-            </View>
-          </View>
-
-          {/* 4. Location & 5. Time */}
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Feather name="map-pin" size={12} color={T.primary} />
-              <Text style={styles.metaText} numberOfLines={1}>
-                {job.location.city} {job.distanceKm !== undefined ? `· ${formatDistance(job.distanceKm)}` : ''}
-              </Text>
-            </View>
-
-            <View style={styles.metaDot} />
-
-            <View style={styles.metaItem}>
-              <Feather name="clock" size={12} color={T.textMuted} />
-              <Text style={styles.metaText}>
-                {t('today')} · {job.startTime}
-              </Text>
-            </View>
-          </View>
-        </View>
+      {/* Category icon tile — communicates work type BEFORE reading title */}
+      <View style={[styles.catIconTile, { backgroundColor: catVisual.bg }]}>
+        <Feather name={catVisual.iconName} size={20} color={catVisual.color} />
       </View>
 
-      {/* Card Footer: Staffing count & Action CTA */}
-      <View style={styles.cardFooter}>
-        <View style={styles.hiringCountBadge}>
-          <View style={[styles.liveDot, { backgroundColor: isFull ? '#94A3B8' : T.success }]} />
-          <Text style={styles.hiringCountText}>
-            {isFull ? 'Positions Filled' : `${job.workersRequired - job.workersHired} spots left`}
+      <View style={styles.cardContent}>
+        {/* Row 1: Title + Wage */}
+        <View style={styles.titleWageRow}>
+          <Text style={styles.jobTitle} numberOfLines={1}>
+            {job.title}
+          </Text>
+          <View style={styles.wageBlock}>
+            <Text style={styles.wageAmount}>{formatWage(job.maxWage)}</Text>
+            <Text style={styles.wageUnit}>{t('perDay')}</Text>
+          </View>
+        </View>
+
+        {/* Row 2: Time • Distance • City — icon-first, no labels */}
+        <View style={styles.metaRow}>
+          <Feather name="clock" size={11} color={Theme.textMuted} />
+          <Text style={styles.metaText}>{job.startTime}</Text>
+          <View style={styles.metaDot} />
+          <Feather name="map-pin" size={11} color={Theme.textMuted} />
+          <Text style={styles.metaText}>
+            {job.distanceKm !== undefined ? `${formatDistance(job.distanceKm)} · ` : ''}{job.location.city}
           </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={onPress}
-          activeOpacity={0.8}
-          style={[styles.applyBtn, isFull && styles.applyBtnFull]}
-        >
-          <Text style={[styles.applyBtnText, isFull && styles.applyBtnFullText]}>
-            {isFull ? 'View' : t('applyNow')}
-          </Text>
-          <Feather name="arrow-right" size={13} color={isFull ? T.textMuted : T.white} />
-        </TouchableOpacity>
+        {/* Row 3: Spots indicator + Apply CTA */}
+        <View style={styles.footerRow}>
+          <View style={styles.spotsRow}>
+            <View style={[
+              styles.spotsIndicator,
+              { backgroundColor: isFull ? Theme.textDisabled : Theme.forestGreen }
+            ]} />
+            <Text style={[styles.spotsText, { color: isFull ? Theme.textMuted : Theme.forestGreen }]}>
+              {isFull ? (isHi ? 'भर गया' : 'Full') : `${spotsLeft} ${isHi ? 'जगह बाकी' : (spotsLeft === 1 ? 'spot' : 'spots')}`}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.8}
+            style={[styles.applyBtn, isFull && styles.applyBtnFull]}
+          >
+            <Text style={[styles.applyBtnText, isFull && styles.applyBtnFullText]}>
+              {isFull ? (isHi ? 'देखें' : 'View') : (isHi ? 'काम देखें' : 'Apply')}
+            </Text>
+            <Feather
+              name="arrow-right"
+              size={11}
+              color={isFull ? Theme.textMuted : Theme.textOnAccent}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-// ─── Visual Worker Card (for Employers) ───────────────────────────────────────
+// ─── Worker Card — Employer View ──────────────────────────────────────────────
 
 interface WorkerCardProps {
   worker: WorkerProfile;
@@ -167,21 +144,20 @@ export const GigEasyWorkerCard: React.FC<WorkerCardProps> = ({
   application,
   style,
 }) => {
-  const { t } = useLanguageStore();
+  const { t, language } = useLanguageStore();
   const primarySkill = worker.skills[0]?.name ?? 'General Worker';
-  const catVisual = getCategoryVisual(worker.skills[0]?.category ?? 'General');
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.88}
+      activeOpacity={0.87}
       style={[styles.workerCard, style]}
     >
       <View style={styles.workerTopRow}>
         <GigEasyAvatar
           name={worker.name}
           photoUri={worker.profilePhoto}
-          size={50}
+          size={46}
           showVerified={worker.verificationStatus === 'verified'}
         />
 
@@ -193,29 +169,25 @@ export const GigEasyWorkerCard: React.FC<WorkerCardProps> = ({
             )}
           </View>
 
-          {/* Primary skill visual chip */}
-          <View style={[styles.skillChip, { backgroundColor: catVisual.bg }]}>
-            <Feather name={catVisual.iconName} size={11} color={catVisual.color} />
-            <Text style={[styles.skillChipText, { color: catVisual.color }]}>
-              {primarySkill}
-            </Text>
-          </View>
+          <Text style={styles.skillLabel}>{primarySkill}</Text>
 
           <View style={styles.workerMetaRow}>
-            <GigEasyRating rating={worker.rating} count={worker.completedJobs} />
+            <GigEasyRating rating={worker.rating} />
             <View style={styles.metaDot} />
-            <Text style={styles.workerLocText}>{worker.location.city} · Within {worker.preferredRadius}km</Text>
+            <Feather name="map-pin" size={10} color={Theme.textMuted} />
+            <Text style={styles.workerLocText}>
+              {worker.location.city}
+            </Text>
           </View>
         </View>
 
-        {/* Worker Trust Score */}
-        <View style={styles.workerWageBlock}>
-          <Text style={styles.workerWageAmount}>{worker.trustScore}%</Text>
-          <Text style={styles.workerWagePeriod}>Trust Score</Text>
+        {/* Trust Score — restrained olive */}
+        <View style={styles.trustBlock}>
+          <Text style={styles.trustScore}>{worker.trustScore}</Text>
+          <Text style={styles.trustLabel}>{t('trustScore') || (language === 'hi' ? 'भरोसा' : 'Trust')}</Text>
         </View>
       </View>
 
-      {/* Action footer */}
       {showActions && (
         <View style={styles.workerActionRow}>
           {onNegotiate && (
@@ -243,11 +215,11 @@ export const GigEasyWorkerCard: React.FC<WorkerCardProps> = ({
         <View style={styles.applicationBanner}>
           <GigEasyStatusPill
             status={application.status}
-            label={getStatusLabel(application.status)}
+            label={getStatusLabel(application.status, language)}
             color={getStatusColor(application.status)}
           />
           <Text style={styles.proposedWageText}>
-            Asking: {formatWage(application.proposedWage)}/day
+            {formatWage(application.proposedWage)}{t('perDay')}
           </Text>
         </View>
       )}
@@ -255,7 +227,7 @@ export const GigEasyWorkerCard: React.FC<WorkerCardProps> = ({
   );
 };
 
-// ─── Application Card (Worker View) ──────────────────────────────────────────
+// ─── Application Card — Worker Activity View ──────────────────────────────────
 
 interface ApplicationCardProps {
   application: JobApplication;
@@ -266,6 +238,7 @@ export const GigEasyApplicationCard: React.FC<ApplicationCardProps> = ({
   application,
   onPress,
 }) => {
+  const { language } = useLanguageStore();
   const { job, status, proposedWage } = application;
   const statusColor = getStatusColor(status);
   const catVisual = getCategoryVisual(job.skillRequired.category);
@@ -273,254 +246,235 @@ export const GigEasyApplicationCard: React.FC<ApplicationCardProps> = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.88}
+      activeOpacity={0.87}
       style={styles.appCard}
     >
       <View style={styles.appCardTop}>
-        <View style={[styles.smallVisualBox, { backgroundColor: catVisual.bg }]}>
-          <Feather name={catVisual.iconName} size={16} color={catVisual.color} />
+        {/* Category icon */}
+        <View style={[styles.catIconTileSmall, { backgroundColor: catVisual.bg }]}>
+          <Feather name={catVisual.iconName} size={14} color={catVisual.color} />
         </View>
 
         <View style={styles.appTitleBlock}>
           <Text style={styles.appJobTitle} numberOfLines={1}>{job.title}</Text>
-          <Text style={styles.appEmployer}>{job.employer.businessName}</Text>
+          <View style={styles.appMetaRow}>
+            <Feather name="clock" size={10} color={Theme.textMuted} />
+            <Text style={styles.appMetaText}>{formatDate(job.startDate)}</Text>
+          </View>
         </View>
 
-        <GigEasyStatusPill
-          status={status}
-          label={getStatusLabel(status)}
-          color={statusColor}
-        />
-      </View>
-
-      <View style={styles.appCardBottom}>
-        <View style={styles.metaItem}>
-          <Feather name="clock" size={11} color={T.textMuted} />
-          <Text style={styles.appDateText}>{formatDate(job.startDate)} · {job.startTime}</Text>
+        <View style={styles.appRightCol}>
+          <Text style={styles.appWageAmount}>{formatWage(proposedWage)}</Text>
+          <GigEasyStatusPill
+            status={status}
+            label={getStatusLabel(status, language)}
+            color={statusColor}
+          />
         </View>
-        <Text style={styles.appWageAmount}>{formatWage(proposedWage)}/day</Text>
       </View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  // Job Card
+  // ── Job Card ─────────────────────────────────────────────────────────────────
   jobCard: {
-    backgroundColor: T.white,
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
+    backgroundColor: Theme.surface,
+    borderRadius: 16,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: T.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
+    borderColor: Theme.cardBorder,
+    shadowColor: Theme.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 2,
-  },
-  cardMainRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    padding: 14,
     gap: 12,
+    alignItems: 'flex-start',
   },
-  visualBox: {
-    width: 62,
-    height: 62,
-    borderRadius: 14,
+  catIconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 4,
+    flexShrink: 0,
   },
-  visualTag: {
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    marginTop: 2,
-    textAlign: 'center',
+  catIconTileSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   cardContent: {
     flex: 1,
+    gap: 6,
   },
   titleWageRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 6,
-    gap: 6,
-  },
-  titleBlock: {
-    flex: 1,
+    gap: 8,
   },
   jobTitle: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: T.ink,
-    letterSpacing: -0.2,
-    marginBottom: 2,
+    color: Theme.ink,
+    letterSpacing: -0.3,
+    flex: 1,
+    lineHeight: 20,
   },
-  employerName: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: T.textSecondary,
-  },
-  wagePill: {
-    backgroundColor: T.moneyBg,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
+  wageBlock: {
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
-  wageText: {
+  wageAmount: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 15,
-    color: T.money,
-    letterSpacing: -0.4,
+    fontSize: 17,
+    color: Theme.accent,
+    letterSpacing: -0.5,
+    lineHeight: 20,
   },
   wageUnit: {
     fontFamily: FontFamily.medium,
     fontSize: 9.5,
-    color: T.money,
+    color: Theme.textMuted,
+    textAlign: 'right',
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   metaText: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: T.textSecondary,
+    fontSize: 11.5,
+    color: Theme.textSecondary,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: Theme.sandDark,
+    marginHorizontal: 2,
   },
-  cardFooter: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 10,
-    marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    marginTop: 2,
   },
-  hiringCountBadge: {
+  spotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  liveDot: {
+  spotsIndicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  hiringCountText: {
+  spotsText: {
     fontFamily: FontFamily.medium,
     fontSize: 11,
-    color: T.textSecondary,
   },
   applyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: T.primary,
-    paddingHorizontal: 14,
+    gap: 4,
+    backgroundColor: Theme.accent,
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 10,
+    borderRadius: 9,
   },
   applyBtnFull: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Theme.border,
   },
   applyBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 12,
-    color: T.white,
+    color: Theme.textOnAccent,
   },
   applyBtnFullText: {
-    color: T.textMuted,
+    color: Theme.textMuted,
   },
 
-  // Worker Card
+  // ── Worker Card ──────────────────────────────────────────────────────────────
   workerCard: {
-    backgroundColor: T.white,
-    borderRadius: 18,
+    backgroundColor: Theme.surface,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: T.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
+    borderColor: Theme.cardBorder,
+    shadowColor: Theme.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 5,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 1,
   },
   workerTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 11,
   },
   workerInfoCol: {
     flex: 1,
+    gap: 2,
   },
   nameVerifiedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 3,
+    gap: 5,
   },
   workerName: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: T.ink,
+    fontSize: 14.5,
+    color: Theme.ink,
+    letterSpacing: -0.2,
   },
-  skillChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
-  skillChipText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10.5,
+  skillLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Theme.textSecondary,
   },
   workerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    marginTop: 2,
   },
   workerLocText: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
   },
-  workerWageBlock: {
-    alignItems: 'flex-end',
-    backgroundColor: T.moneyBg,
+  trustBlock: {
+    alignItems: 'center',
+    backgroundColor: Theme.oliveLight,
+    borderWidth: 1,
+    borderColor: Theme.oliveMuted,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 5,
+    borderRadius: 9,
+    minWidth: 42,
   },
-  workerWageAmount: {
+  trustScore: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 15,
-    color: T.money,
+    fontSize: 13,
+    color: Theme.olive,
+    letterSpacing: -0.3,
   },
-  workerWagePeriod: {
+  trustLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 9.5,
-    color: T.money,
+    fontSize: 9,
+    color: Theme.olive,
   },
   workerActionRow: {
     flexDirection: 'row',
@@ -528,32 +482,33 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Theme.cardBorder,
   },
   negotiateBtn: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: T.primary,
+    borderRadius: 9,
+    backgroundColor: Theme.surface,
+    borderWidth: 1,
+    borderColor: Theme.border,
     alignItems: 'center',
   },
   negotiateBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 12,
-    color: T.primary,
+    color: Theme.ink,
   },
   hireBtn: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: T.primary,
+    borderRadius: 9,
+    backgroundColor: Theme.accent,
     alignItems: 'center',
   },
   hireBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 12,
-    color: T.white,
+    color: Theme.textOnAccent,
   },
   applicationBanner: {
     flexDirection: 'row',
@@ -562,70 +517,608 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Theme.cardBorder,
   },
   proposedWageText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: T.textSecondary,
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: Theme.amber,
   },
 
-  // Application Card
+  // ── Application Card ─────────────────────────────────────────────────────────
   appCard: {
-    backgroundColor: T.white,
-    borderRadius: 16,
+    backgroundColor: Theme.surface,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: T.border,
-    shadowColor: '#0F172A',
+    borderColor: Theme.cardBorder,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
     elevation: 1,
   },
   appCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 8,
-  },
-  smallVisualBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   appTitleBlock: {
     flex: 1,
+    gap: 3,
   },
   appJobTitle: {
     fontFamily: FontFamily.bold,
     fontSize: 14,
-    color: T.ink,
+    color: Theme.ink,
+    letterSpacing: -0.2,
   },
-  appEmployer: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: T.textSecondary,
-  },
-  appCardBottom: {
+  appMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    gap: 4,
   },
-  appDateText: {
+  appMetaText: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
+  },
+  appRightCol: {
+    alignItems: 'flex-end',
+    gap: 4,
+    flexShrink: 0,
   },
   appWageAmount: {
     fontFamily: FontFamily.extraBold,
     fontSize: 14,
-    color: T.money,
+    color: Theme.amber,
+    letterSpacing: -0.3,
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── PersonalizedJobCard ───────────────────────────────────────────────────────
+// Icon-first. Match communicated via left stripe strength + visual chips.
+// No "% match" pill text. No paragraph "why" reasoning.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PersonalizedJobCardProps {
+  job: Job;
+  match: MatchScoreBreakdown;
+  finalScore: number;
+  reasons: string[];
+  distanceKm: number;
+  isNew?: boolean;
+  isSelected?: boolean;
+  onPress: () => void;
+}
+
+// Convert verbose reason strings into compact icon+micro-label chips
+function parseReasonChip(reason: string, isHi: boolean = false): { icon: keyof typeof Feather.glyphMap; label: string } {
+  const r = reason.toLowerCase();
+  if (r.includes('skill') || r.includes('trade') || r.includes('experience') || r.includes('match') || r.includes('स्किल')) {
+    return { icon: 'check-circle', label: isHi ? 'स्किल मिलती है' : 'Skill match' };
+  }
+  if (r.includes('km') || r.includes('radius') || r.includes('distance') || r.includes('near') || r.includes('दूरी') || r.includes('नज़दीक')) {
+    return { icon: 'map-pin', label: isHi ? 'पास में' : 'Nearby' };
+  }
+  if (r.includes('avail') || r.includes('time') || r.includes('schedule') || r.includes('समय') || r.includes('उपलब्ध')) {
+    return { icon: 'clock', label: isHi ? 'समय सही' : 'Available' };
+  }
+  if (r.includes('pay') || r.includes('wage') || r.includes('earn') || r.includes('दिहाड़ी') || r.includes('पैसे')) {
+    return { icon: 'dollar-sign', label: isHi ? 'सही दिहाड़ी' : 'Good pay' };
+  }
+  if (r.includes('rating') || r.includes('rated') || r.includes('trusted') || r.includes('भरोसा')) {
+    return { icon: 'star', label: isHi ? 'भरोसेमंद' : 'Trusted' };
+  }
+  return { icon: 'check', label: reason.split(' ').slice(0, 2).join(' ') };
+}
+
+// Left stripe color signals match quality before the user reads anything
+function getStripeColor(score: number): string {
+  if (score >= 90) return Theme.forestGreen;
+  if (score >= 70) return Theme.olive;
+  if (score >= 50) return Theme.amber;
+  return Theme.textMuted;
+}
+
+export const PersonalizedJobCard: React.FC<PersonalizedJobCardProps> = ({
+  job,
+  match,
+  finalScore,
+  reasons,
+  distanceKm,
+  isNew = false,
+  isSelected = false,
+  onPress,
+}) => {
+  const { t, language } = useLanguageStore();
+  const isHi = language === 'hi';
+  const [expanded, setExpanded] = useState(false);
+  const catVisual = getCategoryVisual(job.skillRequired.category);
+  const isFull = job.workersHired >= job.workersRequired;
+  const spotsLeft = job.workersRequired - job.workersHired;
+  const stripeColor = getStripeColor(finalScore);
+
+  // Deduplicate and limit to 3 chips max
+  const chips = reasons
+    .map(r => parseReasonChip(r, isHi))
+    .filter((c, i, arr) => arr.findIndex(x => x.label === c.label) === i)
+    .slice(0, 3);
+
+  return (
+    <View style={[pStyles.card, isSelected && pStyles.cardSelected]}>
+      {/* Left match stripe — color signals quality at a glance */}
+      <View style={[pStyles.matchStripe, { backgroundColor: stripeColor }]} />
+
+      {/* New gig pulse dot */}
+      {isNew && <View style={pStyles.newDot} />}
+
+      <TouchableOpacity onPress={onPress} activeOpacity={0.87} style={pStyles.inner}>
+        {/* Row 1: Category icon + Title + Wage */}
+        <View style={pStyles.topRow}>
+          <View style={[pStyles.catIconTile, { backgroundColor: catVisual.bg }]}>
+            <Feather name={catVisual.iconName} size={19} color={catVisual.color} />
+          </View>
+
+          <View style={pStyles.titleBlock}>
+            <Text style={pStyles.jobTitle} numberOfLines={1}>{job.title}</Text>
+            <View style={pStyles.metaRow}>
+              <Feather name="clock" size={10} color={Theme.textMuted} />
+              <Text style={pStyles.metaText}>{job.startTime}</Text>
+              <View style={pStyles.metaDot} />
+              <Feather name="map-pin" size={10} color={Theme.textMuted} />
+              <Text style={pStyles.metaText}>{distanceKm.toFixed(1)} km</Text>
+            </View>
+          </View>
+
+          <View style={pStyles.wageCol}>
+            <Text style={pStyles.wageAmount}>{formatWage(job.maxWage)}</Text>
+            <Text style={pStyles.wageUnit}>{t('perDay')}</Text>
+          </View>
+        </View>
+
+        {/* Row 2: Match reason chips + Apply button */}
+        <View style={pStyles.footerRow}>
+          <View style={pStyles.chipsRow}>
+            {chips.map((chip, i) => (
+              <View key={i} style={pStyles.chip}>
+                <Feather name={chip.icon} size={9} color={stripeColor} />
+                <Text style={[pStyles.chipText, { color: stripeColor }]}>{chip.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.8}
+            style={[pStyles.applyBtn, isFull && pStyles.applyBtnFull]}
+          >
+            <Text style={[pStyles.applyBtnText, isFull && pStyles.applyBtnFullText]}>
+              {isFull ? (isHi ? 'देखें' : 'View') : (isHi ? 'काम देखें' : 'Apply')}
+            </Text>
+            <Feather
+              name="arrow-right"
+              size={11}
+              color={isFull ? Theme.textMuted : Theme.textOnAccent}
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const pStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Theme.surface,
+    borderRadius: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Theme.cardBorder,
+    shadowColor: Theme.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  cardSelected: {
+    borderColor: Theme.accent,
+    borderWidth: 1.5,
+    shadowColor: Theme.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 4,
+    backgroundColor: '#FFFDFB',
+  },
+  matchStripe: {
+    width: 4,
+  },
+  newDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Theme.forestGreen,
+    zIndex: 10,
+  },
+  inner: {
+    flex: 1,
+    padding: 13,
+    gap: 10,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  catIconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  titleBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  jobTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14.5,
+    color: Theme.ink,
+    letterSpacing: -0.3,
+    lineHeight: 19,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: Theme.textSecondary,
+  },
+  metaDot: {
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.25,
+    backgroundColor: Theme.sandDark,
+    marginHorizontal: 2,
+  },
+  wageCol: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  wageAmount: {
+    fontFamily: FontFamily.extraBold,
+    fontSize: 16,
+    color: Theme.accent,
+    letterSpacing: -0.5,
+  },
+  wageUnit: {
+    fontFamily: FontFamily.medium,
+    fontSize: 9.5,
+    color: Theme.textMuted,
+    textAlign: 'right',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 5,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Theme.surfaceSubtle,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  chipText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 9.5,
+  },
+  applyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Theme.accent,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 9,
+    flexShrink: 0,
+  },
+  applyBtnFull: {
+    backgroundColor: Theme.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  applyBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: Theme.textOnAccent,
+  },
+  applyBtnFullText: { color: Theme.textMuted },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── BestMatchBanner — Visually dominant #1 ranked gig ────────────────────────
+// This must NOT look like a bigger card. It IS different — it is the highlight.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface BestMatchBannerProps {
+  job: Job;
+  finalScore: number;
+  distanceKm: number;
+  moreCount?: number;
+  onPress: () => void;
+}
+
+export const BestMatchBanner: React.FC<BestMatchBannerProps> = ({
+  job,
+  finalScore,
+  distanceKm,
+  moreCount = 0,
+  onPress,
+}) => {
+  const { t, language } = useLanguageStore();
+  const isHi = language === 'hi';
+  const catVisual = getCategoryVisual(job.skillRequired.category);
+  // Fit bar: 10 blocks, filled proportional to score
+  const filledBlocks = Math.round((finalScore / 100) * 10);
+
+  return (
+    <View style={bmStyles.wrapper}>
+      {/* Best Fit chip — compact, green, no verbose text */}
+      <View style={bmStyles.eyebrowRow}>
+        <View style={bmStyles.bestFitChip}>
+          <View style={bmStyles.bestFitDot} />
+          <Text style={bmStyles.bestFitText}>{isHi ? 'बेस्ट काम' : 'BEST FIT'}</Text>
+        </View>
+        {moreCount > 0 && (
+          <Text style={bmStyles.moreCountText}>+{moreCount} {isHi ? 'और काम' : 'more'}</Text>
+        )}
+      </View>
+
+      <TouchableOpacity onPress={onPress} activeOpacity={0.87} style={bmStyles.card}>
+        {/* Forest green left accent — visually distinguishes from ordinary cards */}
+        <View style={bmStyles.leftAccent} />
+
+        <View style={bmStyles.cardInner}>
+          {/* Top: Large category icon + title + wage */}
+          <View style={bmStyles.topSection}>
+            <View style={[bmStyles.catIconLarge, { backgroundColor: catVisual.bg }]}>
+              <Feather name={catVisual.iconName} size={24} color={catVisual.color} />
+            </View>
+
+            <View style={bmStyles.titleSection}>
+              <Text style={bmStyles.jobTitle} numberOfLines={1}>{job.title}</Text>
+              <Text style={bmStyles.employerName}>{job.employer.businessName}</Text>
+            </View>
+
+            <View style={bmStyles.wageSection}>
+              <Text style={bmStyles.wageAmount}>{formatWage(job.maxWage)}</Text>
+              <Text style={bmStyles.wageUnit}>{t('perDay')}</Text>
+            </View>
+          </View>
+
+          {/* Middle: Time + Distance — icon row, no labels */}
+          <View style={bmStyles.metaRow}>
+            <Feather name="clock" size={12} color={Theme.textSecondary} />
+            <Text style={bmStyles.metaText}>{isHi ? 'आज' : 'Today'} · {job.startTime}</Text>
+            <View style={bmStyles.metaDot} />
+            <Feather name="map-pin" size={12} color={Theme.textSecondary} />
+            <Text style={bmStyles.metaText}>{distanceKm.toFixed(1)} km · {job.location.city}</Text>
+          </View>
+
+          {/* Fit bar — visual score, no text label */}
+          <View style={bmStyles.fitRow}>
+            <View style={bmStyles.fitBar}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    bmStyles.fitBlock,
+                    { backgroundColor: i < filledBlocks ? Theme.forestGreen : Theme.border }
+                  ]}
+                />
+              ))}
+            </View>
+            <Text style={bmStyles.fitLabel}>
+              {finalScore >= 90
+                ? (isHi ? 'बेहतरीन काम' : 'Excellent fit')
+                : finalScore >= 75
+                ? (isHi ? 'बहुत सही काम' : 'Strong fit')
+                : (isHi ? 'अच्छा काम' : 'Good fit')}
+            </Text>
+          </View>
+
+          {/* CTA — full width, prominent */}
+          <TouchableOpacity onPress={onPress} activeOpacity={0.86} style={bmStyles.cta}>
+            <Text style={bmStyles.ctaText}>{isHi ? 'काम देखें' : 'View Gig'}</Text>
+            <Feather name="arrow-right" size={14} color={Theme.textOnAccent} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const bmStyles = StyleSheet.create({
+  wrapper: {
+    marginBottom: 14,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  bestFitChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Theme.forestGreenLight,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderWidth: 1,
+    borderColor: Theme.forestGreenBorder,
+  },
+  bestFitDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Theme.forestGreen,
+  },
+  bestFitText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: Theme.forestGreen,
+    letterSpacing: 0.5,
+  },
+  moreCountText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Theme.textMuted,
+  },
+  card: {
+    backgroundColor: Theme.surface,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: Theme.forestGreenBorder,
+    shadowColor: Theme.shadowColor,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  leftAccent: {
+    width: 5,
+    backgroundColor: Theme.forestGreen,
+  },
+  cardInner: {
+    flex: 1,
+    padding: 16,
+    gap: 12,
+  },
+  topSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  catIconLarge: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  titleSection: {
+    flex: 1,
+  },
+  jobTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 17,
+    color: Theme.ink,
+    letterSpacing: -0.4,
+    lineHeight: 22,
+    marginBottom: 2,
+  },
+  employerName: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11.5,
+    color: Theme.textSecondary,
+  },
+  wageSection: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  wageAmount: {
+    fontFamily: FontFamily.extraBold,
+    fontSize: 19,
+    color: Theme.accent,
+    letterSpacing: -0.6,
+  },
+  wageUnit: {
+    fontFamily: FontFamily.medium,
+    fontSize: 10,
+    color: Theme.textMuted,
+    textAlign: 'right',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  metaText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Theme.textSecondary,
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Theme.sandDark,
+    marginHorizontal: 1,
+  },
+  fitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fitBar: {
+    flexDirection: 'row',
+    gap: 2,
+    flex: 1,
+  },
+  fitBlock: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  fitLabel: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: Theme.forestGreen,
+    flexShrink: 0,
+  },
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Theme.accent,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  ctaText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: Theme.textOnAccent,
   },
 });

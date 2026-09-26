@@ -20,6 +20,7 @@ import { FontFamily } from '../../constants';
 import { useAuthStore, useLanguageStore } from '../../store';
 import { Theme } from '../../theme';
 import { authService } from '../../services/firebase';
+import { api } from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OTP'>;
 
@@ -107,10 +108,11 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
 
       if (result.success && result.user) {
         const uid = result.user.uid || `usr_${phoneNumber.replace(/\D/g, '')}`;
+        const displayName = result.user.displayName || (targetRole === 'employer' ? 'Employer User' : 'Worker User');
         setAuthenticated(
           uid,
           targetRole,
-          result.user.displayName || (targetRole === 'employer' ? 'Employer User' : 'Worker User'),
+          displayName,
           result.user.email || '',
           phoneNumber,
           'verified',
@@ -118,11 +120,17 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
           result.token
         );
 
-        if (targetRole === 'employer') {
-          navigation.replace('EmployerName');
-        } else {
-          navigation.replace('WorkerName');
-        }
+        // Synchronize user role with backend database
+        api.syncUser({
+          id: uid,
+          email: result.user.email || `${uid}@gigeasy.app`,
+          phone_number: phoneNumber,
+          role: targetRole,
+          name: displayName,
+          verification_status: 'verified',
+        }).catch((e) => console.warn('[OTPScreen] User sync note:', e.message));
+
+        // setAuthenticated triggers RootNavigator to switch to Authenticated stack (MainApp) automatically
       } else {
         setErrorMsg(result.error || 'Invalid 6-digit code. Please try again.');
       }
@@ -150,10 +158,11 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
 
       if (result.success && result.user) {
         const uid = result.user.uid || `usr_${phoneNumber.replace(/\D/g, '')}`;
+        const displayName = result.user.displayName || (targetRole === 'employer' ? 'Employer User' : 'Worker User');
         setAuthenticated(
           uid,
           targetRole,
-          result.user.displayName || '',
+          displayName,
           result.user.email || '',
           phoneNumber,
           'verified',
@@ -161,11 +170,17 @@ export const OTPScreen: React.FC<Props> = ({ route, navigation }) => {
           result.token
         );
 
-        if (targetRole === 'employer') {
-          navigation.replace('EmployerName');
-        } else {
-          navigation.replace('WorkerName');
-        }
+        // Synchronize user role with backend database
+        api.syncUser({
+          id: uid,
+          email: result.user.email || `${uid}@gigeasy.app`,
+          phone_number: phoneNumber,
+          role: targetRole,
+          name: displayName,
+          verification_status: 'verified',
+        }).catch((e) => console.warn('[OTPScreen] AutoFill user sync note:', e.message));
+
+        // setAuthenticated triggers RootNavigator to switch to Authenticated stack (MainApp) automatically
       }
     } catch (err) {
       console.error('Demo auto-fill error:', err);

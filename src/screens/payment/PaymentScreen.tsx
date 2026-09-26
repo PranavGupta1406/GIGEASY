@@ -24,10 +24,11 @@ import { formatWage, formatDate } from '../../data/mockData';
 import { useSharedApplicationsStore, useEmployerStore } from '../../store';
 import { Theme } from '../../theme';
 import { GigEasyVerifiedBadge } from '../../components/GigEasyPrimitives';
+import { api } from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
 
-type PaymentMethod = 'UPI' | 'QR_CODE' | 'RAZORPAY';
+type PaymentMethod = 'UPI' | 'QR_CODE' | 'RAZORPAY' | 'CASH';
 
 const UPI_APPS = [
   { id: 'gpay', name: 'Google Pay', icon: 'zap' },
@@ -42,51 +43,103 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
   const { getApplication, recordPayment } = useSharedApplicationsStore();
   const app = getApplication(applicationId);
 
-  const [method, setMethod] = useState<PaymentMethod>('UPI');
+  const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [selectedUpiApp, setSelectedUpiApp] = useState('gpay');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(1);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [txReceipt, setTxReceipt] = useState<any>(null);
+  const [cashOtp, setCashOtp] = useState<string | null>(null);
+  const [cashOtpExpiresAt, setCashOtpExpiresAt] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [serverStatus, setServerStatus] = useState<string | null>(null);
 
   const wageAmount = app?.agreedWage ?? app?.proposedWage ?? 1000;
   const workerName = app?.worker?.name ?? 'Ravi Kumar';
   const jobTitle = app?.job?.title ?? 'Warehouse Loader';
   const jobCity = app?.job?.location?.city ?? 'Noida';
+  const appId = app?.id || applicationId;
 
-  const handleProcessPayment = () => {
+  const handleGenerateCashCode = async () => {
+    if (!appId) return;
+    setIsProcessing(true);
+    try {
+      const res: any = await api.initiatePayment(appId, 'CASH');
+      if (res?.cash_otp) {
+        setCashOtp(res.cash_otp);
+        setCashOtpExpiresAt(res.otp_expires_at);
+        Alert.alert(
+          'Cash Payment Code Generated',
+          `Hand ₹${wageAmount} in cash to ${workerName}. Share code "${res.cash_otp}" with the worker. Once they enter it, the payment is confirmed.`
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Payment Error', err.message || 'Could not initiate cash payment on server.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCheckCashStatus = async () => {
+    if (!appId) return;
+    setIsCheckingStatus(true);
+    try {
+      const payStatus = await api.getPaymentStatus(appId);
+      if (payStatus?.status === 'PAID') {
+        const receipt = recordPayment({
+          applicationId: appId,
+          jobId: app?.jobId ?? 'j1',
+          jobTitle: jobTitle,
+          workerId: app?.workerId ?? 'w1',
+          workerName: workerName,
+          employerId: app?.job?.employerId ?? 'e1',
+          employerName: app?.job?.employer?.businessName ?? 'Bharat Logistics',
+          amount: wageAmount,
+          method: 'CASH',
+          transactionId: `CASH_VERIFIED_${cashOtp || Date.now()}`,
+          status: 'SUCCESS',
+        });
+        setTxReceipt(receipt);
+        setPaymentSuccess(true);
+      } else {
+        Alert.alert(
+          'Awaiting Worker Confirmation',
+          `Worker has not yet entered code ${cashOtp}. Once they submit the 6-digit code in their app, receipt will be confirmed.`
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Status Check Failed', err.message);
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const handleProcessOnlinePayment = async () => {
+    if (!appId) return;
     setIsProcessing(true);
     setProcessingStep(1);
 
-    setTimeout(() => {
-      setProcessingStep(2);
-    }, 300);
-
-    setTimeout(() => {
-      setProcessingStep(3);
-    }, 600);
-
-    setTimeout(() => {
-      const generatedTxId = `PAY_GIG_${Math.floor(10000000 + Math.random() * 90000000)}`;
-      const receipt = recordPayment({
-        applicationId: app?.id ?? `app_${Date.now()}`,
-        jobId: app?.jobId ?? 'j1',
-        jobTitle: jobTitle,
-        workerId: app?.workerId ?? 'w1',
-        workerName: workerName,
-        employerId: app?.job?.employerId ?? 'e1',
-        employerName: app?.job?.employer?.businessName ?? 'Bharat Logistics',
-        amount: wageAmount,
-        method: method,
-        transactionId: generatedTxId,
-        upiId: `${workerName.toLowerCase().replace(/\s+/g, '')}@icici`,
-        status: 'SUCCESS',
-      });
-
-      setTxReceipt(receipt);
+    try {
+      const res: any = await api.initiatePayment(appId, 'ONLINE');
+      if (res?.gateway_configured === false) {
+        setServerStatus('PAYMENT_PENDING');
+        Alert.alert(
+          'Payment Gateway Configured as PENDING',
+          'Razorpay credentials are not yet configured on the server. The job payment has been recorded as PAYMENT_PENDING on the server. You can also pay cash with the Cash Code option.',
+          [
+            { text: 'Pay with Cash instead', onPress: () => setMethod('CASH') },
+            { text: 'Understood' }
+          ]
+        );
+      } else if (res?.status === 'PAYMENT_INITIATED') {
+        setServerStatus('PAYMENT_INITIATED');
+        Alert.alert('Order Created', `Razorpay Order: ${res.razorpay_order_id}. Awaiting payment confirmation webhook.`);
+      }
+    } catch (err: any) {
+      Alert.alert('Payment Failed', err.message || 'Could not initiate online payment.');
+    } finally {
       setIsProcessing(false);
-      setPaymentSuccess(true);
-    }, 900);
+    }
   };
 
   const handleFinish = () => {
@@ -223,9 +276,63 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Select Payment Method</Text>
 
+          {/* Cash in Hand Option */}
+          <TouchableOpacity
+            style={[styles.methodOption, method === 'CASH' && styles.methodOptionSelected]}
+            onPress={() => setMethod('CASH')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.methodRadio, method === 'CASH' && styles.methodRadioSelected]}>
+              {method === 'CASH' && <View style={styles.radioInner} />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Feather name="dollar-sign" size={16} color={Theme.success} />
+                <Text style={styles.methodTitle}>Cash in Hand + Verification Code</Text>
+              </View>
+              <Text style={styles.methodDesc}>Generate 6-digit OTP to verify cash receipt with worker</Text>
+            </View>
+          </TouchableOpacity>
+
+          {method === 'CASH' && (
+            <View style={styles.cashBox}>
+              {cashOtp ? (
+                <View style={styles.cashOtpCard}>
+                  <Text style={styles.cashOtpLabel}>CASH VERIFICATION CODE</Text>
+                  <Text style={styles.cashOtpNumber}>{cashOtp}</Text>
+                  <Text style={styles.cashOtpDesc}>
+                    1. Hand {formatWage(wageAmount)} cash to {workerName}.{'\n'}
+                    2. Give them this 6-digit code.{'\n'}
+                    3. Once the worker enters this code in their app, receipt is confirmed.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.verifyCashBtn}
+                    onPress={handleCheckCashStatus}
+                    disabled={isCheckingStatus}
+                  >
+                    {isCheckingStatus ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.verifyCashBtnText}>Check Worker Confirmation</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.generateOtpBtn}
+                  onPress={handleGenerateCashCode}
+                  disabled={isProcessing}
+                >
+                  <Feather name="key" size={16} color="#fff" />
+                  <Text style={styles.generateOtpBtnText}>Generate 6-Digit Payment Code</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* UPI Option */}
           <TouchableOpacity
-            style={[styles.methodOption, method === 'UPI' && styles.methodOptionSelected]}
+            style={[styles.methodOption, method === 'UPI' && styles.methodOptionSelected, { marginTop: 10 }]}
             onPress={() => setMethod('UPI')}
             activeOpacity={0.8}
           >
@@ -299,7 +406,7 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Feather name="credit-card" size={16} color="#0C2340" />
-                <Text style={styles.methodTitle}>Razorpay Gateway (Test Mode)</Text>
+                <Text style={styles.methodTitle}>Razorpay Gateway</Text>
               </View>
               <Text style={styles.methodDesc}>Debit / Credit Card, NetBanking & Corporate</Text>
             </View>
@@ -314,16 +421,8 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
         <View style={styles.processingOverlay}>
           <View style={styles.processingCard}>
             <ActivityIndicator size="large" color={Theme.primary} style={{ marginBottom: 16 }} />
-            <Text style={styles.processingTitle}>
-              {processingStep === 1 ? 'Connecting Gateway...' : processingStep === 2 ? 'Authorizing Payout...' : 'Finalizing Escrow Release...'}
-            </Text>
-            <Text style={styles.processingSub}>
-              {processingStep === 1
-                ? 'Opening secure UPI channel'
-                : processingStep === 2
-                ? `Verifying bank confirmation for ${formatWage(wageAmount)}`
-                : 'Generating transaction receipt'}
-            </Text>
+            <Text style={styles.processingTitle}>Contacting Server...</Text>
+            <Text style={styles.processingSub}>Processing payment transaction securely</Text>
           </View>
         </View>
       )}
@@ -332,12 +431,16 @@ export const PaymentScreen: React.FC<Props> = ({ route, navigation }: any) => {
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.payButton}
-          onPress={handleProcessPayment}
+          onPress={method === 'CASH' ? (cashOtp ? handleCheckCashStatus : handleGenerateCashCode) : handleProcessOnlinePayment}
           activeOpacity={0.88}
-          disabled={isProcessing}
+          disabled={isProcessing || isCheckingStatus}
         >
-          <Feather name="lock" size={16} color={Theme.surface} />
-          <Text style={styles.payButtonText}>PAY {formatWage(wageAmount)} NOW</Text>
+          <Feather name={method === 'CASH' ? 'check-circle' : 'lock'} size={16} color={Theme.surface} />
+          <Text style={styles.payButtonText}>
+            {method === 'CASH'
+              ? (cashOtp ? 'CHECK WORKER CONFIRMATION' : 'GENERATE CASH CODE')
+              : `PAY ${formatWage(wageAmount)}`}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -527,6 +630,66 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   payButtonText: { fontFamily: FontFamily.bold, fontSize: 15, color: Theme.surface, letterSpacing: 0.3 },
+
+  // Cash payment styles
+  cashBox: { marginTop: 12, paddingLeft: 12 },
+  generateOtpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Theme.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  generateOtpBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#fff',
+  },
+  cashOtpCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+  },
+  cashOtpLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: Theme.textSecondary,
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  cashOtpNumber: {
+    fontFamily: FontFamily.extraBold,
+    fontSize: 34,
+    letterSpacing: 6,
+    color: Theme.ink,
+    marginBottom: 10,
+  },
+  cashOtpDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Theme.textSecondary,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  verifyCashBtn: {
+    backgroundColor: Theme.success,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  verifyCashBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#fff',
+  },
 
   // Success screen
   successWrapper: { flex: 1, paddingHorizontal: 20, paddingTop: 36, alignItems: 'center' },

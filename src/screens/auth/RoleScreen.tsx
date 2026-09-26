@@ -22,12 +22,12 @@ import { useAuthStore } from '../../store';
 type Props = NativeStackScreenProps<RootStackParamList, 'Role'>;
 
 const B = {
-  bg: '#F8FAFC',
-  navy: '#1A68D5',
-  navyLight: '#EBF3FC',
-  ink: '#0F172A',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
+  bg: '#F6F7F9',
+  navy: '#111827',
+  navyLight: '#F3F4F6',
+  ink: '#111827',
+  textMuted: '#6B7280',
+  border: '#E5E7EB',
   white: '#FFFFFF',
   surface: '#FFFFFF',
 };

@@ -1,6 +1,5 @@
-// GigEasyButton — Brand Blue (#6497B2) CTA system
-// Primary: solid blue · Secondary: soft tint · Outline: blue border · Ghost: transparent
-// NO dark navy. NO lime. NO neon.
+// GigEasyButton — Warm Premium CTA System
+// Primary: Terracotta · Secondary: Warm Sand · Outline: Ivory + Warm Border · Ghost: Transparent · Danger: Warm Red
 
 import React, { useRef } from 'react';
 import {
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FontFamily, FontSize, BorderRadius, Spacing } from '../constants';
+import { Theme } from '../theme';
 
 interface ButtonProps {
   label: string;
@@ -29,21 +29,6 @@ interface ButtonProps {
   iconName?: keyof typeof Feather.glyphMap;
   showArrow?: boolean;
 }
-
-import { Theme } from '../theme';
-
-// Design tokens
-const T = {
-  primary: Theme.primary,
-  primaryDark: Theme.primaryDark,
-  primaryLight: Theme.primaryLight,
-  primaryMuted: Theme.primaryLight,
-  ink: Theme.ink,
-  white: Theme.surface,
-  border: Theme.border,
-  danger: Theme.error,
-  dangerLight: Theme.errorLight,
-};
 
 export const GigEasyButton: React.FC<ButtonProps> = ({
   label,
@@ -61,10 +46,10 @@ export const GigEasyButton: React.FC<ButtonProps> = ({
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 20 }).start();
+    Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, tension: 350, friction: 20 }).start();
   };
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 20 }).start();
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 350, friction: 20 }).start();
   };
 
   const getContainerStyle = (): ViewStyle[] => {
@@ -88,14 +73,14 @@ export const GigEasyButton: React.FC<ButtonProps> = ({
   };
 
   const getLabelColor = (): string => {
-    if (disabled || loading) return '#9FBDCC';
+    if (disabled || loading) return Theme.textDisabled;
     switch (variant) {
-      case 'primary': return T.white;
-      case 'secondary': return T.primary;
-      case 'outline': return T.primary;
-      case 'ghost': return T.primary;
-      case 'danger': return T.danger;
-      default: return T.white;
+      case 'primary': return Theme.textOnAccent;
+      case 'secondary': return Theme.ink;
+      case 'outline': return Theme.ink;
+      case 'ghost': return Theme.ink;
+      case 'danger': return Theme.error;
+      default: return Theme.textOnAccent;
     }
   };
 
@@ -122,7 +107,7 @@ export const GigEasyButton: React.FC<ButtonProps> = ({
         style={getContainerStyle()}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={variant === 'primary' ? T.white : T.primary} />
+          <ActivityIndicator size="small" color={variant === 'primary' ? Theme.textOnAccent : Theme.ink} />
         ) : (
           <View style={styles.contentRow}>
             {iconName && (
@@ -141,7 +126,7 @@ export const GigEasyButton: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -154,22 +139,22 @@ const styles = StyleSheet.create({
   },
   // Variants
   primary: {
-    backgroundColor: Theme.primary,
-    shadowColor: Theme.primary,
+    backgroundColor: Theme.accent,
+    shadowColor: Theme.accent,
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 3,
   },
   secondary: {
-    backgroundColor: Theme.primaryLight,
+    backgroundColor: Theme.sandLight,
     borderWidth: 1,
-    borderColor: Theme.primaryBorder,
+    borderColor: Theme.border,
   },
   outline: {
     backgroundColor: Theme.surface,
-    borderWidth: 1.5,
-    borderColor: Theme.primary,
+    borderWidth: 1,
+    borderColor: Theme.border,
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -184,31 +169,31 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     height: 38,
-    borderRadius: 10,
+    borderRadius: 9,
   },
   md: {
     paddingVertical: 13,
     paddingHorizontal: 20,
-    height: 50,
+    height: 48,
   },
   lg: {
     paddingVertical: 15,
     paddingHorizontal: 24,
-    height: 56,
+    height: 54,
   },
   fullWidth: {
     width: '100%',
   },
   disabled: {
-    backgroundColor: '#EAF0F5',
-    borderColor: '#DDE6EF',
+    backgroundColor: Theme.surfaceSubtle,
+    borderColor: Theme.border,
     shadowOpacity: 0,
     elevation: 0,
   },
   label: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
   },
   labelSm: { fontSize: FontSize.sm },
   labelLg: { fontSize: FontSize.md },

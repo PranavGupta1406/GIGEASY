@@ -1,5 +1,5 @@
 // Job Apply & Daily Wage Proposal Screen
-// Brand Blue (#1A68D5) · Clean Consumer Flow
+// Warm Premium Palette · Clean Consumer Flow
 
 import React, { useState } from 'react';
 import {
@@ -27,21 +27,23 @@ import { MOCK_JOBS, formatWage } from '../../data/mockData';
 import { useSharedApplicationsStore, useWorkerStore, useLanguageStore, useEmployerStore } from '../../store';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { CURRENT_WORKER } from '../../data/mockData';
+import { Theme } from '../../theme';
+import { api } from '../../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApply'>;
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  primaryDark: '#124FA8',
-  primaryLight: '#D6E6FA',
-  primaryMuted: '#EBF3FC',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
+  bg: Theme.bg,
+  primary: Theme.primary,
+  primaryDark: Theme.primaryDark,
+  primaryLight: Theme.accentLight,
+  primaryMuted: Theme.sandLight,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  textMuted: Theme.textMuted,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
 };
 
 export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
@@ -65,15 +67,21 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
     Math.round(job.maxWage * 1.1),
   ];
 
-  const handleApply = () => {
+  const handleApply = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await api.applyForGig({
+        gig_id: job.id,
+        proposed_wage: proposedWage,
+        note: note.trim() || undefined,
+      });
+
       const worker = workerProfile ?? CURRENT_WORKER;
       applyForJob(job.id, proposedWage, worker, job);
+
       Alert.alert(
         'Application Sent',
-        `Your daily wage proposal of ${formatWage(proposedWage)} has been submitted to ${job.employer.businessName}. You'll receive real-time notifications on status updates.`,
+        `Your daily wage proposal of ${formatWage(proposedWage)} has been submitted to ${job.employer.businessName}. You'll receive real-time updates.`,
         [
           {
             text: 'View Activity',
@@ -81,7 +89,14 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
           },
         ]
       );
-    }, 400);
+    } catch (err: any) {
+      Alert.alert(
+        'Application Status',
+        err.message || 'Unable to submit application. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -123,7 +138,7 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Propose Your Daily Wage</Text>
           <Text style={styles.cardSubtitle}>
-            Disbursed immediately upon shift checkout via GigEasy Escrow.
+            Disbursed upon verified completion via online payout or cash verification code.
           </Text>
 
           {/* Big Interactive Wage Amount */}
@@ -179,7 +194,7 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
           <TextInput
             style={styles.noteInput}
             placeholder="e.g. 3 years experience with warehouse staging. Ready to start tomorrow."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#8C7D6E"
             multiline
             numberOfLines={3}
             value={note}
@@ -191,9 +206,9 @@ export const JobApplyScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.protectionNotice}>
           <MaterialCommunityIcons name="shield-check" size={18} color={T.primary} />
           <View style={styles.protectionTextWrap}>
-            <Text style={styles.protectionTitle}>GigEasy Payment Guarantee</Text>
+            <Text style={styles.protectionTitle}>GigEasy Payment Protection</Text>
             <Text style={styles.protectionSub}>
-              Employer deposit is pre-funded and held in escrow before your shift starts.
+              Protected by milestone tracking and dual verification (Razorpay & OTP cash receipt).
             </Text>
           </View>
         </View>
@@ -282,7 +297,7 @@ const styles = StyleSheet.create({
   stepBtn: {
     flex: 1,
     paddingVertical: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.sandLight,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: T.border,
@@ -297,7 +312,7 @@ const styles = StyleSheet.create({
   presetChip: {
     flex: 1,
     paddingVertical: 7,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.sandLight,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -305,7 +320,7 @@ const styles = StyleSheet.create({
   presetText: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary },
   presetTextActive: { color: T.white, fontFamily: FontFamily.bold },
   noteInput: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Theme.surface,
     borderWidth: 1,
     borderColor: T.border,
     borderRadius: 12,

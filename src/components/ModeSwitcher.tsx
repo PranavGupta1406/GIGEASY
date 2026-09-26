@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { FontFamily } from '../constants';
 import { Theme } from '../theme';
+import { useLanguageStore } from '../store';
 
 type Mode = 'worker' | 'employer';
 
@@ -20,6 +21,7 @@ interface ModeSwitcherProps {
 }
 
 export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
+  const { language } = useLanguageStore();
   const isWorker = activeMode === 'worker';
   const slideAnim = useRef(new Animated.Value(isWorker ? 0 : 1)).current;
 
@@ -54,7 +56,7 @@ export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
           activeOpacity={0.85}
         >
           <Text style={[styles.tabText, isWorker && styles.tabTextActive]}>
-            Find Work
+            {language === 'hi' ? 'काम खोजें' : 'Find Work'}
           </Text>
         </TouchableOpacity>
 
@@ -64,7 +66,7 @@ export function ModeSwitcher({ activeMode, onSwitch }: ModeSwitcherProps) {
           activeOpacity={0.85}
         >
           <Text style={[styles.tabText, !isWorker && styles.tabTextActive]}>
-            Hire Workers
+            {language === 'hi' ? 'कामगार ढूंढें' : 'Hire Workers'}
           </Text>
         </TouchableOpacity>
       </View>

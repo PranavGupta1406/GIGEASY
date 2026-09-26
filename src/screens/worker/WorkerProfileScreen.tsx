@@ -1,5 +1,5 @@
 // Worker Profile Screen — Digital Work Identity
-// Brand Blue (#6497B2) Palette · Simple, Classy & Confident
+// Warm Premium Design: Charcoal · Ivory · Terracotta · Olive
 
 import React from 'react';
 import {
@@ -28,10 +28,10 @@ interface Props {
 
 const T = {
   bg: Theme.bg,
-  primary: Theme.primary,
-  primaryDark: Theme.primaryDark,
-  primaryLight: Theme.primaryLight,
-  primaryMuted: Theme.primaryLight,
+  primary: Theme.accent,
+  primaryDark: Theme.accentDark,
+  primaryLight: Theme.accentLight,
+  primaryMuted: Theme.accentLight,
   ink: Theme.ink,
   textSecondary: Theme.textSecondary,
   textMuted: Theme.textMuted,
@@ -40,8 +40,6 @@ const T = {
   success: Theme.success,
   successLight: Theme.successLight,
 };
-
-import { authService } from '../../services/firebase';
 
 export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitchMode }) => {
   const storeProfile = useWorkerStore((s) => s.profile);
@@ -153,6 +151,41 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
         </View>
       </View>
 
+      {/* Cooperative Membership & Passport Card */}
+      <View style={styles.coopCard}>
+        <View style={styles.coopCardHeader}>
+          <View style={styles.coopIconWrap}>
+            <MaterialCommunityIcons name="shield-account" size={22} color={T.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coopCardEyebrow}>COOPERATIVE SOCIETY MEMBER</Text>
+            <Text style={styles.coopCardName}>
+              {worker.cooperativeName || 'Delhi Plumbing & Electrical Workers Cooperative'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.coopActionRow}>
+          <TouchableOpacity
+            style={styles.passportBtn}
+            onPress={() => shellNavigation.navigate('WorkerPassport' as any)}
+            activeOpacity={0.8}
+          >
+            <Feather name="file-text" size={14} color={T.white} />
+            <Text style={styles.passportBtnText}>Worker Passport</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.welfareBtn}
+            onPress={() => shellNavigation.navigate('WorkerWelfare' as any)}
+            activeOpacity={0.8}
+          >
+            <Feather name="heart" size={14} color={T.ink} />
+            <Text style={styles.welfareBtnText}>Welfare & Insurance</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Verified Skills */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Verified Skills</Text>
@@ -163,7 +196,7 @@ export const WorkerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwitch
               <Text style={styles.skillText}>{skill.name}</Text>
             </View>
           ))}
-          <View style={[styles.skillChip, { backgroundColor: '#F0F4F8', borderColor: T.border }]}>
+          <View style={[styles.skillChip, { backgroundColor: Theme.sandLight, borderColor: T.border }]}>
             <Text style={[styles.skillText, { color: T.textSecondary }]}>+{Math.max(0, worker.experienceYears - 1)} more verified</Text>
           </View>
         </View>
@@ -258,7 +291,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: T.border,
-    shadowColor: '#1C2B3A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -337,7 +370,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     width: '100%',
-    backgroundColor: '#F0F4F8',
+    backgroundColor: Theme.sandLight,
     borderRadius: 12,
     paddingVertical: 12,
   },
@@ -355,7 +388,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: T.border,
-    shadowColor: '#1C2B3A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -392,27 +425,100 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F4F8',
+    borderBottomColor: Theme.borderSubtle,
   },
   trustRowLeft: { flex: 1, marginRight: 12 },
   trustRowLabel: { fontFamily: FontFamily.semiBold, fontSize: 12, color: T.ink, marginBottom: 1 },
   trustRowDetail: { fontFamily: FontFamily.regular, fontSize: 10, color: T.textSecondary },
   trustRowRight: { alignItems: 'flex-end', minWidth: 52 },
-  trustPts: { fontFamily: FontFamily.bold, fontSize: 11, color: T.primary, marginBottom: 4 },
-  trustBar: { width: 52, height: 3, backgroundColor: '#F0F4F8', borderRadius: 2, overflow: 'hidden' },
-  trustBarFill: { height: '100%', backgroundColor: T.primary, borderRadius: 2 },
+  trustPts: { fontFamily: FontFamily.bold, fontSize: 11, color: Theme.accent, marginBottom: 4 },
+  trustBar: { width: 52, height: 3, backgroundColor: Theme.sandLight, borderRadius: 2, overflow: 'hidden' },
+  trustBarFill: { height: '100%', backgroundColor: Theme.accent, borderRadius: 2 },
 
   // Preferences
   prefGrid: { flexDirection: 'row', gap: 10 },
   prefItem: {
     flex: 1,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: Theme.sandLight,
     borderRadius: 12,
     padding: 12,
     gap: 4,
   },
   prefLabel: { fontFamily: FontFamily.medium, fontSize: 10, color: T.textSecondary },
   prefValue: { fontFamily: FontFamily.bold, fontSize: 12, color: T.ink },
+
+  // Cooperative Card
+  coopCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: T.white,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: T.border,
+  },
+  coopCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  coopIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Theme.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coopCardEyebrow: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: Theme.accent,
+    letterSpacing: 0.8,
+  },
+  coopCardName: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: T.ink,
+    marginTop: 2,
+  },
+  coopActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  passportBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Theme.accent,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  passportBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: Theme.textOnAccent,
+  },
+  welfareBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Theme.oliveLight,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Theme.oliveMuted,
+  },
+  welfareBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: Theme.olive,
+  },
 
   // Switch mode card
   switchCard: {
@@ -421,14 +527,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginHorizontal: 16,
     marginTop: 14,
-    backgroundColor: T.white,
+    backgroundColor: Theme.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: T.primary,
-    shadowColor: '#1C2B3A',
+    borderColor: Theme.accentMuted,
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
@@ -437,10 +543,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: T.primary,
+    backgroundColor: Theme.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  switchTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: T.ink },
-  switchSub: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary, marginTop: 1 },
+  switchTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Theme.ink },
+  switchSub: { fontFamily: FontFamily.regular, fontSize: 11, color: Theme.textSecondary, marginTop: 1 },
 });

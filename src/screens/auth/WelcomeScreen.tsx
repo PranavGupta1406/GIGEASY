@@ -168,7 +168,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           >
             <View style={styles.roleCTAInner}>
               <View style={styles.iconCircleSecondary}>
-                <Feather name="users" size={18} color={Theme.primaryDark} />
+                <Feather name="users" size={18} color={Theme.ink} />
               </View>
               <View style={styles.roleTextCol}>
                 <Text style={styles.roleTitleSecondary}>{t('hireWorkers')}</Text>
@@ -218,17 +218,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: Theme.surface,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 18,
+    borderWidth: 1,
     borderColor: Theme.border,
     shadowColor: Theme.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   langText: {
     fontFamily: FontFamily.bold,
@@ -241,11 +241,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
+    paddingVertical: 4,
   },
   brandName: {
     fontFamily: FontFamily.extraBold,
     fontSize: 34,
-    color: Theme.primaryDark,
+    color: Theme.ink,
     letterSpacing: -1.2,
     lineHeight: 38,
     textAlign: 'center',
@@ -256,9 +257,10 @@ const styles = StyleSheet.create({
     color: Theme.textSecondary,
     marginTop: 3,
     textAlign: 'center',
+    letterSpacing: 0.1,
   },
 
-  // Bottom CTAs Sheet
+  // Bottom CTAs Sheet — Clean White-First Surface with Crisp Taupe Border
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === 'android' ? 24 : 36,
     paddingTop: 16,
-    backgroundColor: 'rgba(248, 250, 252, 0.98)',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderTopWidth: 1,
     borderTopColor: Theme.border,
     zIndex: 20,
@@ -281,34 +283,34 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // Role CTA 1: Find Work (Solid Primary Royal Cobalt)
+  // Role CTA 1: Find Work (Primary Burnt Orange / Terracotta)
   roleCTAPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Theme.primary,
-    borderRadius: 16,
-    paddingVertical: 13,
+    backgroundColor: Theme.accent,
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    minHeight: 58,
-    shadowColor: Theme.primary,
-    shadowOffset: { width: 0, height: 4 },
+    minHeight: 56,
+    shadowColor: Theme.accent,
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 3,
   },
   iconCirclePrimary: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.20)',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   roleTitlePrimary: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: Theme.surface,
+    color: Theme.textOnAccent,
     letterSpacing: -0.3,
   },
   roleSubPrimary: {
@@ -318,44 +320,44 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   arrowCirclePrimary: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Role CTA 2: Hire Workers (Crisp Clean White Surface with Slate Border)
+  // Role CTA 2: Hire Workers (Tactile White Surface with 1px Taupe Border)
   roleCTASecondary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Theme.surface,
-    borderRadius: 16,
-    paddingVertical: 13,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    minHeight: 58,
-    borderWidth: 1.5,
+    minHeight: 56,
+    borderWidth: 1,
     borderColor: Theme.border,
     shadowColor: Theme.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 1,
   },
   iconCircleSecondary: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: Theme.surfaceSubtle,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Theme.sand,
     alignItems: 'center',
     justifyContent: 'center',
   },
   roleTitleSecondary: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: Theme.primaryDark,
+    color: Theme.ink,
     letterSpacing: -0.3,
   },
   roleSubSecondary: {
@@ -365,10 +367,10 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   arrowCircleSecondary: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Theme.surfaceSubtle,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Theme.sand,
     alignItems: 'center',
     justifyContent: 'center',
   },

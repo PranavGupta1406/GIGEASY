@@ -20,6 +20,13 @@ export const Spacing = {
   14: 56,
   16: 64,
   20: 80,
+  // Semantic named aliases
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 40,
 } as const;
 
 export const BorderRadius = {

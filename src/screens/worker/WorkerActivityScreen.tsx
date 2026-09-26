@@ -1,7 +1,7 @@
 // Worker Activity Screen — Live Applications + Earnings + Lifecycle Actions
 // Reads from shared store so employer accept instantly updates this screen
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
   Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -17,8 +19,10 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily } from '../../constants';
 import { formatWage, formatDate, getStatusLabel, getStatusColor, CURRENT_WORKER } from '../../data/mockData';
 import { useSharedApplicationsStore, useWorkerStore, useLanguageStore } from '../../store';
+import { getLocalizedStatus } from '../../i18n/translations';
 import { JobApplication } from '../../types';
 import { Theme, statusColor as getThemeStatusColor, statusLabel as getThemeStatusLabel } from '../../theme';
+import { api } from '../../services/api';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 interface Props { shellNavigation: NavProp; }
@@ -57,7 +61,8 @@ const STATUS_ORDER: Record<string, number> = {
 
 export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('applications');
-  const { t } = useLanguageStore();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { t, language } = useLanguageStore();
 
   const workerProfile = useWorkerStore((s) => s.profile);
   const workerId = workerProfile?.id ?? CURRENT_WORKER.id;
@@ -70,6 +75,23 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
     workerAcceptCounter,
     workerDeclineCounter,
   } = useSharedApplicationsStore();
+
+  const [apiApps, setApiApps] = useState<any[]>([]);
+
+  const loadApplications = useCallback(async (refresh = false) => {
+    if (refresh) setIsRefreshing(true);
+    try {
+      const apps = await api.getApplications({ worker_id: workerId });
+      if (apps && apps.length > 0) setApiApps(apps);
+    } catch (err) {
+      // Fallback to store
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [workerId]);
+
+  useEffect(() => { loadApplications(); }, [loadApplications]);
+
   const myApplications = getWorkerApplications(workerId);
 
   // Sort by priority (active first)
@@ -83,26 +105,35 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
   const completedApps = sortedApps.filter(a =>
     ['PAID', 'COMPLETED'].includes(a.status)
   );
-  const totalEarned = myApplications
+  const totalPaidFromApps = myApplications
     .filter(a => a.status === 'PAID')
     .reduce((sum, a) => sum + (a.agreedWage ?? a.proposedWage), 0);
 
   const worker = workerProfile ?? CURRENT_WORKER;
+  const totalEarned = (worker.totalLifetimeEarnings ?? 248000) + totalPaidFromApps;
 
   const handleCheckIn = (app: JobApplication) => {
     checkIn(app.id);
+    api.checkIn(app.id, 28.6139, 77.2090).catch((err) => {
+      console.log('API check-in sync note:', err.message);
+    });
   };
 
   const handleMarkComplete = (app: JobApplication) => {
     markComplete(app.id);
+    api.markWorkComplete(app.id).catch((err) => {
+      console.log('API complete sync note:', err.message);
+    });
   };
 
   const handleAcceptCounter = (app: JobApplication) => {
     workerAcceptCounter(app.id);
+    api.updateApplicationStatus(app.id, 'ACCEPTED', app.currentCounterWage || app.proposedWage).catch(() => {});
   };
 
   const handleDeclineCounter = (app: JobApplication) => {
     workerDeclineCounter(app.id);
+    api.updateApplicationStatus(app.id, 'REJECTED').catch(() => {});
   };
 
   const handleViewJob = (jobId: string) => {
@@ -111,7 +142,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
 
   const renderApplicationCard = (app: JobApplication) => {
     const statusColor = getStatusColor(app.status);
-    const statusLabel = getStatusLabel(app.status);
+    const statusLabel = getLocalizedStatus(app.status, language);
     const isPaid = app.status === 'PAID';
     const isCompleted = app.status === 'COMPLETED' || app.status === 'PAYMENT_PENDING';
     const isAccepted = app.status === 'ACCEPTED';
@@ -154,36 +185,31 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
         {/* Wage */}
         <View style={styles.appWageRow}>
           <Text style={styles.appWage}>{formatWage(displayWage)}</Text>
-          <Text style={styles.appWageUnit}>/ day</Text>
+          <Text style={styles.appWageUnit}>{t('perDay')}</Text>
           {isNegotiating && (
             <Text style={{ fontSize: 11, color: T.warning, fontFamily: FontFamily.bold, marginLeft: 6 }}>
-              ({app.counterBy === 'employer' ? 'Employer Offer' : 'Your Counter'})
+              ({app.counterBy === 'employer' ? (language === 'hi' ? 'मालिक का नया ऑफर' : 'Employer Offer') : (language === 'hi' ? 'आपकी मांग' : 'Your Counter')})
             </Text>
           )}
         </View>
-
-        {/* Employer */}
-        <Text style={styles.appEmployer} numberOfLines={1}>
-          {app.job.employer.businessName}
-        </Text>
 
         {/* Counter offer actions for worker */}
         {isNegotiating && (
           app.counterBy === 'employer' ? (
             <View style={{ marginTop: 10 }}>
-              <View style={[styles.paymentPendingBanner, { backgroundColor: T.warningBg, borderColor: '#FDE68A', marginBottom: 8 }]}>
-                <Feather name="alert-circle" size={13} color={T.warning} />
-                <Text style={[styles.paymentPendingText, { color: T.warning }]}>
-                  Employer offered {formatWage(app.currentCounterWage ?? app.proposedWage)}/day
+              <View style={[styles.paymentPendingBanner, { backgroundColor: Theme.amberLight, borderColor: Theme.amberBorder, marginBottom: 8 }]}>
+                <Feather name="alert-circle" size={13} color={Theme.amberDark} />
+                <Text style={[styles.paymentPendingText, { color: Theme.amberDark }]}>
+                  {language === 'hi' ? `मालिक ने नया ऑफर भेजा: ${formatWage(app.currentCounterWage ?? app.proposedWage)}/दिन` : `Employer offered ${formatWage(app.currentCounterWage ?? app.proposedWage)}/day`}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity
-                  style={[styles.actionBtn, { flex: 1, backgroundColor: T.errorBg, borderWidth: 1, borderColor: '#FECACA' }]}
+                  style={[styles.actionBtn, { flex: 1, backgroundColor: Theme.errorLight, borderWidth: 1, borderColor: Theme.errorBorder }]}
                   onPress={() => workerDeclineCounter(app.id)}
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.actionBtnText, { color: T.error }]}>Decline</Text>
+                  <Text style={[styles.actionBtnText, { color: Theme.error }]}>{language === 'hi' ? 'ऑफर मना करें' : 'Decline'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionBtn, { flex: 1.5, backgroundColor: T.success }]}
@@ -191,15 +217,17 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
                   activeOpacity={0.85}
                 >
                   <Feather name="check" size={14} color={T.white} />
-                  <Text style={styles.actionBtnText}>Accept {formatWage(app.currentCounterWage ?? app.proposedWage)}</Text>
+                  <Text style={styles.actionBtnText}>
+                    {language === 'hi' ? `${formatWage(app.currentCounterWage ?? app.proposedWage)} स्वीकार करें` : `Accept ${formatWage(app.currentCounterWage ?? app.proposedWage)}`}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <View style={[styles.paymentPendingBanner, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', marginTop: 8 }]}>
-              <Feather name="clock" size={13} color={T.primary} />
-              <Text style={[styles.paymentPendingText, { color: T.primary }]}>
-                Counter offer sent · Waiting for employer response
+            <View style={[styles.paymentPendingBanner, { backgroundColor: Theme.accentLight, borderColor: Theme.accentMuted, marginTop: 8 }]}>
+              <Feather name="clock" size={13} color={Theme.accent} />
+              <Text style={[styles.paymentPendingText, { color: Theme.accentDark }]}>
+                {language === 'hi' ? 'ऑफर भेजा गया · मालिक के जवाब का इंतज़ार है' : 'Counter offer sent · Waiting for employer response'}
               </Text>
             </View>
           )
@@ -213,7 +241,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
             activeOpacity={0.85}
           >
             <Feather name="map-pin" size={14} color={T.white} />
-            <Text style={styles.actionBtnText}>GPS Check In</Text>
+            <Text style={styles.actionBtnText}>{language === 'hi' ? 'हाजिरी लगाएं (GPS Check In)' : 'GPS Check In'}</Text>
           </TouchableOpacity>
         )}
 
@@ -221,7 +249,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
           <View style={styles.actionBtnGroup}>
             <View style={styles.liveIndicator}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>Shift in Progress</Text>
+              <Text style={styles.liveText}>{language === 'hi' ? 'काम जारी है' : 'Shift in Progress'}</Text>
             </View>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: T.success }]}
@@ -229,22 +257,22 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
               activeOpacity={0.85}
             >
               <Feather name="check" size={14} color={T.white} />
-              <Text style={styles.actionBtnText}>Mark Complete</Text>
+              <Text style={styles.actionBtnText}>{language === 'hi' ? 'काम पूरा करें' : 'Mark Complete'}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {isCompleted && (
           <View style={styles.paymentPendingBanner}>
-            <Feather name="clock" size={13} color={T.warning} />
-            <Text style={styles.paymentPendingText}>Payment Pending — employer will pay shortly</Text>
+            <Feather name="clock" size={12} color={T.warning} />
+            <Text style={styles.paymentPendingText}>{language === 'hi' ? 'पैसे अभी नहीं मिले (Payment pending)' : 'Payment pending'}</Text>
           </View>
         )}
 
         {isPaid && (
           <View style={styles.paidBanner}>
             <Feather name="check-circle" size={14} color={T.success} />
-            <Text style={styles.paidText}>{formatWage(displayWage)} Received ✓</Text>
+            <Text style={styles.paidText}>{formatWage(displayWage)} {language === 'hi' ? 'पैसे मिल गए ✓' : 'Received ✓'}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -262,18 +290,21 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
       <View style={styles.earningsHero}>
         <View style={styles.earningsTopRow}>
           <View>
-            <Text style={styles.earningsLabel}>Total Earned</Text>
-            <Text style={styles.earningsAmount}>{formatWage(totalEarned || (47 * 1100))}</Text>
+            <Text style={styles.earningsLabel}>{language === 'hi' ? 'कुल कमाई' : 'Total Lifetime Earned'}</Text>
+            <Text style={styles.earningsAmount}>{formatWage(totalEarned)}</Text>
+            <Text style={{ fontFamily: FontFamily.medium, fontSize: 11, color: 'rgba(255,255,255,0.82)', marginTop: 3 }}>
+              {language === 'hi' ? 'इस हफ़्ते' : 'This Week'}: {formatWage(workerProfile?.weeklyEarnings ?? worker.weeklyEarnings ?? 4200)}
+            </Text>
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{worker.completedJobs}</Text>
-              <Text style={styles.statLabel}>Jobs Done</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'किए गए काम' : 'Jobs Done'}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{worker.rating} ★</Text>
-              <Text style={styles.statLabel}>Rating</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'रेटिंग' : 'Rating'}</Text>
             </View>
           </View>
         </View>
@@ -286,7 +317,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
           onPress={() => setActiveTab('applications')}
         >
           <Text style={[styles.tabText, activeTab === 'applications' && styles.tabTextActive]}>
-            My Applications {myApplications.length > 0 ? `(${myApplications.length})` : ''}
+            {language === 'hi' ? 'मेरे आवेदन' : 'My Applications'} {myApplications.length > 0 ? `(${myApplications.length})` : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -294,7 +325,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
           onPress={() => setActiveTab('earnings')}
         >
           <Text style={[styles.tabText, activeTab === 'earnings' && styles.tabTextActive]}>
-            Work History
+            {language === 'hi' ? 'किए गए काम' : 'Work History'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -304,30 +335,30 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
         <View style={styles.tabContent}>
           {myApplications.length === 0 ? (
             <View style={styles.emptyState}>
-              <Feather name="inbox" size={36} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>No Applications Yet</Text>
+              <Feather name="inbox" size={36} color={Theme.sandDark} />
+              <Text style={styles.emptyTitle}>{language === 'hi' ? 'कोई आवेदन नहीं' : 'No Applications'}</Text>
               <Text style={styles.emptySub}>
-                Browse jobs and tap Apply to get started.
+                {language === 'hi' ? 'काम ढूंढें और आवेदन करें।' : 'Browse jobs and apply to get started.'}
               </Text>
               <TouchableOpacity
                 style={styles.emptyBtn}
                 onPress={() => shellNavigation.navigate('MainApp', { initialMode: 'worker' })}
                 activeOpacity={0.85}
               >
-                <Text style={styles.emptyBtnText}>Browse Jobs</Text>
+                <Text style={styles.emptyBtnText}>{language === 'hi' ? 'काम खोजें' : 'Browse Jobs'}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <>
               {activeApps.length > 0 && (
                 <View style={styles.groupSection}>
-                  <Text style={styles.groupLabel}>Active</Text>
+                  <Text style={styles.groupLabel}>{language === 'hi' ? 'चालू काम' : 'Active'}</Text>
                   {activeApps.map(renderApplicationCard)}
                 </View>
               )}
               {completedApps.length > 0 && (
                 <View style={styles.groupSection}>
-                  <Text style={styles.groupLabel}>Completed</Text>
+                  <Text style={styles.groupLabel}>{language === 'hi' ? 'पूरे किए गए काम' : 'Completed'}</Text>
                   {completedApps.map(renderApplicationCard)}
                 </View>
               )}
@@ -341,9 +372,9 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
         <View style={styles.tabContent}>
           {worker.workHistory.length === 0 && completedApps.length === 0 ? (
             <View style={styles.emptyState}>
-              <Feather name="award" size={36} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>No Completed Work Yet</Text>
-              <Text style={styles.emptySub}>Completed jobs and payments will appear here.</Text>
+              <Feather name="award" size={36} color={Theme.sandDark} />
+              <Text style={styles.emptyTitle}>{language === 'hi' ? 'कोई पुराना काम नहीं' : 'No Work History'}</Text>
+              <Text style={styles.emptySub}>{language === 'hi' ? 'पूरे किए गए काम यहां दिखेंगे।' : 'Completed jobs appear here.'}</Text>
             </View>
           ) : (
             [...worker.workHistory, ...completedApps.map(a => ({
@@ -367,7 +398,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
                 <View style={styles.historyWageCol}>
                   <Text style={styles.historyWage}>{formatWage(item.wage)}</Text>
                   <View style={styles.paidTag}>
-                    <Text style={styles.paidTagText}>Paid ✓</Text>
+                    <Text style={styles.paidTagText}>{language === 'hi' ? 'भुगतान मिला ✓' : 'Paid ✓'}</Text>
                   </View>
                 </View>
               </View>
@@ -380,7 +411,7 @@ export const WorkerActivityScreen: React.FC<Props> = ({ shellNavigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: T.bg },
+  container: { flex: 1, backgroundColor: Theme.bg },
   scroll: { paddingBottom: 40 },
 
   // Earnings Hero
@@ -423,9 +454,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginTop: 14,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.surfaceSubtle,
     borderRadius: 12,
     padding: 3,
+    borderWidth: 1,
+    borderColor: Theme.borderSubtle,
   },
   tabBtn: {
     flex: 1,
@@ -435,7 +468,7 @@ const styles = StyleSheet.create({
   },
   tabBtnActive: {
     backgroundColor: T.white,
-    shadowColor: '#0F172A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
@@ -464,19 +497,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: T.border,
-    shadowColor: '#0F172A',
+    shadowColor: Theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
   },
   appCardPaid: {
-    borderColor: '#86EFAC',
-    backgroundColor: '#F0FDF4',
+    borderColor: Theme.successBorder,
+    backgroundColor: Theme.successLight,
   },
   appCardRejected: {
     opacity: 0.6,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: Theme.surfaceSubtle,
   },
   appCardHeader: {
     flexDirection: 'row',
@@ -509,9 +542,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   appMetaText: { fontFamily: FontFamily.regular, fontSize: 11.5, color: T.textSecondary },
-  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#CBD5E1', marginHorizontal: 2 },
+  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: Theme.sandDark, marginHorizontal: 2 },
   appWageRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3, marginBottom: 4 },
-  appWage: { fontFamily: FontFamily.extraBold, fontSize: 20, color: T.primary, letterSpacing: -0.5 },
+  appWage: { fontFamily: FontFamily.extraBold, fontSize: 20, color: Theme.amber, letterSpacing: -0.5 },
   appWageUnit: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary },
   appEmployer: { fontFamily: FontFamily.regular, fontSize: 12, color: T.textSecondary, marginBottom: 10 },
 
@@ -532,31 +565,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: Theme.amberLight,
     borderRadius: 10,
     paddingVertical: 7,
     paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Theme.amberBorder,
   },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#D97706',
+    backgroundColor: Theme.amber,
   },
-  liveText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#92400E' },
+  liveText: { fontFamily: FontFamily.bold, fontSize: 12, color: Theme.amberDark },
   paymentPendingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: T.warningBg,
+    backgroundColor: Theme.amberLight,
     borderRadius: 10,
     padding: 10,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: Theme.amberBorder,
   },
   paymentPendingText: {
     fontFamily: FontFamily.medium,
     fontSize: 11.5,
-    color: T.warning,
+    color: Theme.amberDark,
     flex: 1,
   },
   paidBanner: {

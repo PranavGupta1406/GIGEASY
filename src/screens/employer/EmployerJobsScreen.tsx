@@ -1,20 +1,23 @@
-// Employer Jobs Screen — Manage posted gigs with live store & applications
-// Brand Blue (#1A68D5) Palette · Simple & Confident
+// Employer Jobs Screen — Manage posted gigs with live API data
+// Warm Premium Palette · Simple & Confident
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize, BorderRadius } from '../../constants';
-import { CURRENT_EMPLOYER, formatWage, formatDate } from '../../data/mockData';
-import { useEmployerStore, useSharedApplicationsStore } from '../../store';
+import { formatWage, formatDate } from '../../data/mockData';
+import { useAuthStore } from '../../store';
+import { api } from '../../services/api';
 
 import { Theme } from '../../theme';
 
@@ -40,15 +43,41 @@ const T = {
 
 export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const employer = CURRENT_EMPLOYER;
-  
-  // Read live jobs from employer store
-  const employerJobs = useEmployerStore((s) => s.jobs);
-  const { getJobApplications } = useSharedApplicationsStore();
+  const [apiGigs, setApiGigs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const userId = useAuthStore((s) => s.userId);
+  const authName = useAuthStore((s) => s.name);
+  const businessLabel = authName || 'My Business';
 
-  const filteredJobs = employerJobs.filter((job) => {
-    if (activeTab === 'hiring') return job.workersHired < job.workersRequired;
-    if (activeTab === 'full') return job.workersHired >= job.workersRequired;
+  const loadGigs = useCallback(async (refresh = false) => {
+    if (refresh) setIsRefreshing(true); else setIsLoading(true);
+    try {
+      // Fetch all gigs (backend filters by employer_id via auth token)
+      const allGigs = await api.getGigs({ status: 'ALL' });
+      // Only show this employer's own gigs (matched by authenticated userId)
+      const myGigs = (allGigs || []).filter((g: any) =>
+        g.employer_id === userId
+      );
+      setApiGigs(myGigs);
+    } catch (err) {
+      console.warn('[EmployerJobs] Failed to load gigs:', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    loadGigs();
+  }, [loadGigs]);
+
+  // Map API gig status to local filter tabs
+  const filteredJobs = apiGigs.filter((g) => {
+    const confirmed = Number(g.workers_confirmed) || 0;
+    const required = Number(g.workers_required) || 1;
+    if (activeTab === 'hiring') return confirmed < required;
+    if (activeTab === 'full') return confirmed >= required;
     return true;
   });
 
@@ -59,7 +88,7 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.screenTitle}>My Posted Jobs</Text>
-            <Text style={styles.screenSubtitle}>{employerJobs.length} active listings · {employer.businessName}</Text>
+            <Text style={styles.screenSubtitle}>{apiGigs.length} active listings · {businessLabel}</Text>
           </View>
           <TouchableOpacity
             style={styles.postBtn}
@@ -88,78 +117,72 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-        {filteredJobs.length === 0 ? (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadGigs(true)} tintColor={T.primary} />}
+      >
+        {isLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator color={T.primary} size="large" />
+            <Text style={[styles.emptySub, { marginTop: 12 }]}>Loading your jobs...</Text>
+          </View>
+        ) : filteredJobs.length === 0 ? (
           <View style={styles.emptyState}>
-            <Feather name="briefcase" size={36} color="#CBD5E1" />
+            <View style={styles.emptyIcon}>
+              <Feather name="briefcase" size={36} color={Theme.textMuted} />
+            </View>
             <Text style={styles.emptyTitle}>No Jobs Posted Yet</Text>
             <Text style={styles.emptySub}>Post a job to quickly connect with workers nearby.</Text>
             <TouchableOpacity
-              style={styles.emptyBtn}
+              style={styles.emptyButton}
               onPress={() => shellNavigation.navigate('PostJob')}
             >
-              <Text style={styles.emptyBtnText}>Post a Job</Text>
+              <Text style={styles.emptyButtonText}>Post a Job</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          filteredJobs.map((job) => {
-            const applicants = getJobApplications(job.id);
-            const pct = job.workersRequired > 0 ? job.workersHired / job.workersRequired : 0;
+          filteredJobs.map((gig: any) => {
+            const confirmed = Number(gig.workers_confirmed) || 0;
+            const required = Number(gig.workers_required) || 1;
+            const pct = required > 0 ? confirmed / required : 0;
             const isFull = pct >= 1;
+            const gigDate = gig.start_date ? new Date(gig.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
 
             return (
               <TouchableOpacity
-                key={job.id}
-                style={styles.jobCard}
-                onPress={() => shellNavigation.navigate('JobApplicants', { jobId: job.id })}
+                key={gig.gig_id || gig.id}
+                style={styles.card}
+                onPress={() => shellNavigation.navigate('JobApplicants', { jobId: gig.gig_id || gig.id })}
                 activeOpacity={0.88}
               >
-                {/* Top row */}
-                <View style={styles.cardTop}>
-                  <View style={styles.cardTitleBlock}>
-                    <View style={styles.categoryBadge}>
-                      <Text style={styles.cardCategory}>{(job.skillRequired?.category || 'GENERAL').toUpperCase()}</Text>
-                    </View>
-                    <Text style={styles.cardTitle}>{job.title}</Text>
-                    <Text style={styles.cardMeta}>{formatDate(job.startDate)} · {job.startTime}–{job.endTime}</Text>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.jobTitle}>{gig.title}</Text>
+                    <Text style={styles.jobMeta}>{gigDate} · {gig.start_time || ''}</Text>
                   </View>
-                  <View style={styles.cardWageBlock}>
-                    <Text style={styles.cardWage}>{formatWage(job.maxWage)}</Text>
-                    <Text style={styles.cardWageUnit}>/day</Text>
-                  </View>
+                  <Text style={styles.wageText}>₹{gig.max_wage || 0}/day</Text>
                 </View>
 
-                {/* Staffing progress */}
-                <View style={styles.progressSection}>
+                <View style={styles.progressRow}>
                   <View style={styles.progressBar}>
                     <View
                       style={[
                         styles.progressFill,
-                        {
-                          width: `${Math.min(pct * 100, 100)}%` as any,
-                          backgroundColor: isFull ? T.success : T.primary,
-                        },
+                        { width: `${Math.min(pct * 100, 100)}%` as any }
                       ]}
                     />
                   </View>
-                  <Text style={[styles.progressText, isFull && { color: T.success, fontFamily: FontFamily.bold }]}>
-                    {job.workersHired}/{job.workersRequired} hired
-                  </Text>
+                  <Text style={styles.progressText}>{confirmed}/{required} hired</Text>
                 </View>
 
-                {/* Footer */}
                 <View style={styles.cardFooter}>
-                  <View style={styles.footerLeft}>
-                    <Feather name="users" size={12} color={T.textSecondary} />
-                    <Text style={styles.footerText}>
-                      {applicants.length} applicant{applicants.length !== 1 ? 's' : ''} in review
-                    </Text>
-                  </View>
-                  <View style={isFull ? styles.fullPill : styles.hiringPill}>
-                    <Text style={isFull ? styles.fullPillText : styles.hiringPillText}>
-                      {isFull ? 'Fully Staffed' : 'Manage Applicants →'}
-                    </Text>
-                  </View>
+                  <Text style={styles.jobMeta}>{gig.city || ''} · {gig.status}</Text>
+                  {isFull && (
+                    <View style={styles.fullPill}>
+                      <Text style={styles.fullPillText}>Fully Staffed</Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -208,63 +231,114 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: Theme.sandLight,
   },
   filterTabActive: { backgroundColor: T.primary },
   filterText: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary },
   filterTextActive: { color: T.white, fontFamily: FontFamily.bold },
   list: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24 },
-  jobCard: {
+  emptyState: { alignItems: 'center', paddingVertical: 60 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Theme.sandLight,
+  },
+  emptyTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: T.ink,
+    marginTop: 16,
+    marginBottom: 6,
+  },
+  emptySub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: T.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  emptyButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.full,
+    backgroundColor: T.primary,
+  },
+  emptyButtonText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.sm,
+    color: '#FFFFFF',
+  },
+  card: {
     backgroundColor: T.white,
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: T.border,
-    shadowColor: '#1C2B3A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowColor: T.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
-  cardTitleBlock: { flex: 1, marginRight: 12 },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: T.primaryMuted,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 3,
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
-  cardCategory: { fontFamily: FontFamily.bold, fontSize: 8, color: T.primary, letterSpacing: 0.5 },
-  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: T.ink, marginBottom: 2, letterSpacing: -0.3 },
-  cardMeta: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
-  cardWageBlock: { alignItems: 'flex-end' },
-  cardWage: { fontFamily: FontFamily.extraBold, fontSize: 18, color: T.primary, letterSpacing: -0.3 },
-  cardWageUnit: { fontFamily: FontFamily.medium, fontSize: 10, color: T.textMuted },
-  progressSection: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  progressBar: { flex: 1, height: 4, backgroundColor: '#F0F4F8', borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 2 },
-  progressText: { fontFamily: FontFamily.medium, fontSize: 11, color: T.textSecondary, minWidth: 60 },
-  cardFooter: {
+  jobTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.md,
+    color: T.ink,
+    marginBottom: 4,
+  },
+  jobMeta: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: T.textSecondary,
+  },
+  progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  progressBar: { flex: 1, height: 4, backgroundColor: Theme.sandLight, borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: T.primary, borderRadius: 2 },
+  progressText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: T.textMuted,
+    minWidth: 70,
+  },
+  cardFooter: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F0F4F8',
+    borderTopColor: Theme.borderSubtle,
   },
-  footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  footerText: { fontFamily: FontFamily.regular, fontSize: 11, color: T.textSecondary },
-  fullPill: { backgroundColor: T.successLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
-  fullPillText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#1F7A59' },
-  hiringPill: { backgroundColor: T.primaryMuted, borderWidth: 1, borderColor: T.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
-  hiringPillText: { fontFamily: FontFamily.bold, fontSize: 10, color: T.primary },
-
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: T.ink, marginTop: 14 },
-  emptySub: { fontFamily: FontFamily.regular, fontSize: 13, color: T.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: 20 },
+  wageText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: T.ink,
+  },
+  fullPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    backgroundColor: T.successLight,
+  },
+  fullPillText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: T.success,
+  },
   emptyBtn: { marginTop: 16, backgroundColor: T.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
   emptyBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: T.white },
 });

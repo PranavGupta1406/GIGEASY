@@ -4,13 +4,13 @@ import { FontFamily } from '../../constants';
 import { api } from '../../services/api';
 
 const BRAND = {
-  navy: '#1A68D5',
-  background: '#F8FAFC',
-  text: '#1E293B',
-  subText: '#64748B',
-  white: '#FFFFFF',
-  border: '#E2E8F0',
-  green: '#10B981',
+  navy: '#C96F4A',
+  background: '#F7F3EC',
+  text: '#1E1C1A',
+  subText: '#5C5147',
+  white: '#FDFAF6',
+  border: '#DDD6CB',
+  green: '#3D7A5B',
 };
 
 export function ActiveOrderTrackingScreen({ route, navigation }: any) {

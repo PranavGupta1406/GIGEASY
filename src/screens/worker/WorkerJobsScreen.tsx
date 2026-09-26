@@ -1,7 +1,7 @@
 // Worker Jobs Discovery Screen — Fast Search & Visual Feed
-// Brand Blue (#1A68D5) · Hamburger Filter Drawer · Category Pills · Scannable Cards
+// Warm Premium Palette · Hamburger Filter Drawer · Category Pills · Scannable Cards
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,17 +10,22 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  ActivityIndicator,
+  RefreshControl,
   Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../constants';
-import { MOCK_JOBS } from '../../data/mockData';
 import { GigEasyJobCard } from '../../components/GigEasyCards';
 import { GigEasyEmptyState } from '../../components';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
-import { useLanguageStore, useEmployerStore } from '../../store';
+import { useLanguageStore } from '../../store';
+import { getLocalizedCategory } from '../../i18n/translations';
+import { api } from '../../services/api';
+import { apiGigToJob } from '../../services/gigMapper';
+import { Job } from '../../types';
 
 import { Theme } from '../../theme';
 
@@ -47,9 +52,9 @@ const CATEGORIES = [
   'Construction',
   'Delivery',
   'Events',
-  'Cleaning',
+  'Household',
   'Factory',
-  'Hospitality',
+  'Security',
 ];
 
 const WAGE_FILTERS = [
@@ -64,12 +69,28 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
   const [selectedCat, setSelectedCat] = useState('All');
   const [selectedWageMin, setSelectedWageMin] = useState<number>(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const { t } = useLanguageStore();
+  const [apiJobs, setApiJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { t, language } = useLanguageStore();
 
-  const allJobs = useEmployerStore((s) => s.jobs);
+  const loadGigs = useCallback(async (refresh = false) => {
+    if (refresh) setIsRefreshing(true); else setIsLoading(true);
+    try {
+      const gigs = await api.getGigs({ status: 'PUBLISHED,APPLICATIONS_OPEN,MATCHING' });
+      setApiJobs((gigs || []).map(apiGigToJob));
+    } catch (err) {
+      console.warn('[WorkerJobs] gig fetch failed:', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { loadGigs(); }, [loadGigs]);
 
   const filtered = useMemo(() => {
-    return allJobs.filter((job) => {
+    return apiJobs.filter((job) => {
       const title = job?.title || '';
       const city = job?.location?.city || '';
       const businessName = job?.employer?.businessName || '';
@@ -86,7 +107,7 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
       const matchWage = (job?.maxWage ?? 0) >= selectedWageMin;
       return matchSearch && matchCat && matchWage;
     });
-  }, [allJobs, search, selectedCat, selectedWageMin]);
+  }, [apiJobs, search, selectedCat, selectedWageMin]);
 
   const hasActiveFilters = selectedCat !== 'All' || selectedWageMin > 0;
 
@@ -101,17 +122,17 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
       <View style={styles.searchHeader}>
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
-            <Feather name="search" size={16} color="#94A3B8" />
+            <Feather name="search" size={16} color={Theme.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search role, area, or company..."
-              placeholderTextColor="#94A3B8"
+              placeholder={t('searchPlaceholder')}
+              placeholderTextColor={Theme.textMuted}
               value={search}
               onChangeText={setSearch}
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')}>
-                <Feather name="x" size={16} color="#94A3B8" />
+                <Feather name="x" size={16} color={Theme.textMuted} />
               </TouchableOpacity>
             )}
           </View>
@@ -157,7 +178,7 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
                   />
                 )}
                 <Text style={[styles.catText, isSelected && styles.catTextActive]}>
-                  {cat === 'All' ? t('allCategories') : cat}
+                  {cat === 'All' ? t('allCategories') : getLocalizedCategory(cat, language)}
                 </Text>
               </TouchableOpacity>
             );
@@ -169,11 +190,19 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.jobListContent}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadGigs(true)} tintColor={Theme.primary} />}
       >
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+            <ActivityIndicator color={Theme.primary} size="large" />
+            <Text style={{ fontFamily: FontFamily.regular, fontSize: 13, color: Theme.textSecondary, marginTop: 12 }}>
+              {t('loadingGigs')}
+            </Text>
+          </View>
+        ) : filtered.length === 0 ? (
           <GigEasyEmptyState
-            title="No gigs found"
-            subtitle="Try adjusting your search terms or picking another category."
+            title={t('noGigsFound')}
+            subtitle={t('adjustSearchTerms')}
           />
         ) : (
           filtered.map((job) => (
@@ -205,20 +234,20 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
 
             <View style={styles.drawerHeader}>
               <View style={styles.drawerHeaderLeft}>
-                <Text style={styles.drawerTitle}>Filter Gigs</Text>
+                <Text style={styles.drawerTitle}>{t('filterGigs')}</Text>
                 {hasActiveFilters && (
                   <View style={styles.activeFilterCount}>
-                    <Text style={styles.activeFilterCountText}>Active</Text>
+                    <Text style={styles.activeFilterCountText}>{language === 'hi' ? 'सक्रिय' : 'Active'}</Text>
                   </View>
                 )}
               </View>
               <TouchableOpacity onPress={handleResetFilters} activeOpacity={0.7}>
-                <Text style={styles.resetText}>Reset All</Text>
+                <Text style={styles.resetText}>{t('resetAll')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Category Filter */}
-            <Text style={styles.filterSectionLabel}>Work Category</Text>
+            <Text style={styles.filterSectionLabel}>{language === 'hi' ? 'काम का प्रकार' : 'Category'}</Text>
             <View style={styles.drawerGrid}>
               {CATEGORIES.map((cat) => {
                 const isSelected = selectedCat === cat;
@@ -242,7 +271,7 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
                       />
                     )}
                     <Text style={[styles.drawerPillText, isSelected && styles.drawerPillTextSelected]}>
-                      {cat}
+                      {cat === 'All' ? t('allCategories') : getLocalizedCategory(cat, language)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -250,7 +279,7 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
             </View>
 
             {/* Daily Wage Filter */}
-            <Text style={[styles.filterSectionLabel, { marginTop: 16 }]}>Minimum Daily Wage</Text>
+            <Text style={[styles.filterSectionLabel, { marginTop: 16 }]}>{language === 'hi' ? 'कम से कम दिहाड़ी' : 'Min Daily Pay'}</Text>
             <View style={styles.wageRow}>
               {WAGE_FILTERS.map((wf) => {
                 const isSelected = selectedWageMin === wf.min;
@@ -266,7 +295,7 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
                     activeOpacity={0.8}
                   >
                     <Text style={[styles.wagePillText, isSelected && styles.wagePillTextSelected]}>
-                      {wf.label}
+                      {wf.label === 'Any Wage' ? t('anyWage') : wf.label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -279,7 +308,9 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
               onPress={() => setIsDrawerOpen(false)}
               activeOpacity={0.88}
             >
-              <Text style={styles.applyBtnText}>Show {filtered.length} Gigs</Text>
+              <Text style={styles.applyBtnText}>
+                {language === 'hi' ? `${filtered.length} काम देखें` : `Show ${filtered.length} Gigs`}
+              </Text>
               <Feather name="arrow-right" size={16} color={T.white} />
             </TouchableOpacity>
           </View>
@@ -290,13 +321,13 @@ export const WorkerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: T.bg },
+  container: { flex: 1, backgroundColor: Theme.bg },
   searchHeader: {
-    backgroundColor: T.white,
+    backgroundColor: Theme.bg,
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: T.border,
+    borderBottomColor: Theme.border,
   },
   searchRow: {
     flexDirection: 'row',
@@ -309,39 +340,39 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.surfaceSubtle,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,
     gap: 8,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: Theme.border,
   },
   searchInput: {
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: 14,
-    color: T.ink,
+    color: Theme.ink,
   },
   hamburgerBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: T.white,
-    borderWidth: 1.5,
-    borderColor: T.border,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Theme.border,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: '#0F172A',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 2,
+    elevation: 1,
   },
   hamburgerBtnActive: {
-    borderColor: T.primary,
-    backgroundColor: T.primaryMuted,
+    borderColor: Theme.accent,
+    backgroundColor: Theme.accentLight,
   },
   hamburgerIconWrap: {
     gap: 3.5,
@@ -350,11 +381,11 @@ const styles = StyleSheet.create({
   hamburgerLine: {
     width: 17,
     height: 2,
-    backgroundColor: T.ink,
+    backgroundColor: Theme.ink,
     borderRadius: 1,
   },
   hamburgerLineActive: {
-    backgroundColor: T.primary,
+    backgroundColor: Theme.accent,
   },
   hamburgerDot: {
     position: 'absolute',
@@ -363,7 +394,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: T.primary,
+    backgroundColor: Theme.accent,
   },
   catsScroll: {
     paddingHorizontal: 16,
@@ -375,21 +406,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Theme.surface,
     borderWidth: 1,
-    borderColor: T.border,
+    borderColor: Theme.border,
   },
   catPillActive: {
-    backgroundColor: T.primary,
-    borderColor: T.primary,
+    backgroundColor: Theme.ink,
+    borderColor: Theme.ink,
   },
   catText: {
     fontFamily: FontFamily.medium,
     fontSize: 12,
-    color: T.textSecondary,
+    color: Theme.textSecondary,
   },
   catTextActive: {
-    color: T.white,
+    color: '#FFFFFF',
     fontFamily: FontFamily.bold,
   },
   jobListContent: {
@@ -412,15 +443,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.45)',
   },
   drawerSheet: {
-    backgroundColor: T.white,
+    backgroundColor: Theme.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'android' ? 24 : 36,
-    shadowColor: '#0F172A',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -428,7 +459,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: Theme.border,
     alignSelf: 'center',
     marginBottom: 14,
   },
@@ -446,11 +477,11 @@ const styles = StyleSheet.create({
   drawerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: 18,
-    color: T.ink,
+    color: Theme.ink,
     letterSpacing: -0.4,
   },
   activeFilterCount: {
-    backgroundColor: T.primaryMuted,
+    backgroundColor: Theme.accentLight,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -458,19 +489,20 @@ const styles = StyleSheet.create({
   activeFilterCountText: {
     fontFamily: FontFamily.bold,
     fontSize: 11,
-    color: T.primary,
+    color: Theme.accent,
   },
   resetText: {
     fontFamily: FontFamily.bold,
     fontSize: 12,
-    color: T.primary,
+    color: Theme.accent,
   },
   filterSectionLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12.5,
-    color: T.ink,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
+    color: Theme.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: 10,
-    letterSpacing: 0.2,
   },
   drawerGrid: {
     flexDirection: 'row',
@@ -483,22 +515,22 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1.5,
-    borderColor: T.border,
+    borderRadius: 10,
+    backgroundColor: Theme.surface,
+    borderWidth: 1,
+    borderColor: Theme.border,
   },
   drawerPillSelected: {
-    backgroundColor: T.primary,
-    borderColor: T.primary,
+    backgroundColor: Theme.ink,
+    borderColor: Theme.ink,
   },
   drawerPillText: {
     fontFamily: FontFamily.medium,
     fontSize: 12,
-    color: T.ink,
+    color: Theme.ink,
   },
   drawerPillTextSelected: {
-    color: T.white,
+    color: '#FFFFFF',
     fontFamily: FontFamily.bold,
   },
   wageRow: {
@@ -510,22 +542,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 9,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1.5,
-    borderColor: T.border,
+    borderRadius: 10,
+    backgroundColor: Theme.surface,
+    borderWidth: 1,
+    borderColor: Theme.border,
   },
   wagePillSelected: {
-    backgroundColor: T.primary,
-    borderColor: T.primary,
+    backgroundColor: Theme.ink,
+    borderColor: Theme.ink,
   },
   wagePillText: {
     fontFamily: FontFamily.medium,
     fontSize: 11.5,
-    color: T.ink,
+    color: Theme.ink,
   },
   wagePillTextSelected: {
-    color: T.white,
+    color: '#FFFFFF',
     fontFamily: FontFamily.bold,
   },
   applyBtn: {
@@ -533,18 +565,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: T.primary,
-    borderRadius: 16,
+    backgroundColor: Theme.accent,
+    borderRadius: 12,
     paddingVertical: 14,
-    shadowColor: T.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: Theme.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   applyBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: T.white,
+    color: '#FFFFFF',
   },
 });

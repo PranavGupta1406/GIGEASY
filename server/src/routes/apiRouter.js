@@ -8,6 +8,7 @@ const orderRoutes = require('./orderRoutes');
 const bookingRoutes = require('./bookingRoutes');
 const earningRoutes = require('./earningRoutes');
 const ratingRoutes = require('./ratingRoutes');
+const jobRoutes = require('./jobRoutes');
 // const kycRoutes = require('./kycRoutes');
 // const analyticsRoutes = require('./analyticsRoutes');
 
@@ -22,6 +23,7 @@ router.use('/orders', orderRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/earnings', earningRoutes);
 router.use('/ratings', ratingRoutes);
+router.use('/jobs', jobRoutes);
 // router.use('/kyc', kycRoutes);
 // router.use('/analytics', analyticsRoutes);
 

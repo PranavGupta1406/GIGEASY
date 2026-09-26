@@ -13,15 +13,16 @@ import { FontFamily } from '../../constants';
 import { api } from '../../services/api';
 import { InteractiveMapVisual, MapJobMarker } from '../../components/InteractiveMapVisual';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
+import { Theme } from '../../theme';
 
 const T = {
-  bg: '#F8FAFC',
-  primary: '#1A68D5',
-  ink: '#0F172A',
-  textSecondary: '#475569',
-  border: '#E2E8F0',
-  white: '#FFFFFF',
-  success: '#10B981',
+  bg: Theme.bg,
+  primary: Theme.accent,
+  ink: Theme.ink,
+  textSecondary: Theme.textSecondary,
+  border: Theme.border,
+  white: Theme.surface,
+  success: Theme.success,
 };
 
 // Mock Worker Pins for Employer Map
@@ -81,13 +82,13 @@ export function EmployerMarketplaceScreen({ shellNavigation }: any) {
         </View>
 
         <View style={styles.availControl}>
-          <View style={[styles.statusDot, { backgroundColor: isHiring ? T.success : '#94A3B8' }]} />
+          <View style={[styles.statusDot, { backgroundColor: isHiring ? T.success : Theme.textMuted }]} />
           <Text style={styles.availText}>{isHiring ? 'Hiring Now' : 'Not Hiring'}</Text>
           <Switch
             value={isHiring}
             onValueChange={setIsHiring}
-            trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
-            thumbColor={isHiring ? T.primary : '#94A3B8'}
+            trackColor={{ false: Theme.border, true: Theme.accentLight }}
+            thumbColor={isHiring ? T.primary : Theme.textMuted}
             style={styles.switch}
           />
         </View>
