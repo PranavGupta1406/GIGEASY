@@ -6,13 +6,13 @@ import { getAnalytics, isSupported } from 'firebase/analytics';
 import { Platform } from 'react-native';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyAjN9HD829PobKsuIF3gvylt9p_DvWTSJc",
-  authDomain: "gigeasy-13c38.firebaseapp.com",
-  projectId: "gigeasy-13c38",
-  storageBucket: "gigeasy-13c38.firebasestorage.app",
-  messagingSenderId: "985347418410",
-  appId: "1:985347418410:web:cd43d7f90fc179f3f8d653",
-  measurementId: "G-W0QQ6E51K5"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "gigeasy-13c38.firebaseapp.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "gigeasy-13c38",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "gigeasy-13c38.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "985347418410",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:985347418410:web:cd43d7f90fc179f3f8d653",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-W0QQ6E51K5"
 };
 
 // Initialize Firebase App Singleton

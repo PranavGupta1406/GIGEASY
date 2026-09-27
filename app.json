@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "AIzaSyAua-NV6JOylMlEmhIiHw1ncKi4gBKWGF0"
+        "googleMapsApiKey": ""
       }
     },
     "android": {
@@ -22,7 +22,7 @@
       "predictiveBackGestureEnabled": false,
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAua-NV6JOylMlEmhIiHw1ncKi4gBKWGF0"
+          "apiKey": ""
         }
       }
     },
@@ -30,7 +30,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "googleMapsApiKey": "AIzaSyAua-NV6JOylMlEmhIiHw1ncKi4gBKWGF0"
+      "googleMapsApiKey": ""
     }
   }
 }
