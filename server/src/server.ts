@@ -83,8 +83,11 @@ async function verifyToken(req: Request, res: Response, next: NextFunction) {
         email: payload.email || null,
       };
     } else {
-      // Plain text userId for demo mode (from Zustand store)
-      (req as any).user = { uid: token };
+      // Plain text userId or custom token: normalize token_usr_... to usr_...
+      const rawUid = token.startsWith('token_')
+        ? token.replace(/^token_/, '').replace(/_\d+$/, '')
+        : token;
+      (req as any).user = { uid: rawUid || token };
     }
     next();
   } catch {
@@ -143,20 +146,49 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── USER SYNC ───────────────────────────────────────────────────────────────
-app.post('/api/users/sync', async (req, res) => {
-  const { id, email, phone_number, role, name, verification_status } = req.body;
-  if (!id) return res.status(400).json({ success: false, error: 'id required' });
+app.post(['/api/users/sync', '/api/users'], async (req, res) => {
+  const { id, firebase_uid, email, phone, phone_number, role, name, verification_status } = req.body;
+  const userId = id || firebase_uid;
+  if (!userId) return res.status(400).json({ success: false, error: 'id required' });
+  const userPhone = phone_number || phone;
+  const userRole = role || 'worker';
+  const userName = name || (userRole === 'employer' ? 'Employer User' : 'Worker User');
+
   try {
     await pool.query(
       `INSERT INTO users (id, email, phone_number, role, name, verification_status, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,NOW())
        ON CONFLICT (id) DO UPDATE SET
-         email=EXCLUDED.email, phone_number=EXCLUDED.phone_number,
-         role=EXCLUDED.role, name=EXCLUDED.name,
-         verification_status=EXCLUDED.verification_status, updated_at=NOW()`,
-      [id, email, phone_number, role || 'worker', name, verification_status || 'UNVERIFIED']
+         email=COALESCE(EXCLUDED.email, users.email),
+         phone_number=COALESCE(EXCLUDED.phone_number, users.phone_number),
+         role=EXCLUDED.role,
+         name=COALESCE(EXCLUDED.name, users.name),
+         verification_status=COALESCE(EXCLUDED.verification_status, users.verification_status),
+         updated_at=NOW()`,
+      [userId, email || `${userId}@gigeasy.app`, userPhone, userRole, userName, verification_status || 'VERIFIED']
     );
-    res.json({ success: true });
+
+    if (userRole === 'employer') {
+      await pool.query(
+        `INSERT INTO employer_profiles (id, user_id, business_name, contact_name, contact_phone, contact_email, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           business_name=COALESCE(EXCLUDED.business_name, employer_profiles.business_name),
+           updated_at=NOW()`,
+        [`emp_${userId}`, userId, userName, userName, userPhone, email]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO worker_profiles (id, user_id, name, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           name=COALESCE(EXCLUDED.name, worker_profiles.name),
+           updated_at=NOW()`,
+        [`wrk_${userId}`, userId, userName]
+      );
+    }
+
+    res.json({ success: true, data: { id: userId, role: userRole } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -218,7 +250,7 @@ app.get('/api/workers', async (req, res) => {
       LEFT JOIN users u ON u.id = wp.user_id
       LEFT JOIN (
         SELECT rated_user_id, ROUND(AVG(score)::numeric, 1) as avg_score, COUNT(*) as total_ratings
-        FROM ratings GROUP BY rated_user_id
+        FROM gig_ratings GROUP BY rated_user_id
       ) r ON r.rated_user_id = wp.user_id
       LEFT JOIN (
         SELECT worker_id, COUNT(*) as completed_count
@@ -252,7 +284,7 @@ app.get('/api/workers/:workerId', async (req, res) => {
        LEFT JOIN users u ON u.id = wp.user_id
        LEFT JOIN (
          SELECT rated_user_id, ROUND(AVG(score)::numeric, 1) as avg_score, COUNT(*) as total_ratings
-         FROM ratings GROUP BY rated_user_id
+         FROM gig_ratings GROUP BY rated_user_id
        ) r ON r.rated_user_id = wp.user_id
        LEFT JOIN (
          SELECT worker_id, COUNT(*) as completed_count
@@ -283,7 +315,7 @@ app.get('/api/employers/me', verifyToken, async (req, res) => {
        FROM employer_profiles ep
        LEFT JOIN (
          SELECT rated_user_id, ROUND(AVG(score)::numeric, 1) as avg_score, COUNT(*) as total_ratings
-         FROM ratings GROUP BY rated_user_id
+         FROM gig_ratings GROUP BY rated_user_id
        ) r ON r.rated_user_id = ep.user_id
        LEFT JOIN (
          SELECT employer_id,
@@ -412,6 +444,20 @@ app.post('/api/gigs', verifyToken, async (req, res) => {
       [skill_category, city]
     );
     const fp = fpe.rows[0];
+
+    // Ensure employer exists in users and employer_profiles table to prevent FK constraint failure
+    await pool.query(
+      `INSERT INTO users (id, role, name, updated_at)
+       VALUES ($1, 'employer', 'GigEasy Employer', NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [uid]
+    );
+    await pool.query(
+      `INSERT INTO employer_profiles (id, user_id, business_name, updated_at)
+       VALUES ($1, $2, 'My Business', NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [`emp_${uid}`, uid]
+    );
 
     const newGigId = uuidv4();
     const result = await pool.query(

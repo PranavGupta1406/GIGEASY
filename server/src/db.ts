@@ -292,6 +292,14 @@ export async function initDatabase() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (application_id, rater_role)
       );
+      CREATE TABLE IF NOT EXISTS ratings (
+        id VARCHAR(100) PRIMARY KEY DEFAULT uuid_generate_v4(),
+        worker_id VARCHAR(100),
+        employer_id VARCHAR(100),
+        rating NUMERIC(3,2) DEFAULT 5.0,
+        score INT DEFAULT 5,
+        rated_user_id VARCHAR(100)
+      );
       CREATE TABLE IF NOT EXISTS worker_availability (
         user_id VARCHAR(100) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         mode VARCHAR(30) NOT NULL DEFAULT 'AVAILABLE_NOW',

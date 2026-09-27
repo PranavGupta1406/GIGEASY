@@ -18,11 +18,15 @@ import { FontFamily, FontSize, BorderRadius } from '../../constants';
 import { formatWage, formatDate } from '../../data/mockData';
 import { useAuthStore } from '../../store';
 import { api } from '../../services/api';
+import { realtimeSocket } from '../../services/realtime/socketService';
 
 import { Theme } from '../../theme';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-interface Props { shellNavigation: NavProp; }
+interface Props {
+  shellNavigation: NavProp;
+  onNavigateTab?: (tab: 'Dashboard' | 'Jobs' | 'Workers' | 'Profile') => void;
+}
 
 type FilterTab = 'all' | 'hiring' | 'full';
 
@@ -41,7 +45,7 @@ const T = {
   successLight: Theme.successLight,
 };
 
-export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
+export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation, onNavigateTab }) => {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [apiGigs, setApiGigs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,12 +57,10 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
   const loadGigs = useCallback(async (refresh = false) => {
     if (refresh) setIsRefreshing(true); else setIsLoading(true);
     try {
-      // Fetch all gigs (backend filters by employer_id via auth token)
       const allGigs = await api.getGigs({ status: 'ALL' });
-      // Only show this employer's own gigs (matched by authenticated userId)
-      const myGigs = (allGigs || []).filter((g: any) =>
-        g.employer_id === userId
-      );
+      const myGigs = userId
+        ? (allGigs || []).filter((g: any) => g.employer_id === userId || g.employer_id === 'demo_user' || !g.employer_id)
+        : (allGigs || []);
       setApiGigs(myGigs);
     } catch (err) {
       console.warn('[EmployerJobs] Failed to load gigs:', err);
@@ -70,6 +72,14 @@ export const EmployerJobsScreen: React.FC<Props> = ({ shellNavigation }) => {
 
   useEffect(() => {
     loadGigs();
+    const unsub1 = realtimeSocket.subscribe('JOB_DISPATCHED', () => loadGigs(true));
+    const unsub2 = realtimeSocket.subscribe('APPLICATION_RECEIVED', () => loadGigs(true));
+    const unsub3 = realtimeSocket.subscribe('WORKER_HIRED', () => loadGigs(true));
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
   }, [loadGigs]);
 
   // Map API gig status to local filter tabs

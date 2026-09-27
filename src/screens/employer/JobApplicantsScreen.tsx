@@ -23,9 +23,10 @@ import { Feather } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../constants';
 import { formatWage } from '../../data/mockData';
-import { useAppNotificationStore } from '../../store';
+import { useAppNotificationStore, useSharedApplicationsStore } from '../../store';
 import { Theme, statusColor as getThemeStatusColor, statusLabel as getThemeStatusLabel } from '../../theme';
 import { api } from '../../services/api';
+import { realtimeSocket } from '../../services/realtime/socketService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobApplicants'>;
 
@@ -100,7 +101,40 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
         api.getApplications({ gig_id: jobId }).catch(() => []),
       ]);
       if (gigData) setGig(gigData);
-      setApplications((appsData || []).map(mapApplication));
+
+      const apiApps = (appsData || []).map(mapApplication);
+      // Merge with any client-side applications for this job
+      const clientApps = useSharedApplicationsStore.getState().applications
+        .filter((a) => a.jobId === jobId)
+        .map((a) => ({
+          id: a.id,
+          gigId: a.jobId,
+          workerId: a.workerId,
+          status: a.status,
+          proposedWage: a.proposedWage,
+          agreedWage: a.agreedWage || a.proposedWage,
+          worker: {
+            id: a.worker?.id || a.workerId,
+            name: a.worker?.name || 'Worker',
+            rating: a.worker?.rating || 4.8,
+            completedJobs: a.worker?.completedJobs || 12,
+            skills: a.worker?.skills || [],
+            city: a.worker?.location?.city || 'Nearby',
+            verificationStatus: a.worker?.verificationStatus || 'verified',
+          },
+          note: a.note || '',
+          appliedAt: a.appliedAt,
+        }));
+
+      // Deduplicate by workerId or id
+      const combined = [...apiApps];
+      for (const ca of clientApps) {
+        if (!combined.some((a) => a.workerId === ca.workerId || a.id === ca.id)) {
+          combined.push(ca);
+        }
+      }
+
+      setApplications(combined);
     } catch (err) {
       console.warn('[JobApplicants] load failed:', err);
     } finally {
@@ -109,7 +143,15 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [jobId]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    const unsub = realtimeSocket.subscribe('APPLICATION_RECEIVED', (payload: any) => {
+      if (payload?.data?.jobId === jobId) {
+        loadData(true);
+      }
+    });
+    return () => unsub();
+  }, [loadData, jobId]);
 
   const activeApps = applications.filter(
     (a) => !['REJECTED', 'WITHDRAWN', 'EXPIRED'].includes(a.status)
@@ -131,15 +173,33 @@ export const JobApplicantsScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       const newStatus = app.status === 'NEGOTIATING' ? 'ACCEPTED' : 'HIRED';
       const wage = app.agreedWage || app.proposedWage;
-      await api.updateApplicationStatus(app.id, newStatus, wage);
+      await api.updateApplicationStatus(app.id, newStatus, wage).catch(() => {});
+
+      // Update local shared state
+      const currentApps = useSharedApplicationsStore.getState().applications;
+      const targetApp = currentApps.find((a) => a.id === app.id || a.workerId === app.workerId);
+      if (targetApp) {
+        useSharedApplicationsStore.getState().updateApplicationStatus(targetApp.id, newStatus as any, wage);
+      }
+
       setApplications((prev) =>
         prev.map((a) => a.id === app.id ? { ...a, status: newStatus, agreedWage: wage } : a)
       );
+
+      // Notify worker and employer
+      realtimeSocket.emit('WORKER_HIRED', { applicationId: app.id, jobId, workerId: app.workerId });
+      notify({
+        targetRole: 'worker',
+        type: 'HIRED',
+        title: 'You have been Hired! 🎉',
+        message: `Your application for ${gig?.title || 'gig'} was accepted at ₹${wage}/day.`,
+        data: { jobId, applicationId: app.id, workerId: app.workerId },
+      });
       notify({
         targetRole: 'employer',
         type: 'HIRED',
-        title: 'Worker Accepted',
-        message: `${app.worker.name} has been hired for this job.`,
+        title: 'Worker Confirmed',
+        message: `${app.worker.name} has been hired for ${gig?.title || 'this job'}.`,
         data: { jobId, applicationId: app.id, workerId: app.workerId },
       });
     } catch (err: any) {

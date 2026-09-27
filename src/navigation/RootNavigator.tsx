@@ -78,7 +78,7 @@ export type RootStackParamList = {
   WorkerCategoryJobs: { categoryId: string; categoryName: string };
   // Employer onboarding
   EmployerName: undefined;
-  MainApp: { initialMode?: 'worker' | 'employer' };
+  MainApp: { initialMode?: 'worker' | 'employer'; employerTab?: EmployerTab; workerTab?: WorkerTab } | undefined;
   JobDetail: { jobId: string };
   JobApply: { jobId: string };
   JobApplicants: { jobId: string };
@@ -90,8 +90,8 @@ export type RootStackParamList = {
   EmployerCart: undefined;
   ActiveOrderTracking: { orderId: string };
   Splash: undefined;
-  WorkerTabs: { initialMode?: 'worker' | 'employer' } | undefined;
-  EmployerTabs: { initialMode?: 'worker' | 'employer' } | undefined;
+  WorkerTabs: { initialMode?: 'worker' | 'employer'; workerTab?: WorkerTab } | undefined;
+  EmployerTabs: { initialMode?: 'worker' | 'employer'; employerTab?: EmployerTab } | undefined;
 
   // SIH 26089 Cooperative & Worker ID Routes
   WorkerId: undefined;
@@ -153,6 +153,22 @@ function MainAppScreen({ route, navigation }: any) {
 
   const [workerTab, setWorkerTab] = useState<WorkerTab>('FindWork');
   const [employerTab, setEmployerTab] = useState<EmployerTab>('Dashboard');
+
+  // Handle route param tab switching
+  useEffect(() => {
+    if (route?.params?.employerTab) {
+      setEmployerTab(route.params.employerTab);
+      if (mode !== 'employer') setMode('employer');
+    }
+  }, [route?.params?.employerTab]);
+
+  useEffect(() => {
+    if (route?.params?.workerTab) {
+      setWorkerTab(route.params.workerTab);
+      if (mode !== 'worker') setMode('worker');
+    }
+  }, [route?.params?.workerTab]);
+
   const [showNotificationsDrawer, setShowNotificationsDrawer] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -220,19 +236,19 @@ function MainAppScreen({ route, navigation }: any) {
   const renderContent = () => {
     if (mode === 'worker') {
       switch (workerTab) {
-        case 'FindWork': return <WorkerFindWorkScreen shellNavigation={navigation} />;
+        case 'FindWork': return <WorkerFindWorkScreen shellNavigation={navigation} onNavigateTab={(t) => setWorkerTab(t as WorkerTab)} />;
         case 'MyWork': return <WorkerMyWorkScreen shellNavigation={navigation} onNavigateTab={(t) => setWorkerTab(t as WorkerTab)} />;
         case 'WorkerId': return <WorkerIdScreen shellNavigation={navigation} onSwitchMode={() => handleModeSwitch('employer')} />;
         case 'More': return <WorkerMoreScreen shellNavigation={navigation} onSwitchMode={() => handleModeSwitch('employer')} onNavigateTab={(t) => setWorkerTab(t as WorkerTab)} />;
-        default: return <WorkerFindWorkScreen shellNavigation={navigation} />;
+        default: return <WorkerFindWorkScreen shellNavigation={navigation} onNavigateTab={(t) => setWorkerTab(t as WorkerTab)} />;
       }
     } else {
       switch (employerTab) {
-        case 'Dashboard': return <EmployerDashboardScreen shellNavigation={navigation} />;
-        case 'Jobs': return <EmployerJobsScreen shellNavigation={navigation} />;
-        case 'Workers': return <EmployerWorkersScreen shellNavigation={navigation} />;
+        case 'Dashboard': return <EmployerDashboardScreen shellNavigation={navigation} onNavigateTab={(t) => setEmployerTab(t as EmployerTab)} />;
+        case 'Jobs': return <EmployerJobsScreen shellNavigation={navigation} onNavigateTab={(t) => setEmployerTab(t as EmployerTab)} />;
+        case 'Workers': return <EmployerWorkersScreen shellNavigation={navigation} onNavigateTab={(t) => setEmployerTab(t as EmployerTab)} />;
         case 'Profile': return <EmployerProfileScreen shellNavigation={navigation} onSwitchMode={() => handleModeSwitch('worker')} />;
-        default: return <EmployerDashboardScreen shellNavigation={navigation} />;
+        default: return <EmployerDashboardScreen shellNavigation={navigation} onNavigateTab={(t) => setEmployerTab(t as EmployerTab)} />;
       }
     }
   };

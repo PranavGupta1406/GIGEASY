@@ -18,9 +18,13 @@ import { FontFamily, FontSize } from '../../constants';
 import { useLanguageStore, useAuthStore } from '../../store';
 import { Theme } from '../../theme';
 import { api } from '../../services/api';
+import { realtimeSocket } from '../../services/realtime/socketService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-interface Props { shellNavigation: NavProp; }
+interface Props {
+  shellNavigation: NavProp;
+  onNavigateTab?: (tab: 'Dashboard' | 'Jobs' | 'Workers' | 'Profile') => void;
+}
 
 const QUICK_ACTIONS = [
   { label: 'Post a Job', icon: 'plus-circle', screen: 'PostJob' as const, accent: Theme.forestGreen },
@@ -37,7 +41,7 @@ const JOB_CATEGORIES = [
   { id: 'Hospitality', label: 'Catering', icon: 'coffee' },
 ];
 
-export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) => {
+export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation, onNavigateTab }) => {
   const { t } = useLanguageStore();
   const userId = useAuthStore((s) => s.userId);
   const authName = useAuthStore((s) => s.name);
@@ -67,9 +71,10 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
       ]);
 
       if (gigsData.status === 'fulfilled') {
-        const myGigs = (gigsData.value || []).filter((g: any) =>
-          g.employer_id === userId
-        );
+        const allGigs = gigsData.value || [];
+        const myGigs = userId
+          ? allGigs.filter((g: any) => g.employer_id === userId || g.employer_id === 'demo_user' || !g.employer_id)
+          : allGigs;
         setGigs(myGigs);
 
         // Compute stats from gig list
@@ -100,7 +105,17 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
     }
   }, [userId]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    const unsub1 = realtimeSocket.subscribe('JOB_DISPATCHED', () => loadData(true));
+    const unsub2 = realtimeSocket.subscribe('APPLICATION_RECEIVED', () => loadData(true));
+    const unsub3 = realtimeSocket.subscribe('WORKER_HIRED', () => loadData(true));
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+    };
+  }, [loadData]);
 
   const recentGigs = gigs
     .filter((g) => !['COMPLETED', 'CANCELLED', 'EXPIRED'].includes(g.status))
@@ -173,7 +188,7 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
           <View style={styles.quickActionsCol}>
             <TouchableOpacity
               style={styles.quickActionSecondary}
-              onPress={() => shellNavigation.navigate('MainApp' as any)}
+              onPress={() => onNavigateTab ? onNavigateTab('Workers') : shellNavigation.navigate('MainApp', { employerTab: 'Workers' } as any)}
               activeOpacity={0.8}
             >
               <Feather name="users" size={17} color={Theme.ink} />
@@ -181,7 +196,7 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionSecondary}
-              onPress={() => shellNavigation.navigate('MainApp' as any)}
+              onPress={() => onNavigateTab ? onNavigateTab('Jobs') : shellNavigation.navigate('MainApp', { employerTab: 'Jobs' } as any)}
               activeOpacity={0.8}
             >
               <Feather name="briefcase" size={17} color={Theme.ink} />
@@ -214,7 +229,7 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Active Jobs</Text>
-            <TouchableOpacity onPress={() => shellNavigation.navigate('MainApp' as any)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => onNavigateTab ? onNavigateTab('Jobs') : shellNavigation.navigate('MainApp', { employerTab: 'Jobs' } as any)} activeOpacity={0.7}>
               <Text style={styles.seeAll}>View all</Text>
             </TouchableOpacity>
           </View>
@@ -257,7 +272,7 @@ export const EmployerDashboardScreen: React.FC<Props> = ({ shellNavigation }) =>
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Workers Available</Text>
-            <TouchableOpacity onPress={() => shellNavigation.navigate('MainApp' as any)} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => onNavigateTab ? onNavigateTab('Workers') : shellNavigation.navigate('MainApp', { employerTab: 'Workers' } as any)} activeOpacity={0.7}>
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>

@@ -20,12 +20,13 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { FontFamily, FontSize } from '../../constants';
 import { MOCK_SKILLS, WORK_GROUPS, MOCK_WORKERS } from '../../data/mockData';
-import { useEmployerStore, useLanguageStore, useSharedApplicationsStore } from '../../store';
+import { useEmployerStore, useLanguageStore, useSharedApplicationsStore, useAuthStore, useAppNotificationStore } from '../../store';
 import { Theme } from '../../theme';
 import { getCategoryVisual } from '../../components/GigEasyPrimitives';
 import { getEmployerMatchStats, EmployerMatchStats } from '../../services/recommendation/recommendationService';
 import { Job, WorkerProfile } from '../../types';
 import { api } from '../../services/api';
+import { realtimeSocket } from '../../services/realtime/socketService';
 import {
   GigDatePickerModal,
   GigTimePickerModal,
@@ -297,7 +298,19 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
     const city = locationCity.includes(',') ? locationCity.split(',')[1].trim() : locationCity.trim();
 
     try {
-      // 1. Real Backend Creation (validated, authenticated API request)
+      // 1. Ensure Employer record exists in backend before creating gig
+      const authState = useAuthStore.getState();
+      const currentUid = authState.userId || 'demo_employer';
+      await api.syncUser({
+        id: currentUid,
+        email: authState.email || `${currentUid}@gigeasy.app`,
+        phone_number: authState.phoneNumber || '9876543210',
+        role: 'employer',
+        name: authState.name || 'Employer User',
+        verification_status: 'verified',
+      }).catch((e) => console.log('syncUser note in PostJob:', e.message));
+
+      // 2. Real Backend Creation (validated, authenticated API request)
       const res = await api.createGig({
         title: title.trim(),
         description: description.trim(),
@@ -322,7 +335,7 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error(res?.error || 'Server did not return a valid gig ID.');
       }
 
-      // 2. Persist to store with real backend ID
+      // 3. Persist to store with real backend ID
       const newJob = postJob({
         id: realGigId,
         title: title.trim(),
@@ -345,7 +358,7 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
         requirements: selectedRequirements,
       });
 
-      // 3. Worker match stats & seeded pipeline
+      // 4. Worker match stats & seeded pipeline
       const stats = getEmployerMatchStats(newJob, MOCK_WORKERS);
       const eligibleWorkers = MOCK_WORKERS.filter(
         (w) =>
@@ -357,6 +370,21 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
       candidates.forEach((worker) => {
         applyForJob(newJob.id, newJob.maxWage, worker, newJob);
+        api.applyForGig({
+          gig_id: newJob.id,
+          proposed_wage: newJob.maxWage,
+          worker_id: worker.id,
+        }).catch(() => {});
+      });
+
+      // 5. Broadcast real-time event & send alert notification
+      realtimeSocket.emit('JOB_DISPATCHED', newJob);
+      useAppNotificationStore.getState().notify({
+        targetRole: 'worker',
+        type: 'GIG_ALERT',
+        title: `New Gig: ${newJob.title}`,
+        message: `₹${newJob.maxWage}/day · ${city || 'Noida'} · Immediate hire`,
+        data: { jobId: newJob.id },
       });
 
       setNotifiedWorkersList(candidates);
@@ -466,10 +494,12 @@ export const PostJobScreen: React.FC<Props> = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.successSecondaryBtn}
-              onPress={() => navigation.goBack()}
+              onPress={() => {
+                navigation.navigate('MainApp', { employerTab: 'Jobs' } as any);
+              }}
               activeOpacity={0.75}
             >
-              <Text style={styles.successSecondaryBtnText}>Return to Dashboard</Text>
+              <Text style={styles.successSecondaryBtnText}>View in My Jobs</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

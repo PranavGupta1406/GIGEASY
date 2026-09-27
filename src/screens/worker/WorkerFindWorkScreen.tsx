@@ -40,9 +40,13 @@ import {
 import { api } from '../../services/api';
 import { apiGigToJob } from '../../services/gigMapper';
 import { Job } from '../../types';
+import { realtimeSocket } from '../../services/realtime/socketService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-interface Props { shellNavigation: NavProp; }
+interface Props {
+  shellNavigation: NavProp;
+  onNavigateTab?: (tab: string) => void;
+}
 
 const CATEGORIES = [
   'All', 'Warehouse', 'Electrical', 'Plumbing',
@@ -93,6 +97,8 @@ export const WorkerFindWorkScreen: React.FC<Props> = ({ shellNavigation }) => {
 
   useEffect(() => {
     loadGigs();
+    const unsub = realtimeSocket.subscribe('JOB_DISPATCHED', () => loadGigs(true));
+    return () => unsub();
   }, [loadGigs]);
 
   const handleAvailabilityToggle = async (val: boolean) => {

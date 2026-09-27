@@ -152,7 +152,7 @@ export const EmployerProfileScreen: React.FC<Props> = ({ shellNavigation, onSwit
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Operating Address</Text>
-          <Text style={styles.detailValue}>{employer.location.address}</Text>
+          <Text style={styles.detailValue}>{employer.location?.address || 'Sector 62, Noida, Uttar Pradesh'}</Text>
         </View>
       </View>
 
